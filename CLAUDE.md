@@ -14,6 +14,7 @@ Referências:
 ## Stack
 - Worker Node 24 + TypeScript (tsx) em worker/, agendado no GitHub Actions (.github/workflows/sync.yml, a cada 2 h).
 - Supabase (Postgres), projeto edital-map em sa-east-1. Schema em supabase/migrations/; mudança só com nova migration.
+- Supabase: ref omtwaflypzlebjoeubvp, região sa-east-1.
 - Fases seguintes: Next.js (App Router) + MapLibre sem mapa de fundo, Resend, Asaas.
 
 ## Regras
