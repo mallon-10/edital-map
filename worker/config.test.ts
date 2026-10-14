@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lerModalidades, lerSupabase, lerUfs } from './config';
+import { lerModalidades, lerPorMinuto, lerSupabase, lerUfs } from './config';
 
 describe('lerUfs', () => {
   it('usa SC, PR e RS quando não há valor', () => {
@@ -23,6 +23,19 @@ describe('lerModalidades', () => {
   });
   it('recusa modalidade fora da v1', () => {
     expect(() => lerModalidades('6,9')).toThrow('Modalidade fora da v1: 9');
+  });
+});
+
+describe('lerPorMinuto', () => {
+  it('usa 20 quando não há valor', () => {
+    expect(lerPorMinuto(undefined)).toBe(20);
+  });
+  it('aceita um número inteiro', () => {
+    expect(lerPorMinuto('12')).toBe(12);
+  });
+  it('recusa zero e texto', () => {
+    expect(() => lerPorMinuto('0')).toThrow('PNCP_CONSULTA_POR_MINUTO inválido');
+    expect(() => lerPorMinuto('abc')).toThrow('PNCP_CONSULTA_POR_MINUTO inválido');
   });
 });
 

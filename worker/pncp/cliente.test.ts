@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { criarCliente, criarLimitador, ErroPncp } from './cliente';
+import { criarCliente, criarLimitador, criarRitmo, ErroPncp, type OpcoesCliente } from './cliente';
 
 function resposta(status: number, corpo?: unknown): Response {
   return new Response(corpo === undefined ? null : JSON.stringify(corpo), { status });
@@ -17,7 +17,7 @@ function fetchFalso(respostas: Array<Response | Error>) {
   return { f, urls };
 }
 
-function montar(respostas: Array<Response | Error>) {
+function montar(respostas: Array<Response | Error>, extras: OpcoesCliente = {}) {
   const { f, urls } = fetchFalso(respostas);
   const esperas: number[] = [];
   const cliente = criarCliente({
@@ -26,6 +26,10 @@ function montar(respostas: Array<Response | Error>) {
       esperas.push(ms);
     },
     aleatorio: () => 0,
+    relogio: () => 0,
+    consultaPorMinuto: 6000,
+    consultaRajada: 1000,
+    ...extras,
   });
   return { cliente, urls, esperas };
 }
@@ -34,11 +38,17 @@ const filtro = { uf: 'SC', modalidade: 6, dataInicial: '2026-10-13', dataFinal: 
 const compra = { id: 'C1', cnpj: '00394452000103', ano: 2026, sequencial: 21982 };
 
 describe('getJson', () => {
-  it('tenta de novo depois de um 429', async () => {
+  it('tenta de novo depois de um 429, esperando 30 s', async () => {
     const { cliente, esperas } = montar([resposta(429), resposta(200, { a: 1 })]);
     await expect(cliente.getJson('https://x')).resolves.toEqual({ a: 1 });
-    expect(esperas).toEqual([2000]);
-    expect(cliente.estatisticas()).toEqual({ chamadas: 2, novasTentativas: 1 });
+    expect(esperas).toEqual([30000]);
+    expect(cliente.estatisticas()).toEqual({ chamadas: 2, novasTentativas: 1, respostas429: 1 });
+  });
+  it('desiste depois de 4 respostas 429, esperando 30, 60 e 120 s', async () => {
+    const { cliente, esperas } = montar([resposta(429), resposta(429), resposta(429), resposta(429)]);
+    await expect(cliente.getJson('https://x')).rejects.toThrow('Falhou 4 vezes');
+    expect(esperas).toEqual([30000, 60000, 120000]);
+    expect(cliente.estatisticas().respostas429).toBe(4);
   });
   it('desiste depois de 4 falhas, esperando 2, 4 e 8 s', async () => {
     const { cliente, esperas } = montar([resposta(503), resposta(503), resposta(503), resposta(503)]);
@@ -102,6 +112,45 @@ describe('listarItens', () => {
     const { cliente, urls } = montar([resposta(200, cheia), resposta(200, [])]);
     expect(await cliente.listarItens(compra)).toHaveLength(50);
     expect(urls).toHaveLength(2);
+  });
+});
+
+describe('ritmo da API de consulta', () => {
+  it('só a consulta passa pelo ritmo; itens não', async () => {
+    const itens = montar([resposta(200, []), resposta(200, [])], { consultaPorMinuto: 20, consultaRajada: 1 });
+    await itens.cliente.listarItens(compra);
+    await itens.cliente.listarItens(compra);
+    expect(itens.esperas).toEqual([]);
+
+    const consulta = montar([resposta(200, {}), resposta(200, {})], { consultaPorMinuto: 20, consultaRajada: 1 });
+    await consulta.cliente.getJson('https://pncp.gov.br/api/consulta/v1/a');
+    await consulta.cliente.getJson('https://pncp.gov.br/api/consulta/v1/b');
+    expect(consulta.esperas).toEqual([3000]);
+  });
+});
+
+describe('criarRitmo', () => {
+  it('deixa a rajada sair sem espera e depois segura no intervalo', async () => {
+    let agora = 0;
+    const esperas: number[] = [];
+    const aguardarVez = criarRitmo(20, 2, () => agora, async (ms) => {
+      esperas.push(ms);
+      agora += ms;
+    });
+    for (let i = 0; i < 5; i++) await aguardarVez();
+    expect(esperas).toEqual([3000, 3000, 3000]);
+  });
+  it('repõe fichas com o passar do tempo', async () => {
+    let agora = 0;
+    const esperas: number[] = [];
+    const aguardarVez = criarRitmo(20, 1, () => agora, async (ms) => {
+      esperas.push(ms);
+      agora += ms;
+    });
+    await aguardarVez();
+    agora += 3000;
+    await aguardarVez();
+    expect(esperas).toEqual([]);
   });
 });
 

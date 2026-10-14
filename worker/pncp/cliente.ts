@@ -1,6 +1,9 @@
 import {
   BASE_CONSULTA,
   BASE_PNCP,
+  CONSULTA_RAJADA,
+  ESPERAS_429_MS,
+  lerPorMinuto,
   PAGINA_CONTRATACOES,
   PAGINA_ITENS,
   PARALELISMO,
@@ -30,6 +33,9 @@ export type OpcoesCliente = {
   paralelismo?: number;
   tentativas?: number;
   timeoutMs?: number;
+  relogio?: () => number;
+  consultaPorMinuto?: number;
+  consultaRajada?: number;
 };
 type RespostaContratacoes = { data?: unknown[]; totalRegistros?: number; totalPaginas?: number };
 
@@ -47,6 +53,30 @@ export function criarLimitador(maximo: number) {
       if (proxima) proxima();
       else ativos--;
     }
+  };
+}
+
+export function criarRitmo(porMinuto: number, rajada: number, relogio: () => number, esperar: (ms: number) => Promise<void>) {
+  const intervalo = 60_000 / porMinuto;
+  let fichas = rajada;
+  let ultimo = relogio();
+  let fila: Promise<void> = Promise.resolve();
+  return function aguardarVez(): Promise<void> {
+    // Encadeia as chamadas para que duas não consumam a mesma ficha.
+    const vez = fila.then(async () => {
+      const agora = relogio();
+      fichas = Math.min(rajada, fichas + (agora - ultimo) / intervalo);
+      ultimo = agora;
+      if (fichas < 1) {
+        const falta = Math.ceil((1 - fichas) * intervalo);
+        await esperar(falta);
+        fichas = 1;
+        ultimo = relogio();
+      }
+      fichas -= 1;
+    });
+    fila = vez.catch(() => undefined);
+    return vez;
   };
 }
 
@@ -78,16 +108,29 @@ export function criarCliente(opcoes: OpcoesCliente = {}) {
   const tentativas = opcoes.tentativas ?? TENTATIVAS;
   const timeoutMs = opcoes.timeoutMs ?? TIMEOUT_MS;
   const limitar = criarLimitador(opcoes.paralelismo ?? PARALELISMO);
-  const contagem = { chamadas: 0, novasTentativas: 0 };
+  const relogio = opcoes.relogio ?? Date.now;
+  const aguardarVez = criarRitmo(
+    opcoes.consultaPorMinuto ?? lerPorMinuto(process.env.PNCP_CONSULTA_POR_MINUTO),
+    opcoes.consultaRajada ?? CONSULTA_RAJADA,
+    relogio,
+    esperar,
+  );
+  const contagem = { chamadas: 0, novasTentativas: 0, respostas429: 0 };
 
   async function getJson<T>(url: string): Promise<T | null> {
     return limitar(async () => {
+      const daConsulta = url.startsWith(BASE_CONSULTA);
       let ultimoErro: unknown;
       for (let tentativa = 1; tentativa <= tentativas; tentativa++) {
         if (tentativa > 1) {
           contagem.novasTentativas++;
-          await esperar(2000 * 2 ** (tentativa - 2) + Math.floor(aleatorio() * 500));
+          const foi429 = ultimoErro instanceof ErroPncp && ultimoErro.status === 429;
+          const base = foi429
+            ? (ESPERAS_429_MS[tentativa - 2] ?? ESPERAS_429_MS[ESPERAS_429_MS.length - 1])
+            : 2000 * 2 ** (tentativa - 2);
+          await esperar(base + Math.floor(aleatorio() * 500));
         }
+        if (daConsulta) await aguardarVez();
         contagem.chamadas++;
         try {
           const resp = await buscar(url, {
@@ -99,6 +142,7 @@ export function criarCliente(opcoes: OpcoesCliente = {}) {
             const corpo = await resp.text();
             return corpo ? (JSON.parse(corpo) as T) : null;
           }
+          if (resp.status === 429) contagem.respostas429++;
           const erro = new ErroPncp(
             `HTTP ${resp.status} em ${url}: ${(await resp.text()).slice(0, 200)}`,
             resp.status,
