@@ -32,7 +32,7 @@ export const esquemaContratacao = z
     dataAtualizacaoGlobal: z.string().nullish(),
     dataAtualizacao: z.string().nullish(),
   })
-  .refine((c) => Boolean(c.dataAtualizacaoGlobal || c.dataAtualizacao), {
+  .refine((c) => Boolean(c.dataAtualizacaoGlobal?.trim() || c.dataAtualizacao?.trim()), {
     message: 'sem dataAtualizacaoGlobal nem dataAtualizacao',
   });
 export type ContratacaoPncp = z.infer<typeof esquemaContratacao>;

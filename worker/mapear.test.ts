@@ -60,6 +60,11 @@ describe('contratacaoParaLinha', () => {
       '2026-10-13T10:00:09.000Z',
     );
   });
+  it('data de atualização em branco cai para dataAtualizacao', () => {
+    expect(contratacaoParaLinha(contratacao({ dataAtualizacaoGlobal: '  ' })).atualizada_pncp_em).toBe(
+      '2026-10-13T10:00:09.000Z',
+    );
+  });
   it('codigoIbge numérico vira texto', () => {
     const linha = contratacaoParaLinha(contratacao({ unidadeOrgao: { ufSigla: 'sc', codigoIbge: 4202404 } }));
     expect(linha.codigo_ibge).toBe('4202404');

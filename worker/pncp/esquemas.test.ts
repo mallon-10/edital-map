@@ -22,6 +22,11 @@ describe('validarContratacao', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.motivo).toContain('sem dataAtualizacaoGlobal');
   });
+  it('rejeita data de atualização em branco', () => {
+    const r = validarContratacao({ ...CONTRATACAO, dataAtualizacaoGlobal: '   ', dataAtualizacao: null });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.motivo).toContain('sem dataAtualizacaoGlobal');
+  });
   it('aceita codigoIbge numérico', () => {
     const r = validarContratacao({ ...CONTRATACAO, unidadeOrgao: { ufSigla: 'SC', codigoIbge: 4202404 } });
     expect(r.ok).toBe(true);

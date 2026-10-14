@@ -73,7 +73,7 @@ export function contratacaoParaLinha(c: ContratacaoPncp): LinhaContratacao {
     abertura_em: deBrasilia(c.dataAberturaProposta),
     encerramento_em: deBrasilia(c.dataEncerramentoProposta),
     link_origem: texto(c.linkSistemaOrigem),
-    atualizada_pncp_em: deBrasilia(c.dataAtualizacaoGlobal || c.dataAtualizacao) as string,
+    atualizada_pncp_em: deBrasilia(c.dataAtualizacaoGlobal?.trim() || c.dataAtualizacao) as string,
   };
 }
 
