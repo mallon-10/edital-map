@@ -4,6 +4,7 @@ import {
   CONSULTA_RAJADA,
   ESPERAS_429_MS,
   lerPorMinuto,
+  MAX_PAGINAS_ITENS,
   PAGINA_CONTRATACOES,
   PAGINA_ITENS,
   PARALELISMO,
@@ -186,6 +187,11 @@ export function criarCliente(opcoes: OpcoesCliente = {}) {
   async function listarItens(compra: ChaveCompra): Promise<unknown[]> {
     const todos: unknown[] = [];
     for (let pagina = 1; ; pagina++) {
+      if (pagina > MAX_PAGINAS_ITENS) {
+        throw new ErroPncp(
+          `Mais de ${MAX_PAGINAS_ITENS} páginas de itens (${MAX_PAGINAS_ITENS * PAGINA_ITENS} itens): ${compra.id}`,
+        );
+      }
       const url = `${BASE_PNCP}/v1/orgaos/${compra.cnpj}/compras/${compra.ano}/${compra.sequencial}/itens?pagina=${pagina}&tamanhoPagina=${PAGINA_ITENS}`;
       const lote = (await getJson<unknown[]>(url)) ?? [];
       todos.push(...lote);

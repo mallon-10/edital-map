@@ -142,6 +142,16 @@ describe('sincronizarItens', () => {
     expect(banco.remocoes).toEqual([]);
     expect(deps.resumo.avisos[0].chave).toBe('item:C1#2');
   });
+  it('lista vazia não remove os itens antigos, gera aviso e conta como sucesso', async () => {
+    const banco = new BancoFalso();
+    const deps = montarDeps(banco, clienteFalso({ itens: () => [] }));
+    await banco.upsertItens([{ ...(await itemLinha(9)) }]);
+    const gravadas = await sincronizarItens([{ id: 'C1', cnpj: '1', ano: 2026, sequencial: 1 }], deps);
+    expect(banco.itensDe('C1').map((i) => i.numero)).toEqual([9]);
+    expect(banco.remocoes).toEqual([]);
+    expect(deps.resumo.avisos).toEqual([{ chave: 'itens:C1', mensagem: 'lista de itens vazia; itens antigos mantidos' }]);
+    expect(gravadas.has('C1')).toBe(true);
+  });
   it('falha ao listar itens vira aviso, sem derrubar a rodada', async () => {
     const banco = new BancoFalso();
     const deps = montarDeps(

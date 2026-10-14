@@ -115,6 +115,21 @@ describe('listarItens', () => {
   });
 });
 
+describe('listarItens · teto de páginas', () => {
+  it('lança erro depois de 200 páginas cheias, sem pedir a 201ª', async () => {
+    const cheia = Array.from({ length: 50 }, (_, i) => ({ numeroItem: i + 1 }));
+    let chamadas = 0;
+    const sempreCheia = (async () => {
+      chamadas++;
+      if (chamadas > 250) throw new Error('sem teto: o cliente não parou');
+      return resposta(200, cheia);
+    }) as unknown as typeof fetch;
+    const { cliente } = montar([], { fetch: sempreCheia });
+    await expect(cliente.listarItens(compra)).rejects.toThrow(/Mais de 200 páginas de itens/);
+    expect(chamadas).toBe(200);
+  });
+});
+
 describe('ritmo da API de consulta', () => {
   it('só a consulta passa pelo ritmo; itens não', async () => {
     const itens = montar([resposta(200, []), resposta(200, [])], { consultaPorMinuto: 20, consultaRajada: 1 });

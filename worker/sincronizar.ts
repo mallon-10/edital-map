@@ -83,8 +83,13 @@ export async function sincronizarItens(compras: ChaveCompra[], deps: Dependencia
         }
         const linhas = [...porNumero.values()];
         await deps.banco.upsertItens(linhas);
-        // Só remove itens antigos quando a lista veio inteira e válida.
-        if (invalidos === 0) await deps.banco.removerItensAlem(compra.id, linhas.map((l) => l.numero));
+        if (linhas.length === 0) {
+          // Lista vazia pode ser resposta transitória do PNCP: não apagar o que já temos.
+          deps.resumo.registrarAviso(`itens:${compra.id}`, 'lista de itens vazia; itens antigos mantidos');
+        } else if (invalidos === 0) {
+          // Só remove itens antigos quando a lista veio inteira e válida.
+          await deps.banco.removerItensAlem(compra.id, linhas.map((l) => l.numero));
+        }
         deps.resumo.contarItens(1, linhas.length);
         gravadas.add(compra.id);
       } catch (erro) {
