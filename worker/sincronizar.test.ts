@@ -128,17 +128,22 @@ async function itemLinha(numero: number) {
 }
 
 describe('janela e chave', () => {
+  const MEIO_DIA = new Date('2026-10-14T15:00:00Z'); // 12h em Brasília
+  const MADRUGADA = new Date('2026-10-14T04:30:00Z'); // 01h30 em Brasília
   it('sem estado (chave nunca sincronizada), começa ontem', () => {
-    expect(inicioDaJanela(null, '2026-10-14')).toBe('2026-10-13');
+    expect(inicioDaJanela(null, MEIO_DIA)).toBe('2026-10-13');
   });
   it('com última data boa de hoje, começa hoje', () => {
-    expect(inicioDaJanela('2026-10-14', '2026-10-14')).toBe('2026-10-14');
+    expect(inicioDaJanela('2026-10-14', MEIO_DIA)).toBe('2026-10-14');
   });
   it('com última data boa anterior a ontem (falha antiga), começa nela', () => {
-    expect(inicioDaJanela('2026-10-09', '2026-10-14')).toBe('2026-10-09');
+    expect(inicioDaJanela('2026-10-09', MEIO_DIA)).toBe('2026-10-09');
   });
   it('com última data no futuro (relógio adiantado), começa hoje', () => {
-    expect(inicioDaJanela('2026-10-15', '2026-10-14')).toBe('2026-10-14');
+    expect(inicioDaJanela('2026-10-15', MEIO_DIA)).toBe('2026-10-14');
+  });
+  it('até as 3h de Brasília ainda relê ontem', () => {
+    expect(inicioDaJanela('2026-10-14', MADRUGADA)).toBe('2026-10-13');
   });
 });
 

@@ -117,13 +117,15 @@ export function chaveEstado(uf: string, modalidade: number): string {
 }
 
 /**
- * Início da janela de atualização. A consulta filtra pela data da atualização:
- * desde a última rodada boa, nada datado antes dela ficou por ler. Sem estado,
- * começa ontem. Data no futuro (relógio adiantado) é tratada como hoje.
+ * Início da janela de atualização: a última data boa (sem estado, ontem), limitada a
+ * 3 h antes de agora. Assim, até as 03h de Brasília a rodada ainda relê ontem (mudanças
+ * que o índice do PNCP demora a mostrar); depois disso lê a partir da última data boa.
+ * Data no futuro (relógio adiantado) fica limitada pelo segundo termo.
  */
-export function inicioDaJanela(ultimaData: string | null | undefined, hoje: string): string {
-  if (!ultimaData) return somarDias(hoje, -1);
-  return ultimaData > hoje ? hoje : ultimaData;
+export function inicioDaJanela(ultimaData: string | null | undefined, agora: Date): string {
+  const base = ultimaData || somarDias(hojeBrasilia(agora), -1);
+  const limite = hojeBrasilia(new Date(agora.getTime() - 3 * 3600 * 1000));
+  return base < limite ? base : limite;
 }
 
 export async function sincronizarChave(uf: string, modalidade: number, deps: Dependencias): Promise<boolean> {
@@ -135,7 +137,7 @@ export async function sincronizarChave(uf: string, modalidade: number, deps: Dep
   try {
     const estado = await deps.banco.lerEstado(chave);
     estadoLido = true;
-    inicio = inicioDaJanela(estado?.ultima_data, hoje);
+    inicio = inicioDaJanela(estado?.ultima_data, deps.agora());
     await processarJanela('atualizacao', { uf, modalidade, dataInicial: inicio, dataFinal: hoje }, deps);
     await deps.banco.gravarEstado({
       chave,
