@@ -1,0 +1,16 @@
+{
+  "numeroItem": 1,
+  "descricao": "Corda material: polietileno, tipo: trançada, diâmetro: 40, aplicação: uso geral",
+  "materialOuServico": "M",
+  "materialOuServicoNome": "Material",
+  "valorUnitarioEstimado": 44.08,
+  "valorTotal": 8816.0,
+  "quantidade": 200.0,
+  "unidadeMedida": "Metro",
+  "orcamentoSigiloso": false,
+  "situacaoCompraItem": 1,
+  "temResultado": false,
+  "ncmNbsCodigo": null,
+  "catalogoCodigoItem": "485790",
+  "informacaoComplementar": null
+}

@@ -1,0 +1,33 @@
+{
+  "valorTotalHomologado": null,
+  "orgaoEntidade": { "cnpj": "00394452000103", "razaoSocial": "COMANDO DO EXERCITO", "poderId": "E", "esferaId": "F" },
+  "dataAtualizacao": "2026-10-13T07:00:09",
+  "dataInclusao": "2026-10-13T07:00:09",
+  "anoCompra": 2026,
+  "srp": true,
+  "sequencialCompra": 21982,
+  "numeroCompra": "54",
+  "dataEncerramentoProposta": "2026-10-26T08:59:00",
+  "objetoCompra": "Aquisição de materiais de escalada e para reestruturação da Pista de Cordas do 23º Batalhão de Infantaria",
+  "informacaoComplementar": null,
+  "dataAberturaProposta": "2026-10-13T09:45:00",
+  "dataPublicacaoPncp": "2026-10-13T07:00:09",
+  "dataAtualizacaoGlobal": "2026-10-13T07:22:24",
+  "unidadeOrgao": {
+    "ufNome": "Santa Catarina",
+    "ufSigla": "SC",
+    "municipioNome": "Blumenau",
+    "nomeUnidade": "23 BATALHAO DE INFANTARIA - SC",
+    "codigoIbge": "4202404",
+    "codigoUnidade": "160440"
+  },
+  "linkSistemaOrigem": "https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras/acompanhamento-compra?compra=16044005000542026",
+  "numeroControlePNCP": "00394452000103-1-021982/2026",
+  "valorTotalEstimado": 419537.29,
+  "modalidadeId": 6,
+  "modalidadeNome": "Pregão - Eletrônico",
+  "modoDisputaId": 3,
+  "situacaoCompraId": 1,
+  "situacaoCompraNome": "Divulgada no PNCP",
+  "usuarioNome": "Compras.gov.br"
+}
