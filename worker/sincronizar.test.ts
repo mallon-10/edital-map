@@ -282,6 +282,32 @@ describe('executarSync', () => {
     expect(cliente.chamadas.map((c) => `${c.filtro.uf}:${c.filtro.modalidade}`)).toEqual(['SC:6', 'SC:8', 'PR:6', 'PR:8']);
     expect(cliente.itensPedidos).toEqual([idDe(7)]);
   });
+  it('depois do prazo não começa novas chaves nem faz o catch-up, e avisa quais ficaram', async () => {
+    const banco = new BancoFalso();
+    await banco.upsertContratacoes([linha({ sequencial: 7 })]); // aberta, sem itens
+    let agora = AGORA.getTime();
+    const cliente = clienteFalso({
+      paginas: () => {
+        agora += 15 * 60 * 1000; // cada chave leva 15 min
+        return [[]];
+      },
+    });
+    const deps = { ...montarDeps(banco, cliente), agora: () => new Date(agora) };
+    await executarSync(deps, ['SC', 'PR'], [6, 8], AGORA.getTime() + 20 * 60 * 1000);
+    expect(cliente.chamadas.map((c) => `${c.filtro.uf}:${c.filtro.modalidade}`)).toEqual(['SC:6', 'SC:8']);
+    expect(deps.resumo.avisos).toEqual([
+      { chave: 'prazo da rodada', mensagem: 'chaves não iniciadas: atualizacao:PR:6, atualizacao:PR:8' },
+    ]);
+    expect(cliente.itensPedidos).toEqual([]);
+    expect(banco.estados.has('atualizacao:PR:6')).toBe(false);
+  });
+  it('sem prazo, não limita nada', async () => {
+    const cliente = clienteFalso();
+    const deps = montarDeps(new BancoFalso(), cliente);
+    await executarSync(deps, ['SC'], [6, 8]);
+    expect(cliente.chamadas).toHaveLength(2);
+    expect(deps.resumo.avisos).toEqual([]);
+  });
   it('loga o catch-up de itens com o número de compras', async () => {
     const banco = new BancoFalso();
     await banco.upsertContratacoes([linha({ sequencial: 7 }), linha({ sequencial: 8 })]);

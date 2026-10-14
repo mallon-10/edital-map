@@ -187,10 +187,26 @@ export async function sincronizarChave(uf: string, modalidade: number, deps: Dep
   }
 }
 
-export async function executarSync(deps: Dependencias, ufs: string[], modalidades: readonly number[]): Promise<void> {
+/**
+ * Roda todas as chaves e o catch-up de itens. `prazo` é um instante (ms): depois dele não começa
+ * chave nova nem catch-up; as chaves puladas não gravam estado e a próxima rodada as pega.
+ */
+export async function executarSync(
+  deps: Dependencias,
+  ufs: string[],
+  modalidades: readonly number[],
+  prazo?: number,
+): Promise<void> {
+  const passouDoPrazo = () => prazo !== undefined && deps.agora().getTime() >= prazo;
+  const puladas: string[] = [];
   for (const uf of ufs) {
-    for (const modalidade of modalidades) await sincronizarChave(uf, modalidade, deps);
+    for (const modalidade of modalidades) {
+      if (passouDoPrazo()) puladas.push(chaveEstado(uf, modalidade));
+      else await sincronizarChave(uf, modalidade, deps);
+    }
   }
+  if (puladas.length > 0) deps.resumo.registrarAviso('prazo da rodada', `chaves não iniciadas: ${puladas.join(', ')}`);
+  if (passouDoPrazo()) return;
   try {
     const pendentes = await deps.banco.abertasSemItens(LIMITE_CATCH_UP);
     await sincronizarItens(pendentes, deps);
