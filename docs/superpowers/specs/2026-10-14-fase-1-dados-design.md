@@ -120,7 +120,7 @@ Regra: os comandos não fazem HTTP nem SQL diretamente; só coordenam as unidade
 
 | Unidade | Responsabilidade | Depende de |
 |---|---|---|
-| `pncp/cliente.ts` | `get(url, params)` com no máximo 3 chamadas em paralelo. Em 429, 5xx ou timeout (30 s): espera 2, 4, 8 s com variação aleatória; após a 4ª falha, lança erro. `paginar(endpoint, params)` é um gerador assíncrono: em contratações, vai até `totalPaginas`; em itens, pede `tamanhoPagina=50` e para quando vier uma página com menos de 50 | `fetch` do Node |
+| `pncp/cliente.ts` | `get(url, params)` com no máximo 3 chamadas em paralelo. Em 429 espera 30, 60, 120 s; em 5xx ou timeout (30 s) espera 2, 4, 8 s, com variação aleatória; a consulta tem ritmo de 20 chamadas/min (emenda de 14/10); após a 4ª falha, lança erro. `paginar(endpoint, params)` é um gerador assíncrono: em contratações, vai até `totalPaginas`; em itens, pede `tamanhoPagina=50` e para quando vier uma página com menos de 50 | `fetch` do Node |
 | `pncp/esquemas.ts` | Esquemas zod de contratação e item, só com os campos usados. Registro inválido → `{ ok: false, id, motivo }`, sem lançar erro | zod |
 | `mapear.ts` | `contratacaoParaLinha(raw)` e `itemParaLinha(raw, contratacaoId)`. Puras, sem rede nem banco. String vazia → `null` | `datas.ts` |
 | `datas.ts` | `deBrasilia(s: string \| null): string \| null`, que interpreta a data sem fuso como `America/Sao_Paulo` e devolve ISO em UTC | date-fns-tz |
@@ -162,7 +162,7 @@ Regra: os comandos não fazem HTTP nem SQL diretamente; só coordenam as unidade
 
 ### Seed (`npm run worker:seed`, uma vez)
 1. Lê `data/municipios.csv`.
-2. Valida: 5.570 linhas, 27 UFs, lat/lng numéricas. Se falhar, aborta sem gravar.
+2. Valida: 5.571 linhas (inclui Boa Esperança do Norte/MT, criado em 2025) (emenda de 14/10), 27 UFs, lat/lng numéricas. Se falhar, aborta sem gravar.
 3. Upsert em `municipios` por `codigo_ibge`.
 
 ### Carga inicial (`npm run worker:backfill -- --dias 90 --ufs SC,PR,RS [--modalidades 6,8]`, uma vez, local)
@@ -174,11 +174,11 @@ Estimativa: cerca de 80 mil contratações e 15 mil pedidos de itens; 1 a 2 hora
 
 ### Sincronização (`npm run worker:sync`, a cada 2 h no Actions)
 Para cada UF × modalidade, de forma independente:
-1. `janela = [min(estado.ultima_data, ontem), hoje]`.
+1. `janela = [inicio, hoje]`, com `inicio = min(estado.ultima_data ?? ontem, hojeBrasilia(agora − 3 h))` (emenda de 14/10). Justificativa do 11d: a consulta filtra pela data da atualização, então desde a última rodada boa nada datado antes dela ficou por ler; reler o dia inteiro a cada rodada (cerca de 12 vezes) só gastava as 20 chamadas/min. A margem de 3 h faz as rodadas até as 03h de Brasília ainda reler ontem, para pegar o que o índice do PNCP demora a mostrar depois da meia-noite. Sem estado, começa ontem; data no futuro fica limitada pelo segundo termo.
 2. `paginar('/v1/contratacoes/atualizacao', …)` → validar → mapear.
 3. `atualizacoesConhecidas(ids)`: uma compra é **nova** se não está no banco e **mudou** se o `atualizada_pncp_em` dela no PNCP é maior que o do banco.
-4. `upsertContratacoes` com todas as linhas válidas.
-5. Para as compras abertas que são novas ou mudaram: buscar todas as páginas de `/itens` → `upsertItens` → `removerItensAlem` (só se a leitura dos itens terminou sem erro).
+4. `upsertContratacoes` com todas as linhas válidas. **Ordem de gravação (emenda de 14/10):** as compras abertas que são novas ou mudaram entram primeiro com o `atualizada_pncp_em` anterior (ou `1970-01-01T00:00:00Z`, se novas); o timestamp real só é gravado depois que os itens gravaram. Se o processo cair entre as duas gravações, a próxima rodada ainda vê a compra como alterada e busca os itens de novo.
+5. Para as compras abertas que são novas ou mudaram: buscar todas as páginas de `/itens` (teto de 200 páginas) → `upsertItens` → `removerItensAlem` (só se a leitura dos itens terminou sem erro e a lista não veio vazia; lista vazia mantém os itens antigos e gera aviso) (emenda de 14/10). Depois, regravar com o timestamp real só as compras cujos itens gravaram.
 6. Se tudo deu certo: `gravarEstado(chave, { ultima_data: hoje, ultima_execucao: now, status: 'ok', erro: null })`. Se falhou: `status: 'erro'`, `erro: mensagem`, e `ultima_data` não avança.
 
 Depois de todas as chaves:
@@ -190,19 +190,22 @@ O passo 3 é obrigatório. Como cada rodada relê o dia inteiro, buscar itens de
 ### Workflow (`.github/workflows/sync.yml`)
 - Gatilhos: `schedule: cron '0 */2 * * *'` e `workflow_dispatch`.
 - `concurrency: { group: sync, cancel-in-progress: false }`: nunca duas rodadas ao mesmo tempo.
-- `timeout-minutes: 30`, Node 24, `npm ci`, `npm run worker:sync`.
-- Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Env: `UFS=SC,PR,RS`.
+- `permissions: contents: read`, `timeout-minutes: 30` (o worker para de iniciar chaves aos 25 min e publica o resumo), Node 24, `npm ci`, `npm run worker:sync` (emenda de 14/10).
+- Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Env: `UFS=SC,PR,RS`, `PNCP_CONSULTA_POR_MINUTO=20`.
 
 ## 8. Tratamento de erros
 
 | Situação | Comportamento |
 |---|---|
-| HTTP 429, 5xx ou timeout | Espera 2, 4 e 8 s e tenta de novo. Na 4ª falha a página falha, a chave UF × modalidade fica com `status = 'erro'`, a data não avança e a próxima rodada repete a janela. As outras chaves continuam |
+| HTTP 429 | Espera 30, 60 e 120 s (o bloqueio dura cerca de 25 s). A API de consulta é limitada a 20 chamadas por minuto por IP (ritmo de 20/min com rajada de 10; medido em 14/10: 30/min já dá 429); a base de itens não tem esse limite (emenda de 14/10) |
+| HTTP 5xx ou timeout | Espera 2, 4 e 8 s e tenta de novo. Na 4ª falha a página falha, a chave UF × modalidade fica com `status = 'erro'`, a data não avança e a próxima rodada repete a janela. As outras chaves continuam |
 | Registro fora do formato (zod) | Pula, conta e registra o `numeroControlePNCP` no resumo. Mais de 5% de inválidos na rodada → código de saída 1 (provável mudança na API) |
 | Supabase indisponível | O job falha. A próxima rodada relê a mesma janela; o upsert não deixa nada pela metade |
 | Registros mudam de página durante a leitura | Duplicados são inofensivos (upsert). Os que escaparem entram na próxima rodada, que relê o dia |
 | Compra sem `dataEncerramentoProposta` | `encerramento_em` nulo; nunca aparece como aberta |
 | Leitura de itens incompleta | Não remove itens antigos; a compra volta a ser tentada pelo catch-up se estiver sem itens |
+| Lista de itens vazia (204 ou resposta transitória) | Não apaga os itens que já existem; registra o aviso `lista de itens vazia; itens antigos mantidos` (emenda de 14/10) |
+| Rodada passa de 25 min | Não começa chave nova nem o catch-up; registra o aviso `prazo da rodada` com as chaves não iniciadas. Elas não gravam estado e a próxima rodada as pega (emenda de 14/10) |
 | Rodada agendada falha | O GitHub envia e-mail ao dono do repositório. É o aviso de falha da Fase 1 |
 
 A Fase 2 mostra "atualizado há X min" a partir de `sync_estado.ultima_execucao`.
@@ -212,7 +215,7 @@ A Fase 2 mostra "atualizado há X min" a partir de `sync_estado.ultima_execucao`
 `npm run worker:conferir -- --amostra 20 --dias-contagem 3` gera `docs/conferencias/AAAA-MM-DD.md`:
 
 1. **Amostra de 20 compras abertas**, sorteadas e estratificadas: pelo menos uma de cada UF e de cada modalidade presente; obrigatoriamente uma com mais de 10 itens, uma com `valor_estimado = 0` (se houver) e uma com `link_origem` nulo (se houver).
-2. **Comparação campo a campo** com o detalhe `GET /api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{sequencial}`: objeto, valor estimado, prazo (após conversão de fuso), modalidade, situação, `codigo_ibge`/UF, `srp` e quantidade de itens (contada percorrendo todas as páginas de `/itens`). Se o `dataAtualizacaoGlobal` do PNCP for mais novo que o do banco, a compra sai como "desatualizada", não como divergente.
+2. **Comparação campo a campo** com o detalhe `GET /api/consulta/v1/orgaos/{cnpj}/compras/{ano}/{sequencial}`: objeto, valor estimado, prazo (após conversão de fuso), modalidade, situação, `codigo_ibge`/UF, `srp` e quantidade de itens (contada percorrendo todas as páginas de `/itens`). Se o `dataAtualizacaoGlobal` do PNCP for mais novo que o do banco, a compra sai como "desatualizada", não como divergente, **somente se a mudança no PNCP é posterior à última rodada boa da chave (`sync_estado.ultima_execucao` menos 30 min); mais antiga que isso, é "divergente: o sync perdeu esta atualização"** (emenda de 14/10).
 3. **Contagem por dia:** em 3 dias sorteados da janela, para cada UF × modalidade, o número de compras no banco cujo `publicada_em`, convertido para horário de Brasília, cai naquele dia é comparado com o `totalRegistros` de `/publicacao` com `dataInicial = dataFinal =` aquele dia.
 4. **Busca:** `buscar('botina')` retorna pelo menos uma compra cujo objeto não contém "botina" (achada pelos itens); `buscar('EPI e uniformes')` retorna resultados das duas palavras.
 5. **Idempotência:** roda `worker:sync` duas vezes seguidas. A segunda rodada não cria nenhuma contratação nem item novo além das compras que o PNCP publicou ou alterou entre as duas (as que têm `atualizada_pncp_em` posterior ao início da primeira rodada), e não há duplicatas.
@@ -259,13 +262,16 @@ Checagem de tipos: `tsc --noEmit` passa.
 | Agendamento do Actions atrasa | Rodadas podem atrasar de minutos a cerca de 1 hora | Aceitável para sync de 2 h; reavaliar para os alertas das 7h na Fase 3 |
 | Supabase Free pausa projetos inativos após 7 dias | Banco fica fora do ar | O sync a cada 2 h mantém o projeto ativo; conferir no painel após a primeira semana |
 | Supabase Free tem 500 MB | Banco cheio | Estimativa para 3 UFs × 90 dias com itens só das abertas: bem abaixo do limite. Conferir o tamanho no painel após a carga inicial |
-| Limite de chamadas do PNCP não documentado | 429 em rajadas | Paralelismo 3 e espera progressiva; reduzir para 2 se o resumo mostrar muitos 429 |
+| Limite de chamadas do PNCP não documentado | 429 em rajadas | Ritmo de 20 chamadas/min na consulta e esperas de 30/60/120 s em 429 (medido em 14/10) (emenda de 14/10) |
+| Limite de 20/min por IP e IPs compartilhados do Actions (emenda de 14/10) | Os runners do GitHub compartilham IPs; outros usuários podem consumir a cota e gerar 429 (já aparecem cerca de 3 por rodada) | Acompanhar a contagem de 429 no resumo; se crescer, rodar o sync em máquina com IP próprio |
+| "Brasil todo" na Fase 3 (emenda de 14/10) | Por UF × modalidade são pelo menos 135 páginas por rodada, quase vazias; a 20/min são cerca de 7 min só nisso | Consultar por modalidade, sem filtro de UF (o filtro é opcional): `ceil(total/50)` páginas. Avaliar VPS própria (IP próprio e sem o limite de minutos do Actions) |
+| Compras abertas publicadas antes da janela de 90 dias (emenda de 14/10) | Credenciamento (modalidade 12) e concorrências longas ficam abertas por meses; só entram no banco se mudarem depois da carga, e a conferência não detecta | Sonda de completude contra `/v1/contratacoes/proposta` (só como sonda, não para definir "aberta"); se o buraco for relevante, carga única mais longa, por exemplo `--dias 365 --modalidades 12` |
 | Máximo de `tamanhoPagina` em itens desconhecido | Se 50 for recusado, a busca de itens falha | Primeira tarefa do plano: testar 50; se falhar, usar 10 em `config.ts` |
 
 ## 13. Critérios de aceite da Fase 1
 
 - [ ] Projeto Supabase `edital-map` em `sa-east-1` com `0001_init.sql` aplicado.
-- [ ] `municipios` com 5.570 linhas.
+- [ ] `municipios` com 5.571 linhas (emenda de 14/10: inclui Boa Esperança do Norte/MT, criado em 2025).
 - [ ] Carga inicial de 90 dias para SC, PR e RS concluída, com o resumo salvo.
 - [ ] `sync.yml` rodando no Actions a cada 2 h, com pelo menos 12 rodadas seguidas sem falha.
 - [ ] Testes unitários e `tsc --noEmit` passando.

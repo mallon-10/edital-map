@@ -24,7 +24,7 @@ Referências:
 - Link do edital: link_origem; se vazio, https://pncp.gov.br/app/editais/{cnpj}/{ano}/{sequencial}.
 - valor_estimado nulo ou 0 = "Valor não informado".
 - Em contratos (Fase 4), guardar só fornecedor PJ (LGPD).
-- PNCP: tamanhoPagina máx. 50 (51 dá HTTP 400); codigoModalidadeContratacao obrigatório; resposta vazia = HTTP 204 sem corpo; itens paginam (padrão 10, pedir 50); em 429/5xx esperar 2, 4, 8 s.
+- PNCP: tamanhoPagina máx. 50 (51 → 400); modalidade obrigatória; vazio = 204; itens paginam (pedir 50, teto 200 páginas); **consulta limitada a 20 chamadas/min por IP (ritmo em `criarRitmo`, rajada 10); 429 espera 30/60/120 s; 5xx/timeout 2/4/8 s; a base de itens não tem esse limite**; janela do sync = última data boa (com releitura de ontem até 03h); timestamp da compra só avança depois dos itens.
 - Modalidades da v1: 6, 8, 4, 7, 12.
 - Interface em português do Brasil, com o vocabulário "edital" e "Alertas". Visual: design system Edital Map (não as cores do canvas).
 - TDD: teste primeiro (vitest). npm test e npm run typecheck passam antes de cada commit.
