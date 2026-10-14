@@ -64,7 +64,9 @@ export function mudou(linha: LinhaContratacao, conhecidas: Map<string, string>):
   return anterior === undefined || Date.parse(linha.atualizada_pncp_em) > Date.parse(anterior);
 }
 
-export async function sincronizarItens(compras: ChaveCompra[], deps: Dependencias): Promise<void> {
+/** Devolve os ids das compras cujos itens foram gravados com sucesso. */
+export async function sincronizarItens(compras: ChaveCompra[], deps: Dependencias): Promise<Set<string>> {
+  const gravadas = new Set<string>();
   await Promise.all(
     compras.map(async (compra) => {
       try {
@@ -84,21 +86,33 @@ export async function sincronizarItens(compras: ChaveCompra[], deps: Dependencia
         // Só remove itens antigos quando a lista veio inteira e válida.
         if (invalidos === 0) await deps.banco.removerItensAlem(compra.id, linhas.map((l) => l.numero));
         deps.resumo.contarItens(1, linhas.length);
+        gravadas.add(compra.id);
       } catch (erro) {
         deps.resumo.registrarAviso(`itens:${compra.id}`, mensagemDe(erro));
       }
     }),
   );
+  return gravadas;
 }
+
+const EPOCA = '1970-01-01T00:00:00.000Z';
 
 export async function gravarPagina(linhas: LinhaContratacao[], deps: Dependencias): Promise<void> {
   if (linhas.length === 0) return;
   const conhecidas = await deps.banco.atualizacoesConhecidas(linhas.map((l) => l.id));
-  await deps.banco.upsertContratacoes(linhas);
-  deps.resumo.contarContratacoes(linhas.length);
   const agora = deps.agora();
-  const precisamItens = linhas.filter((l) => estaAberta(l, agora) && mudou(l, conhecidas)).map(chaveDaLinha);
-  await sincronizarItens(precisamItens, deps);
+  const precisamItens = new Set(linhas.filter((l) => estaAberta(l, agora) && mudou(l, conhecidas)).map((l) => l.id));
+  // Ordem de gravação: quem precisa de itens entra primeiro com o timestamp anterior (ou 1970, se for nova).
+  // Se o processo cair antes de os itens gravarem, a próxima rodada ainda vê a compra como alterada
+  // e busca os itens de novo; o timestamp real só vale depois que os itens entram.
+  await deps.banco.upsertContratacoes(
+    linhas.map((l) => (precisamItens.has(l.id) ? { ...l, atualizada_pncp_em: conhecidas.get(l.id) ?? EPOCA } : l)),
+  );
+  deps.resumo.contarContratacoes(linhas.length);
+  if (precisamItens.size === 0) return;
+  const comItens = await sincronizarItens(linhas.filter((l) => precisamItens.has(l.id)).map(chaveDaLinha), deps);
+  const definitivas = linhas.filter((l) => comItens.has(l.id));
+  if (definitivas.length > 0) await deps.banco.upsertContratacoes(definitivas);
 }
 
 export async function processarJanela(

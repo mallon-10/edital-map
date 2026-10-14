@@ -78,6 +78,52 @@ describe('gravarPagina', () => {
   });
 });
 
+describe('gravarPagina · ordem de gravação', () => {
+  const ANTIGA = '2026-10-12T07:00:00';
+  it('itens falham numa compra alterada: fica com o timestamp antigo e a próxima rodada pede os itens de novo', async () => {
+    const banco = new BancoFalso();
+    const antiga = linha({ sequencial: 4, atualizacao: ANTIGA });
+    await banco.upsertContratacoes([antiga]);
+    let falhar = true;
+    const cliente = clienteFalso({
+      itens: () => {
+        if (falhar) throw new Error('HTTP 503');
+        return [itemBruto(1)];
+      },
+    });
+    const deps = montarDeps(banco, cliente);
+    const nova = linha({ sequencial: 4, atualizacao: '2026-10-13T07:22:24' });
+    await gravarPagina([nova], deps);
+    expect(banco.contratacoes.get(idDe(4))?.atualizada_pncp_em).toBe(antiga.atualizada_pncp_em);
+    expect(deps.resumo.contratacoesGravadas).toBe(1);
+    falhar = false;
+    await gravarPagina([nova], deps);
+    expect(cliente.itensPedidos).toEqual([idDe(4), idDe(4)]);
+    expect(banco.contratacoes.get(idDe(4))?.atualizada_pncp_em).toBe(nova.atualizada_pncp_em);
+    expect(banco.itensDe(idDe(4))).toHaveLength(1);
+    expect(deps.resumo.contratacoesGravadas).toBe(2);
+  });
+  it('compra nova cujos itens falham fica com o timestamp provisório de 1970', async () => {
+    const banco = new BancoFalso();
+    const cliente = clienteFalso({
+      itens: () => {
+        throw new Error('HTTP 503');
+      },
+    });
+    await gravarPagina([linha({ sequencial: 1 })], montarDeps(banco, cliente));
+    expect(banco.contratacoes.get(idDe(1))?.atualizada_pncp_em).toBe('1970-01-01T00:00:00.000Z');
+  });
+  it('caminho feliz: grava o timestamp real e os itens', async () => {
+    const banco = new BancoFalso();
+    const l = linha({ sequencial: 1 });
+    const deps = montarDeps(banco, clienteFalso());
+    await gravarPagina([l], deps);
+    expect(banco.contratacoes.get(idDe(1))?.atualizada_pncp_em).toBe(l.atualizada_pncp_em);
+    expect(banco.itensDe(idDe(1))).toHaveLength(1);
+    expect(deps.resumo.contratacoesGravadas).toBe(1);
+  });
+});
+
 describe('sincronizarItens', () => {
   it('grava itens e remove os que sumiram', async () => {
     const banco = new BancoFalso();
