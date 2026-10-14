@@ -72,4 +72,4 @@ createServer(async (req, res) => {
     res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ erro: erro instanceof Error ? erro.message : String(erro) }));
   }
-}).listen(3333, () => console.log('Edital Map (visualização provisória): http://localhost:3333'));
+}).listen(3333, '127.0.0.1', () => console.log('Edital Map (visualização provisória): http://localhost:3333'));
