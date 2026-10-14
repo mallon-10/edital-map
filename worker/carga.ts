@@ -1,6 +1,6 @@
 import { LIMITE_CATCH_UP } from './config';
 import { hojeBrasilia, somarDias } from './datas';
-import { chaveEstado, mensagemDe, processarJanela, sincronizarItens, type Dependencias } from './sincronizar';
+import { chaveEstado, medirChave, mensagemDe, processarJanela, sincronizarItens, type Dependencias } from './sincronizar';
 
 export function janelas(inicio: string, fim: string, dias: number): Array<[string, string]> {
   const resultado: Array<[string, string]> = [];
@@ -20,6 +20,7 @@ export async function executarBackfill(
   for (const uf of opcoes.ufs) {
     for (const modalidade of opcoes.modalidades) {
       const chave = chaveEstado(uf, modalidade);
+      const concluir = medirChave('carga', chave, deps);
       try {
         for (const [dataInicial, dataFinal] of janelas(inicio, hoje, 7)) {
           await processarJanela('publicacao', { uf, modalidade, dataInicial, dataFinal }, deps);
@@ -31,8 +32,11 @@ export async function executarBackfill(
           status: 'ok',
           erro: null,
         });
+        concluir();
       } catch (erro) {
-        deps.resumo.registrarErro(chave, mensagemDe(erro));
+        const mensagem = mensagemDe(erro);
+        deps.resumo.registrarErro(chave, mensagem);
+        concluir(mensagem);
       }
     }
   }

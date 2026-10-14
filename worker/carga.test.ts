@@ -35,6 +35,13 @@ describe('executarBackfill', () => {
       erro: null,
     });
   });
+  it('loga uma linha de progresso por chave com o prefixo [carga]', async () => {
+    const linhas: string[] = [];
+    const deps = { ...montarDeps(new BancoFalso(), clienteFalso()), log: (l: string) => linhas.push(l) };
+    await executarBackfill(deps, { dias: 3, ufs: ['SC'], modalidades: [6] });
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0].startsWith('[carga] atualizacao:SC:6 ok · ')).toBe(true);
+  });
   it('erro numa chave não impede as outras', async () => {
     const banco = new BancoFalso();
     const cliente = clienteFalso({

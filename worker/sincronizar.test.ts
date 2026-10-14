@@ -155,6 +155,27 @@ describe('sincronizarChave', () => {
     });
     expect(banco.contratacoes.has(idDe(1))).toBe(true);
   });
+  it('loga uma linha de progresso ao terminar a chave com sucesso', async () => {
+    const linhas: string[] = [];
+    const cliente = clienteFalso({ paginas: () => [[contratacaoBruta({ sequencial: 1 })]] });
+    const deps = { ...montarDeps(new BancoFalso(), cliente), log: (l: string) => linhas.push(l) };
+    await sincronizarChave('SC', 6, deps);
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0].startsWith('[sync] atualizacao:SC:6 ok · 1 páginas · ')).toBe(true);
+  });
+  it('loga a linha de erro com a mensagem', async () => {
+    const linhas: string[] = [];
+    const cliente = clienteFalso({
+      paginas: () => {
+        throw new Error('Falhou 4 vezes');
+      },
+    });
+    const deps = { ...montarDeps(new BancoFalso(), cliente), log: (l: string) => linhas.push(l) };
+    await sincronizarChave('SC', 6, deps);
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0].startsWith('[sync] atualizacao:SC:6 erro · 0 páginas · ')).toBe(true);
+    expect(linhas[0].endsWith('Falhou 4 vezes')).toBe(true);
+  });
   it('depois de falha, retoma da última data boa', async () => {
     const banco = new BancoFalso();
     await banco.gravarEstado({ chave: 'atualizacao:SC:6', ultima_data: '2026-10-09', ultima_execucao: null, status: 'erro', erro: 'x' });
@@ -187,5 +208,13 @@ describe('executarSync', () => {
     await executarSync(montarDeps(banco, cliente), ['SC', 'PR'], [6, 8]);
     expect(cliente.chamadas.map((c) => `${c.filtro.uf}:${c.filtro.modalidade}`)).toEqual(['SC:6', 'SC:8', 'PR:6', 'PR:8']);
     expect(cliente.itensPedidos).toEqual([idDe(7)]);
+  });
+  it('loga o catch-up de itens com o número de compras', async () => {
+    const banco = new BancoFalso();
+    await banco.upsertContratacoes([linha({ sequencial: 7 }), linha({ sequencial: 8 })]);
+    const linhas: string[] = [];
+    const deps = { ...montarDeps(banco, clienteFalso()), log: (l: string) => linhas.push(l) };
+    await executarSync(deps, ['SC'], [6]);
+    expect(linhas).toContain('[sync] catch-up de itens · 2 compras');
   });
 });

@@ -21,7 +21,7 @@ const cliente = criarCliente();
 const resumo = new Resumo(`Carga inicial (${dias} dias)`);
 
 await executarBackfill(
-  { cliente, banco: criarBanco(criarSupabase(url, chave)), resumo, agora: () => new Date() },
+  { cliente, banco: criarBanco(criarSupabase(url, chave)), resumo, agora: () => new Date(), log: (linha) => console.log(linha) },
   {
     dias,
     ufs: lerUfs(values.ufs ?? process.env.UFS),

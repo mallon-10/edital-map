@@ -54,7 +54,7 @@ export class Resumo {
     return Math.round((this.relogio() - this.inicio) / 1000);
   }
 
-  texto(http?: { chamadas: number; novasTentativas: number }): string {
+  texto(http?: { chamadas: number; novasTentativas: number; respostas429?: number }): string {
     const pct = (this.taxaInvalidos() * 100).toFixed(1).replace('.', ',');
     const linhas = [
       `## ${this.titulo}`,
@@ -69,7 +69,10 @@ export class Resumo {
       `| Itens gravados | ${this.itensGravados} |`,
       `| Registros inválidos | ${this.invalidos.length} (${pct}%) |`,
     ];
-    if (http) linhas.push(`| Chamadas HTTP | ${http.chamadas} |`, `| Novas tentativas | ${http.novasTentativas} |`);
+    if (http) {
+      linhas.push(`| Chamadas HTTP | ${http.chamadas} |`, `| Novas tentativas | ${http.novasTentativas} |`);
+      if (http.respostas429 !== undefined) linhas.push(`| Respostas 429 | ${http.respostas429} |`);
+    }
     linhas.push(`| Erros | ${this.erros.length} |`, `| Avisos | ${this.avisos.length} |`);
 
     const secao = (titulo: string, itens: Array<{ rotulo: string; texto: string }>) => {
@@ -84,7 +87,7 @@ export class Resumo {
   }
 
   async publicar(
-    http?: { chamadas: number; novasTentativas: number },
+    http?: { chamadas: number; novasTentativas: number; respostas429?: number },
     destino: string | undefined = process.env.GITHUB_STEP_SUMMARY,
   ): Promise<void> {
     const t = this.texto(http);

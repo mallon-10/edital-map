@@ -40,6 +40,11 @@ describe('Resumo', () => {
     expect(t).toContain('| Chamadas HTTP | 10 |');
     expect(t).toContain('- `atualizacao:SC:6`: HTTP 503');
   });
+  it('mostra as respostas 429 só quando informadas', () => {
+    const r = new Resumo('t');
+    expect(r.texto({ chamadas: 1, novasTentativas: 0, respostas429: 3 })).toContain('| Respostas 429 | 3 |');
+    expect(r.texto({ chamadas: 1, novasTentativas: 0 })).not.toContain('429');
+  });
   it('publica no arquivo do Job Summary', async () => {
     const arquivo = join(mkdtempSync(join(tmpdir(), 'resumo-')), 'summary.md');
     await new Resumo('Rodada').publicar(undefined, arquivo);

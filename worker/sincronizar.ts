@@ -19,7 +19,21 @@ export type Dependencias = {
   banco: Banco;
   resumo: Resumo;
   agora: () => Date;
+  /** Linhas de progresso (uma por chave) para o log da rodada. */
+  log?: (linha: string) => void;
 };
+
+/** Mede uma chave UF × modalidade e emite a linha de progresso ao terminar. */
+export function medirChave(prefixo: 'sync' | 'carga', chave: string, deps: Dependencias) {
+  const inicio = Date.now();
+  const paginasAntes = deps.resumo.paginas;
+  return (erro?: string): void => {
+    const paginas = deps.resumo.paginas - paginasAntes;
+    const segundos = Math.round((Date.now() - inicio) / 1000);
+    const base = `[${prefixo}] ${chave} ${erro === undefined ? 'ok' : 'erro'} · ${paginas} páginas · ${segundos} s`;
+    deps.log?.(erro === undefined ? base : `${base} · ${erro}`);
+  };
+}
 
 export function mensagemDe(erro: unknown): string {
   return erro instanceof Error ? erro.message : String(erro);
@@ -109,6 +123,7 @@ export function inicioDaJanela(ultimaData: string | null | undefined, hoje: stri
 
 export async function sincronizarChave(uf: string, modalidade: number, deps: Dependencias): Promise<boolean> {
   const chave = chaveEstado(uf, modalidade);
+  const concluir = medirChave('sync', chave, deps);
   const hoje = hojeBrasilia(deps.agora());
   let inicio = somarDias(hoje, -1);
   let estadoLido = false;
@@ -124,10 +139,12 @@ export async function sincronizarChave(uf: string, modalidade: number, deps: Dep
       status: 'ok',
       erro: null,
     });
+    concluir();
     return true;
   } catch (erro) {
     const mensagem = mensagemDe(erro);
     deps.resumo.registrarErro(chave, mensagem);
+    concluir(mensagem);
     // Sem ter lido o estado, não sabemos a última data boa: não sobrescrever.
     if (estadoLido) {
       await deps.banco
@@ -149,7 +166,9 @@ export async function executarSync(deps: Dependencias, ufs: string[], modalidade
     for (const modalidade of modalidades) await sincronizarChave(uf, modalidade, deps);
   }
   try {
-    await sincronizarItens(await deps.banco.abertasSemItens(LIMITE_CATCH_UP), deps);
+    const pendentes = await deps.banco.abertasSemItens(LIMITE_CATCH_UP);
+    await sincronizarItens(pendentes, deps);
+    deps.log?.(`[sync] catch-up de itens · ${pendentes.length} compras`);
   } catch (erro) {
     deps.resumo.registrarAviso('catch-up de itens', mensagemDe(erro));
   }

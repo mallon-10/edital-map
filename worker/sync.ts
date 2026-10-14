@@ -10,7 +10,7 @@ const cliente = criarCliente();
 const resumo = new Resumo('Sincronização PNCP');
 
 await executarSync(
-  { cliente, banco: criarBanco(criarSupabase(url, chave)), resumo, agora: () => new Date() },
+  { cliente, banco: criarBanco(criarSupabase(url, chave)), resumo, agora: () => new Date(), log: (linha) => console.log(linha) },
   lerUfs(process.env.UFS),
   lerModalidades(process.env.MODALIDADES),
 );
