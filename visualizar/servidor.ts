@@ -47,6 +47,17 @@ async function rpc(nome: string, args: Record<string, unknown>) {
   return data;
 }
 
+// O Supabase devolve no máximo 1.000 linhas por resposta: o mapa precisa paginar.
+async function rpcTodas(nome: string, args: Record<string, unknown>) {
+  const todas: unknown[] = [];
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await sb.rpc(nome, args).range(de, de + 999);
+    if (error) throw new Error(error.message);
+    todas.push(...((data as unknown[]) ?? []));
+    if (!data || (data as unknown[]).length < 1000) return todas;
+  }
+}
+
 createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   const q = url.searchParams.get('q')?.trim() || null;
@@ -60,7 +71,7 @@ createServer(async (req, res) => {
       return;
     } else if (url.pathname === '/api/municipios') corpo = await municipios();
     else if (url.pathname === '/api/resumo') corpo = await resumo();
-    else if (url.pathname === '/api/mapa') corpo = await rpc('mapa', { q, p_ufs: ufs });
+    else if (url.pathname === '/api/mapa') corpo = await rpcTodas('mapa', { q, p_ufs: ufs });
     else if (url.pathname === '/api/busca') corpo = await rpc('buscar', { q, p_ufs: ufs, p_limite: 100 });
     else {
       res.writeHead(404).end();
