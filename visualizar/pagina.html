@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edital Map · visualização provisória</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --surface: #f4f1e8; --raised: #ffffff; --sunken: #ebe6d9; --line: #ddd6c6; --line-strong: #847c6a;
+    --ink: #0c2340; --muted: #3e5373; --pin: #ff5a1f; --pin-strong: #b33a0e; --on-pin: #0c2340;
+    --mata: #0b6b53; --mata-soft: #ddf1e9; --ouro: #f2b705; --ouro-strong: #7a5600; --ouro-soft: #fcefc2;
+    --map-dot: #cfd0cd; --rio: #2558c4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface); color: var(--ink); font: 400 16px/24px "Instrument Sans", system-ui, sans-serif; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--raised); }
+  .marca { font-weight: 700; font-size: 22px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+  .marca svg { width: 22px; height: 28px; }
+  .aviso { font-size: 13px; color: var(--muted); }
+  .numeros { margin-left: auto; display: flex; gap: 24px; flex-wrap: wrap; }
+  .numero b { display: block; font: 500 22px/28px "JetBrains Mono", monospace; letter-spacing: -0.02em; }
+  .numero span { font-size: 12px; color: var(--muted); }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); gap: 24px; padding: 24px; max-width: 1440px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px; } .numeros { margin-left: 0; } }
+  .painel { background: var(--sunken); border-radius: 20px; padding: 16px; }
+  .busca { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .busca input, .busca select { height: 44px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 0 12px; font: inherit; background: var(--raised); color: var(--ink); }
+  .busca input { flex: 1 1 220px; min-width: 0; }
+  .busca button { height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: var(--pin); color: var(--on-pin); font: 600 14px/20px "Instrument Sans", sans-serif; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--rio); outline-offset: 2px; }
+  svg.mapa { width: 100%; height: auto; display: block; }
+  .legenda { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .lista { display: flex; flex-direction: column; gap: 12px; max-height: 78vh; overflow-y: auto; padding-right: 4px; }
+  .card { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .card h3 { margin: 0; font: 600 15px/21px "Instrument Sans", sans-serif; }
+  .meta { font-size: 14px; color: var(--muted); }
+  .linha { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tag { font: 600 12px/16px "Instrument Sans", sans-serif; padding: 2px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; }
+  .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .aberto { background: var(--mata-soft); color: var(--mata); }
+  .proximo { background: var(--ouro-soft); color: var(--ouro-strong); }
+  .proximo::before { background: var(--ouro); }
+  a { color: var(--pin-strong); font-weight: 600; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .vazio { color: var(--muted); padding: 24px 8px; }
+  .estado { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="marca">
+    <svg viewBox="0 0 22 28" aria-hidden="true"><path d="M11 0C4.9 0 0 4.9 0 11c0 8.3 11 17 11 17s11-8.7 11-17C22 4.9 17.1 0 11 0z" fill="#ff5a1f"/><path d="M15 0v6h6" fill="#b33a0e"/><circle cx="11" cy="11" r="3.5" fill="#f4f1e8"/></svg>
+    edital map
+  </div>
+  <span class="aviso">Visualização provisória dos dados da Fase 1 · fonte: PNCP</span>
+  <div class="numeros" id="numeros"></div>
+</header>
+<main>
+  <section>
+    <form class="busca" id="form">
+      <label class="aviso" for="q" style="position:absolute;left:-9999px">O que sua empresa vende?</label>
+      <input id="q" name="q" placeholder="O que sua empresa vende? Ex.: EPI e uniformes" autocomplete="off">
+      <select id="uf" name="uf" aria-label="UF">
+        <option value="">Todas as UFs</option><option>SC</option><option>PR</option><option>RS</option>
+      </select>
+      <button type="submit">Buscar editais</button>
+    </form>
+    <div class="painel">
+      <svg class="mapa" id="mapa" viewBox="0 0 405 395" role="img" aria-label="Mapa do Brasil com editais abertos por município"></svg>
+      <div class="legenda">Cada ponto cinza é um município. Laranja = editais abertos (tamanho = quantidade). O ponto é a sede do órgão, não o local de entrega.</div>
+    </div>
+    <div class="estado" id="estado"></div>
+  </section>
+  <section>
+    <div class="linha" style="margin-bottom:12px"><b id="titulo-lista">Editais abertos</b><span class="aviso">prazo mais próximo primeiro</span></div>
+    <div class="lista" id="lista"></div>
+  </section>
+</main>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const x = (lng) => (lng + 74.5) * 10;
+const y = (lat) => (5.5 - lat) * 10;
+const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const int = new Intl.NumberFormat('pt-BR');
+const $ = (id) => document.getElementById(id);
+
+function el(tag, attrs = {}, texto) {
+  const e = tag.startsWith('svg:') ? document.createElementNS(NS, tag.slice(4)) : document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+function dataBr(iso) {
+  const d = new Date(iso);
+  const p = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).formatToParts(d);
+  const g = (t) => p.find((i) => i.type === t).value;
+  return `${g('day')}.${g('month')}.${g('year')} · ${g('hour')}h${g('minute') === '00' ? '' : g('minute')}`;
+}
+function linkPortal(slug) { const [cnpj, ano, seq] = slug.split('-'); return `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}`; }
+
+async function json(caminho) { const r = await fetch(caminho); const j = await r.json(); if (!r.ok) throw new Error(j.erro || r.status); return j; }
+
+async function desenharFundo() {
+  const pontos = await json('/api/municipios');
+  const g = el('svg:g', { fill: '#cfd0cd' });
+  for (const m of pontos) g.appendChild(el('svg:circle', { cx: x(m.lng).toFixed(1), cy: y(m.lat).toFixed(1), r: '0.9' }));
+  $('mapa').appendChild(g);
+}
+
+let camada;
+async function desenharEditais(params) {
+  const pontos = await json('/api/mapa?' + params);
+  if (camada) camada.remove();
+  camada = el('svg:g');
+  pontos.sort((a, b) => b.qtd - a.qtd);
+  for (const p of pontos) {
+    const c = el('svg:circle', { cx: x(p.lng).toFixed(1), cy: y(p.lat).toFixed(1), r: (1.6 + Math.sqrt(p.qtd) * 0.9).toFixed(1), fill: '#ff5a1f', 'fill-opacity': '0.85', stroke: '#ffffff', 'stroke-width': '0.4' });
+    c.appendChild(el('svg:title', {}, `${p.nome}/${p.uf}: ${p.qtd} abertos${p.valor_total ? ' · ' + brl.format(p.valor_total) : ''}`));
+    camada.appendChild(c);
+  }
+  $('mapa').appendChild(camada);
+}
+
+async function listar(params) {
+  const lista = $('lista');
+  lista.replaceChildren(el('div', { class: 'vazio' }, 'Carregando…'));
+  const itens = await json('/api/busca?' + params);
+  lista.replaceChildren();
+  $('titulo-lista').textContent = `${int.format(itens.length)}${itens.length === 100 ? '+' : ''} editais abertos`;
+  if (!itens.length) { lista.appendChild(el('div', { class: 'vazio' }, 'Nenhum edital aberto para essa busca.')); return; }
+  const agora = Date.now();
+  for (const i of itens) {
+    const dias = (Date.parse(i.encerramento_em) - agora) / 86400000;
+    const card = el('article', { class: 'card' });
+    card.appendChild(el('h3', {}, i.objeto.length > 160 ? i.objeto.slice(0, 157) + '…' : i.objeto));
+    card.appendChild(el('div', { class: 'meta' }, `${i.orgao_nome} · ${i.municipio_nome ?? '—'}/${i.uf}`));
+    const linha = el('div', { class: 'linha' });
+    linha.appendChild(el('span', { class: 'tag ' + (dias <= 2 ? 'proximo' : 'aberto') }, dias <= 2 ? 'Prazo próximo' : 'Aberto'));
+    linha.appendChild(el('span', { class: 'mono' }, i.valor_estimado > 0 ? brl.format(i.valor_estimado) : 'Valor não informado'));
+    card.appendChild(linha);
+    const rodape = el('div', { class: 'linha' });
+    rodape.appendChild(el('span', { class: 'meta mono' }, 'Propostas até ' + dataBr(i.encerramento_em)));
+    const a = el('a', { href: linkPortal(i.slug), target: '_blank', rel: 'noopener' }, 'Ver edital');
+    rodape.appendChild(a);
+    card.appendChild(el('div', { class: 'meta' }, i.modalidade_nome ?? ''));
+    card.appendChild(rodape);
+    lista.appendChild(card);
+  }
+}
+
+async function resumir() {
+  const r = await json('/api/resumo');
+  const n = $('numeros');
+  n.replaceChildren();
+  for (const [v, t] of [[r.abertas, 'editais abertos'], [r.compras, 'compras (90 dias)'], [r.itens, 'itens']]) {
+    const d = el('div', { class: 'numero' }); d.appendChild(el('b', {}, int.format(v))); d.appendChild(el('span', {}, t)); n.appendChild(d);
+  }
+  const ult = r.estados[0];
+  $('estado').textContent = ult ? `Última sincronização: ${dataBr(ult.ultima_execucao)} · ${r.estados.length} de 15 combinações UF × modalidade com estado` : '';
+}
+
+async function buscar() {
+  const params = new URLSearchParams();
+  if ($('q').value.trim()) params.set('q', $('q').value.trim());
+  if ($('uf').value) params.set('uf', $('uf').value);
+  await Promise.all([desenharEditais(params), listar(params)]);
+}
+
+$('form').addEventListener('submit', (e) => { e.preventDefault(); buscar().catch(mostrarErro); });
+function mostrarErro(e) { $('lista').replaceChildren(el('div', { class: 'vazio' }, 'Erro: ' + e.message)); }
+desenharFundo().then(buscar).catch(mostrarErro);
+resumir().catch(() => {});
+</script>
+</body>
+</html>
