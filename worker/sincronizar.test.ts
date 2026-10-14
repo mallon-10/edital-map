@@ -128,12 +128,17 @@ async function itemLinha(numero: number) {
 }
 
 describe('janela e chave', () => {
-  it('começa ontem quando o estado está em dia', () => {
+  it('sem estado (chave nunca sincronizada), começa ontem', () => {
     expect(inicioDaJanela(null, '2026-10-14')).toBe('2026-10-13');
-    expect(inicioDaJanela('2026-10-14', '2026-10-14')).toBe('2026-10-13');
   });
-  it('começa na última data boa quando houve falha', () => {
+  it('com última data boa de hoje, começa hoje', () => {
+    expect(inicioDaJanela('2026-10-14', '2026-10-14')).toBe('2026-10-14');
+  });
+  it('com última data boa anterior a ontem (falha antiga), começa nela', () => {
     expect(inicioDaJanela('2026-10-09', '2026-10-14')).toBe('2026-10-09');
+  });
+  it('com última data no futuro (relógio adiantado), começa hoje', () => {
+    expect(inicioDaJanela('2026-10-15', '2026-10-14')).toBe('2026-10-14');
   });
 });
 
@@ -175,6 +180,13 @@ describe('sincronizarChave', () => {
     expect(linhas).toHaveLength(1);
     expect(linhas[0].startsWith('[sync] atualizacao:SC:6 erro · 0 páginas · ')).toBe(true);
     expect(linhas[0].endsWith('Falhou 4 vezes')).toBe(true);
+  });
+  it('com última data boa de hoje, lê a partir de hoje', async () => {
+    const banco = new BancoFalso();
+    await banco.gravarEstado({ chave: 'atualizacao:SC:6', ultima_data: '2026-10-14', ultima_execucao: null, status: 'ok', erro: null });
+    const cliente = clienteFalso();
+    await sincronizarChave('SC', 6, montarDeps(banco, cliente));
+    expect(cliente.chamadas[0].filtro.dataInicial).toBe('2026-10-14');
   });
   it('depois de falha, retoma da última data boa', async () => {
     const banco = new BancoFalso();

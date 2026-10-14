@@ -116,9 +116,14 @@ export function chaveEstado(uf: string, modalidade: number): string {
   return `atualizacao:${uf}:${modalidade}`;
 }
 
+/**
+ * Início da janela de atualização. A consulta filtra pela data da atualização:
+ * desde a última rodada boa, nada datado antes dela ficou por ler. Sem estado,
+ * começa ontem. Data no futuro (relógio adiantado) é tratada como hoje.
+ */
 export function inicioDaJanela(ultimaData: string | null | undefined, hoje: string): string {
-  const ontem = somarDias(hoje, -1);
-  return ultimaData && ultimaData < ontem ? ultimaData : ontem;
+  if (!ultimaData) return somarDias(hoje, -1);
+  return ultimaData > hoje ? hoje : ultimaData;
 }
 
 export async function sincronizarChave(uf: string, modalidade: number, deps: Dependencias): Promise<boolean> {
