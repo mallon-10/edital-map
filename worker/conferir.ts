@@ -10,7 +10,7 @@ import { hojeBrasilia, inicioDoDia, somarDias } from './datas';
 import type { LinhaContratacao } from './mapear';
 import { criarCliente } from './pncp/cliente';
 import { Resumo } from './resumo';
-import { executarSync, mensagemDe } from './sincronizar';
+import { chaveEstado, executarSync, mensagemDe } from './sincronizar';
 
 const { values } = parseArgs({
   options: {
@@ -65,6 +65,9 @@ async function listarCandidatas(): Promise<Candidata[]> {
 
 async function conferirAmostra() {
   const amostra = sortearAmostra(await listarCandidatas(), tamanho);
+  const estados = await sb.from('sync_estado').select('chave, ultima_execucao');
+  if (estados.error) throw new Error(estados.error.message);
+  const execucoes = new Map((estados.data ?? []).map((e) => [e.chave as string, e.ultima_execucao as string | null]));
   const resultados = [];
   for (const candidata of amostra) {
     let resultado: ResultadoCompra;
@@ -74,7 +77,13 @@ async function conferirAmostra() {
       const itens = await sb.from('itens').select('numero', { count: 'exact', head: true }).eq('contratacao_id', candidata.id);
       if (itens.error) throw new Error(itens.error.message);
       const [detalhe, itensPncp] = await Promise.all([cliente.detalheCompra(candidata), cliente.listarItens(candidata)]);
-      resultado = compararCompra(linha.data as LinhaContratacao, detalhe, itens.count ?? 0, itensPncp.length);
+      resultado = compararCompra(
+        linha.data as LinhaContratacao,
+        detalhe,
+        itens.count ?? 0,
+        itensPncp.length,
+        execucoes.get(chaveEstado(candidata.uf, candidata.modalidade_id)),
+      );
     } catch (erro) {
       resultado = { id: candidata.id, status: 'erro', diferencas: [], observacao: mensagemDe(erro) };
     }

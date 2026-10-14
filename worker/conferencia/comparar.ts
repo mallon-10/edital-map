@@ -9,6 +9,9 @@ export type ResultadoCompra = {
   observacao?: string;
 };
 
+/** Folga para a duração de uma rodada do sync. */
+const MARGEM_RODADA_MS = 30 * 60 * 1000;
+
 const CAMPOS = [
   'objeto',
   'valor_estimado',
@@ -32,6 +35,8 @@ export function compararCompra(
   detalheBruto: unknown,
   itensBanco: number,
   itensPncp: number,
+  /** `ultima_execucao` da chave da compra em `sync_estado` (ISO), se houver. */
+  ultimaExecucao?: string | null,
 ): ResultadoCompra {
   const v = validarContratacao(detalheBruto);
   if (!v.ok) return { id: banco.id, status: 'erro', diferencas: [], observacao: `detalhe inválido: ${v.motivo}` };
@@ -44,12 +49,24 @@ export function compararCompra(
   }
   if (itensBanco !== itensPncp) diferencas.push({ campo: 'qtd_itens', banco: String(itensBanco), pncp: String(itensPncp) });
   if (Date.parse(pncp.atualizada_pncp_em) > Date.parse(banco.atualizada_pncp_em)) {
-    return {
-      id: banco.id,
-      status: 'desatualizada',
-      diferencas,
-      observacao: 'O PNCP mudou a compra depois da última sincronização',
-    };
+    // Mudança recente (depois da última rodada boa, com folga da duração da rodada) é esperada;
+    // mais antiga que isso, o sync deveria ter pegado e não pegou.
+    const recente =
+      ultimaExecucao != null && Date.parse(pncp.atualizada_pncp_em) > Date.parse(ultimaExecucao) - MARGEM_RODADA_MS;
+    if (recente) {
+      return {
+        id: banco.id,
+        status: 'desatualizada',
+        diferencas,
+        observacao: 'O PNCP mudou a compra depois da última sincronização',
+      };
+    }
+    diferencas.push({
+      campo: 'atualizada_pncp_em',
+      banco: new Date(banco.atualizada_pncp_em).toISOString(),
+      pncp: new Date(pncp.atualizada_pncp_em).toISOString(),
+    });
+    return { id: banco.id, status: 'divergente', diferencas, observacao: 'O sync perdeu esta atualização do PNCP' };
   }
   return { id: banco.id, status: diferencas.length > 0 ? 'divergente' : 'ok', diferencas };
 }

@@ -37,14 +37,35 @@ describe('compararCompra', () => {
     const r = compararCompra(linhaDoBanco(), DETALHE, 10, 31);
     expect(r.diferencas).toEqual([{ campo: 'qtd_itens', banco: '10', pncp: '31' }]);
   });
-  it('PNCP mais novo que o banco é desatualizada, não divergente', () => {
+  it('PNCP mais novo que o banco, com mudança posterior à última rodada, é desatualizada', () => {
     const r = compararCompra(
       linhaDoBanco({ valor_estimado: 1, atualizada_pncp_em: '2026-10-13T09:00:00+00:00' }),
       DETALHE,
       31,
       31,
+      '2026-10-13T08:00:00Z',
     );
     expect(r.status).toBe('desatualizada');
+  });
+  it('PNCP mais novo que o banco, com mudança anterior à última rodada, é divergente (sync perdeu)', () => {
+    const r = compararCompra(
+      linhaDoBanco({ atualizada_pncp_em: '2026-10-13T09:00:00+00:00' }),
+      DETALHE,
+      31,
+      31,
+      '2026-10-13T12:30:00Z',
+    );
+    expect(r.status).toBe('divergente');
+    expect(r.observacao).toBe('O sync perdeu esta atualização do PNCP');
+    expect(r.diferencas).toContainEqual({
+      campo: 'atualizada_pncp_em',
+      banco: '2026-10-13T09:00:00.000Z',
+      pncp: '2026-10-13T10:22:24.000Z',
+    });
+  });
+  it('PNCP mais novo que o banco, sem última execução, é divergente', () => {
+    const r = compararCompra(linhaDoBanco({ atualizada_pncp_em: '2026-10-13T09:00:00+00:00' }), DETALHE, 31, 31);
+    expect(r.status).toBe('divergente');
   });
   it('detalhe inválido é erro', () => {
     expect(compararCompra(linhaDoBanco(), { lixo: true }, 1, 1).status).toBe('erro');
