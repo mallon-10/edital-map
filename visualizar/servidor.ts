@@ -72,7 +72,20 @@ createServer(async (req, res) => {
     } else if (url.pathname === '/api/municipios') corpo = await municipios();
     else if (url.pathname === '/api/resumo') corpo = await resumo();
     else if (url.pathname === '/api/mapa') corpo = await rpcTodas('mapa', { q, p_ufs: ufs });
-    else if (url.pathname === '/api/busca') corpo = await rpc('buscar', { q, p_ufs: ufs, p_limite: 100 });
+    else if (url.pathname === '/api/busca') {
+      const ibge = url.searchParams.get('ibge');
+      if (ibge) {
+        // Editais abertos de um município (clique no mapa), com a mesma busca aplicada.
+        const { data, error } = await sb
+          .rpc('abertas', { q, p_ufs: ufs })
+          .select('id, slug, objeto, orgao_nome, municipio_nome, uf, valor_estimado, encerramento_em, modalidade_nome')
+          .eq('codigo_ibge', ibge)
+          .order('encerramento_em', { ascending: true })
+          .limit(100);
+        if (error) throw new Error(error.message);
+        corpo = data;
+      } else corpo = await rpc('buscar', { q, p_ufs: ufs, p_limite: 100 });
+    }
     else {
       res.writeHead(404).end();
       return;

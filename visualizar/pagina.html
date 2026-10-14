@@ -6,47 +6,69 @@
 <title>Edital Map · visualização provisória</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
   :root {
     --surface: #f4f1e8; --raised: #ffffff; --sunken: #ebe6d9; --line: #ddd6c6; --line-strong: #847c6a;
-    --ink: #0c2340; --muted: #3e5373; --pin: #ff5a1f; --pin-strong: #b33a0e; --on-pin: #0c2340;
+    --ink: #0c2340; --muted: #3e5373; --pin: #ff5a1f; --pin-strong: #b33a0e; --pin-soft: #ffe3d6; --on-pin: #0c2340;
     --mata: #0b6b53; --mata-soft: #ddf1e9; --ouro: #f2b705; --ouro-strong: #7a5600; --ouro-soft: #fcefc2;
-    --map-dot: #cfd0cd; --rio: #2558c4;
+    --rio: #2558c4; --rio-soft: #e1eafb;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--surface); color: var(--ink); font: 400 16px/24px "Instrument Sans", system-ui, sans-serif; }
   .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-  header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--raised); }
+  header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--raised); }
   .marca { font-weight: 700; font-size: 22px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
   .marca svg { width: 22px; height: 28px; }
   .aviso { font-size: 13px; color: var(--muted); }
   .numeros { margin-left: auto; display: flex; gap: 24px; flex-wrap: wrap; }
   .numero b { display: block; font: 500 22px/28px "JetBrains Mono", monospace; letter-spacing: -0.02em; }
   .numero span { font-size: 12px; color: var(--muted); }
-  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); gap: 24px; padding: 24px; max-width: 1440px; margin: 0 auto; }
-  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px; } .numeros { margin-left: 0; } }
-  .painel { background: var(--sunken); border-radius: 20px; padding: 16px; }
-  .busca { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .busca { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 24px 0; max-width: 1440px; margin: 0 auto; }
   .busca input, .busca select { height: 44px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 0 12px; font: inherit; background: var(--raised); color: var(--ink); }
-  .busca input { flex: 1 1 220px; min-width: 0; }
+  .busca input { flex: 1 1 260px; min-width: 0; }
   .busca button { height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: var(--pin); color: var(--on-pin); font: 600 14px/20px "Instrument Sans", sans-serif; cursor: pointer; }
   :focus-visible { outline: 2px solid var(--rio); outline-offset: 2px; }
-  svg.mapa { width: 100%; height: auto; display: block; }
-  .legenda { font-size: 12px; color: var(--muted); margin-top: 8px; }
-  .lista { display: flex; flex-direction: column; gap: 12px; max-height: 78vh; overflow-y: auto; padding-right: 4px; }
-  .card { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-  .card h3 { margin: 0; font: 600 15px/21px "Instrument Sans", sans-serif; }
-  .meta { font-size: 14px; color: var(--muted); }
-  .linha { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .tag { font: 600 12px/16px "Instrument Sans", sans-serif; padding: 2px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 24px; padding: 16px 24px 24px; max-width: 1440px; margin: 0 auto; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; padding: 16px; } .numeros { margin-left: 0; } .busca { padding: 16px 16px 0; } }
+  .painel { position: relative; background: var(--sunken); border-radius: 20px; overflow: hidden; height: 72vh; min-height: 420px; }
+  #mapa { position: absolute; inset: 0; }
+  .legenda { position: absolute; left: 12px; bottom: 12px; background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; font-size: 12px; line-height: 18px; color: var(--muted); max-width: 300px; }
+  .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .maplibregl-popup-content { font: 400 13px/18px "Instrument Sans", sans-serif; color: var(--ink); border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 2px rgba(12,35,64,.08), 0 8px 24px rgba(12,35,64,.12); }
+  .cabeca-lista { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; min-height: 32px; }
+  .filtro { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 6px 0 12px; border-radius: 999px; background: var(--ink); color: #f4f1e8; font: 600 13px/20px "Instrument Sans", sans-serif; }
+  .filtro button { border: 0; background: transparent; color: inherit; font-size: 16px; cursor: pointer; width: 24px; height: 24px; }
+  .lista { display: flex; flex-direction: column; gap: 12px; max-height: 72vh; overflow-y: auto; padding-right: 4px; }
+
+  /* Card: altura e posições fixas */
+  .card { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 16px; height: 212px; display: grid; grid-template-rows: 22px 44px 28px 20px 1fr; row-gap: 8px; }
+  .card .topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .tag { font: 600 12px/16px "Instrument Sans", sans-serif; padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
   .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
   .aberto { background: var(--mata-soft); color: var(--mata); }
   .proximo { background: var(--ouro-soft); color: var(--ouro-strong); }
   .proximo::before { background: var(--ouro); }
-  a { color: var(--pin-strong); font-weight: 600; text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  .urgente { background: var(--pin-soft); color: var(--pin-strong); }
+  .urgente::before { background: var(--pin); }
+  .falta { font: 600 13px/20px "Instrument Sans", sans-serif; white-space: nowrap; }
+  .falta.urgente-txt { color: var(--pin-strong); }
+  .falta.proximo-txt { color: var(--ouro-strong); }
+  .falta.longe-txt { color: var(--muted); font-weight: 500; }
+  .card h3 { margin: 0; font: 600 15px/22px "Instrument Sans", sans-serif; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .valor { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .card .valor b { font: 500 20px/28px "JetBrains Mono", monospace; letter-spacing: -0.02em; white-space: nowrap; }
+  .card .valor b.sem { font: 500 14px/28px "Instrument Sans", sans-serif; color: var(--muted); }
+  .card .modalidade { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; text-align: right; }
+  .card .orgao { font-size: 13px; line-height: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .rodape { display: flex; justify-content: space-between; align-items: end; gap: 8px; }
+  .card .rodape .prazo { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .card .rodape .prazo span { display: block; font: 500 13px/18px "JetBrains Mono", monospace; color: var(--ink); }
+  .ver { height: 36px; padding: 0 14px; border-radius: 8px; background: var(--ink); color: #f4f1e8; font: 600 13px/36px "Instrument Sans", sans-serif; text-decoration: none; white-space: nowrap; }
+  .ver:hover { background: #1b3a63; }
   .vazio { color: var(--muted); padding: 24px 8px; }
-  .estado { font-size: 12px; color: var(--muted); }
+  .estado { font-size: 12px; color: var(--muted); padding: 8px 4px 0; }
 </style>
 </head>
 <body>
@@ -58,120 +80,190 @@
   <span class="aviso">Visualização provisória dos dados da Fase 1 · fonte: PNCP</span>
   <div class="numeros" id="numeros"></div>
 </header>
+<form class="busca" id="form">
+  <label for="q" style="position:absolute;left:-9999px">O que sua empresa vende?</label>
+  <input id="q" name="q" placeholder="O que sua empresa vende? Ex.: EPI e uniformes" autocomplete="off">
+  <select id="uf" name="uf" aria-label="UF">
+    <option value="">Todas as UFs</option><option>SC</option><option>PR</option><option>RS</option>
+  </select>
+  <button type="submit">Buscar editais</button>
+</form>
 <main>
   <section>
-    <form class="busca" id="form">
-      <label class="aviso" for="q" style="position:absolute;left:-9999px">O que sua empresa vende?</label>
-      <input id="q" name="q" placeholder="O que sua empresa vende? Ex.: EPI e uniformes" autocomplete="off">
-      <select id="uf" name="uf" aria-label="UF">
-        <option value="">Todas as UFs</option><option>SC</option><option>PR</option><option>RS</option>
-      </select>
-      <button type="submit">Buscar editais</button>
-    </form>
     <div class="painel">
-      <svg class="mapa" id="mapa" viewBox="0 0 405 395" role="img" aria-label="Mapa do Brasil com editais abertos por município"></svg>
-      <div class="legenda">Cada ponto cinza é um município. Laranja = editais abertos (tamanho = quantidade). O ponto é a sede do órgão, não o local de entrega.</div>
+      <div id="mapa" role="region" aria-label="Mapa de editais abertos"></div>
+      <div class="legenda">
+        <div><i style="background:#0c2340"></i>Grupo de municípios · número = editais abertos</div>
+        <div><i style="background:#ff5a1f"></i>Município · clique para ver os editais</div>
+        <div>O ponto é a sede do órgão, não o local de entrega.</div>
+      </div>
     </div>
     <div class="estado" id="estado"></div>
   </section>
   <section>
-    <div class="linha" style="margin-bottom:12px"><b id="titulo-lista">Editais abertos</b><span class="aviso">prazo mais próximo primeiro</span></div>
+    <div class="cabeca-lista"><b id="titulo-lista">Editais abertos</b><span id="filtro"></span></div>
     <div class="lista" id="lista"></div>
   </section>
 </main>
 <script>
-const NS = 'http://www.w3.org/2000/svg';
-const x = (lng) => (lng + 74.5) * 10;
-const y = (lat) => (5.5 - lat) * 10;
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const int = new Intl.NumberFormat('pt-BR');
 const $ = (id) => document.getElementById(id);
+let cidade = null; // { ibge, nome, uf }
 
 function el(tag, attrs = {}, texto) {
-  const e = tag.startsWith('svg:') ? document.createElementNS(NS, tag.slice(4)) : document.createElement(tag);
+  const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
   if (texto !== undefined) e.textContent = texto;
   return e;
 }
-function dataBr(iso) {
-  const d = new Date(iso);
+const partes = (d) => {
   const p = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).formatToParts(d);
   const g = (t) => p.find((i) => i.type === t).value;
-  return `${g('day')}.${g('month')}.${g('year')} · ${g('hour')}h${g('minute') === '00' ? '' : g('minute')}`;
+  return { dia: g('day'), mes: g('month'), ano: g('year'), hora: g('hour'), min: g('minute') };
+};
+function dataBr(iso) {
+  const p = partes(new Date(iso));
+  return `${p.dia}.${p.mes}.${p.ano} · ${p.hora}h${p.min === '00' ? '' : p.min}`;
 }
-function linkPortal(slug) { const [cnpj, ano, seq] = slug.split('-'); return `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${seq}`; }
-
+function horaBr(iso) { const p = partes(new Date(iso)); return `${p.hora}h${p.min === '00' ? '' : p.min}`; }
+function diasAte(iso) {
+  // Diferença em dias de calendário de Brasília (hoje = 0).
+  const a = partes(new Date()), b = partes(new Date(iso));
+  return Math.round((Date.UTC(b.ano, b.mes - 1, b.dia) - Date.UTC(a.ano, a.mes - 1, a.dia)) / 86400000);
+}
+function prazo(iso) {
+  const d = diasAte(iso);
+  if (d <= 0) return { tag: ['urgente', 'Prazo próximo'], falta: ['urgente-txt', `Encerra hoje às ${horaBr(iso)}`] };
+  if (d === 1) return { tag: ['urgente', 'Prazo próximo'], falta: ['urgente-txt', `Encerra amanhã às ${horaBr(iso)}`] };
+  if (d <= 7) return { tag: ['proximo', 'Prazo próximo'], falta: ['proximo-txt', `Encerra em ${d} dias`] };
+  return { tag: ['aberto', 'Aberto'], falta: ['longe-txt', d > 365 ? 'mais de 1 ano' : `${d} dias`] };
+}
+const linkPortal = (slug) => { const [c, a, s] = slug.split('-'); return `https://pncp.gov.br/app/editais/${c}/${a}/${s}`; };
 async function json(caminho) { const r = await fetch(caminho); const j = await r.json(); if (!r.ok) throw new Error(j.erro || r.status); return j; }
-
-async function desenharFundo() {
-  const pontos = await json('/api/municipios');
-  const g = el('svg:g', { fill: '#cfd0cd' });
-  for (const m of pontos) g.appendChild(el('svg:circle', { cx: x(m.lng).toFixed(1), cy: y(m.lat).toFixed(1), r: '0.9' }));
-  $('mapa').appendChild(g);
+function params(comCidade = true) {
+  const p = new URLSearchParams();
+  if ($('q').value.trim()) p.set('q', $('q').value.trim());
+  if ($('uf').value) p.set('uf', $('uf').value);
+  if (comCidade && cidade) p.set('ibge', cidade.ibge);
+  return p;
 }
 
-let camada;
-async function desenharEditais(params) {
-  const pontos = await json('/api/mapa?' + params);
-  if (camada) camada.remove();
-  camada = el('svg:g');
-  pontos.sort((a, b) => b.qtd - a.qtd);
-  for (const p of pontos) {
-    const c = el('svg:circle', { cx: x(p.lng).toFixed(1), cy: y(p.lat).toFixed(1), r: (1.6 + Math.sqrt(p.qtd) * 0.9).toFixed(1), fill: '#ff5a1f', 'fill-opacity': '0.85', stroke: '#ffffff', 'stroke-width': '0.4' });
-    c.appendChild(el('svg:title', {}, `${p.nome}/${p.uf}: ${p.qtd} abertos${p.valor_total ? ' · ' + brl.format(p.valor_total) : ''}`));
-    camada.appendChild(c);
-  }
-  $('mapa').appendChild(camada);
+function card(i) {
+  const pz = prazo(i.encerramento_em);
+  const c = el('article', { class: 'card' });
+  const topo = el('div', { class: 'topo' });
+  topo.append(el('span', { class: 'tag ' + pz.tag[0] }, pz.tag[1]), el('span', { class: 'falta ' + pz.falta[0] }, pz.falta[1]));
+  const titulo = el('h3', { title: i.objeto }, i.objeto);
+  const valor = el('div', { class: 'valor' });
+  const v = Number(i.valor_estimado);
+  valor.append(v > 0 ? el('b', {}, brl.format(v)) : el('b', { class: 'sem' }, 'Valor não informado'), el('span', { class: 'modalidade', title: i.modalidade_nome ?? '' }, i.modalidade_nome ?? ''));
+  const orgao = el('div', { class: 'orgao', title: i.orgao_nome }, `${i.orgao_nome} · ${i.municipio_nome ?? '—'}/${i.uf}`);
+  const rodape = el('div', { class: 'rodape' });
+  const pr = el('div', { class: 'prazo' }, 'Propostas até');
+  pr.append(el('span', {}, dataBr(i.encerramento_em)));
+  rodape.append(pr, el('a', { class: 'ver', href: linkPortal(i.slug), target: '_blank', rel: 'noopener' }, 'Ver edital'));
+  c.append(topo, titulo, valor, orgao, rodape);
+  return c;
 }
 
-async function listar(params) {
+async function listar() {
   const lista = $('lista');
   lista.replaceChildren(el('div', { class: 'vazio' }, 'Carregando…'));
-  const itens = await json('/api/busca?' + params);
+  const itens = await json('/api/busca?' + params());
   lista.replaceChildren();
   $('titulo-lista').textContent = `${int.format(itens.length)}${itens.length === 100 ? '+' : ''} editais abertos`;
-  if (!itens.length) { lista.appendChild(el('div', { class: 'vazio' }, 'Nenhum edital aberto para essa busca.')); return; }
-  const agora = Date.now();
-  for (const i of itens) {
-    const dias = (Date.parse(i.encerramento_em) - agora) / 86400000;
-    const card = el('article', { class: 'card' });
-    card.appendChild(el('h3', {}, i.objeto.length > 160 ? i.objeto.slice(0, 157) + '…' : i.objeto));
-    card.appendChild(el('div', { class: 'meta' }, `${i.orgao_nome} · ${i.municipio_nome ?? '—'}/${i.uf}`));
-    const linha = el('div', { class: 'linha' });
-    linha.appendChild(el('span', { class: 'tag ' + (dias <= 2 ? 'proximo' : 'aberto') }, dias <= 2 ? 'Prazo próximo' : 'Aberto'));
-    linha.appendChild(el('span', { class: 'mono' }, i.valor_estimado > 0 ? brl.format(i.valor_estimado) : 'Valor não informado'));
-    card.appendChild(linha);
-    const rodape = el('div', { class: 'linha' });
-    rodape.appendChild(el('span', { class: 'meta mono' }, 'Propostas até ' + dataBr(i.encerramento_em)));
-    const a = el('a', { href: linkPortal(i.slug), target: '_blank', rel: 'noopener' }, 'Ver edital');
-    rodape.appendChild(a);
-    card.appendChild(el('div', { class: 'meta' }, i.modalidade_nome ?? ''));
-    card.appendChild(rodape);
-    lista.appendChild(card);
+  const f = $('filtro'); f.replaceChildren();
+  if (cidade) {
+    const chip = el('span', { class: 'filtro' }, `${cidade.nome}/${cidade.uf}`);
+    const x = el('button', { type: 'button', 'aria-label': 'Tirar filtro de cidade' }, '×');
+    x.onclick = () => { cidade = null; listar().catch(erro); };
+    chip.append(x); f.append(chip);
   }
+  if (!itens.length) { lista.append(el('div', { class: 'vazio' }, 'Nenhum edital aberto para essa busca.')); return; }
+  for (const i of itens) lista.append(card(i));
+}
+
+const mapa = new maplibregl.Map({
+  container: 'mapa',
+  style: {
+    version: 8,
+    glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+    sources: {},
+    layers: [{ id: 'fundo', type: 'background', paint: { 'background-color': '#ebe6d9' } }],
+  },
+  bounds: [[-74, -34], [-34, 5.5]],
+  fitBoundsOptions: { padding: 24 },
+  attributionControl: false,
+});
+mapa.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+
+async function carregarMunicipios() {
+  const pts = await json('/api/municipios');
+  mapa.addSource('municipios', { type: 'geojson', data: { type: 'FeatureCollection', features: pts.map((m) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [m.lng, m.lat] }, properties: {} })) } });
+  mapa.addLayer({ id: 'municipios', type: 'circle', source: 'municipios', paint: {
+    'circle-color': '#b9b3a3', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 1.1, 7, 2.2, 10, 3] } });
+}
+
+function geojsonEditais(pontos) {
+  return { type: 'FeatureCollection', features: pontos.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
+    properties: { ibge: p.codigo_ibge, nome: p.nome, uf: p.uf, qtd: Number(p.qtd), valor: Number(p.valor_total) || 0 } })) };
+}
+
+async function carregarEditais() {
+  const pontos = await json('/api/mapa?' + params(false));
+  const dados = geojsonEditais(pontos);
+  if (mapa.getSource('editais')) { mapa.getSource('editais').setData(dados); return; }
+  mapa.addSource('editais', { type: 'geojson', data: dados, cluster: true, clusterRadius: 48, clusterMaxZoom: 8,
+    clusterProperties: { qtd: ['+', ['get', 'qtd']] } });
+  mapa.addLayer({ id: 'grupos', type: 'circle', source: 'editais', filter: ['has', 'point_count'], paint: {
+    'circle-color': '#0c2340', 'circle-stroke-color': '#f4f1e8', 'circle-stroke-width': 2,
+    'circle-radius': ['step', ['get', 'qtd'], 14, 50, 18, 200, 23, 1000, 30] } });
+  mapa.addLayer({ id: 'grupos-numero', type: 'symbol', source: 'editais', filter: ['has', 'point_count'], layout: {
+    'text-field': ['number-format', ['get', 'qtd'], { locale: 'pt-BR' }], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-allow-overlap': true },
+    paint: { 'text-color': '#f4f1e8' } });
+  mapa.addLayer({ id: 'cidades', type: 'circle', source: 'editais', filter: ['!', ['has', 'point_count']], paint: {
+    'circle-color': '#ff5a1f', 'circle-opacity': 0.9, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5,
+    'circle-radius': ['interpolate', ['linear'], ['get', 'qtd'], 1, 5, 10, 8, 50, 13, 200, 20] } });
+
+  mapa.on('click', 'grupos', async (e) => {
+    const f = e.features[0];
+    const zoom = await mapa.getSource('editais').getClusterExpansionZoom(f.properties.cluster_id);
+    mapa.easeTo({ center: f.geometry.coordinates, zoom });
+  });
+  mapa.on('click', 'cidades', (e) => {
+    const p = e.features[0].properties;
+    cidade = { ibge: p.ibge, nome: p.nome, uf: p.uf };
+    listar().catch(erro);
+  });
+  const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10 });
+  mapa.on('mouseenter', 'cidades', (e) => {
+    mapa.getCanvas().style.cursor = 'pointer';
+    const p = e.features[0].properties;
+    const div = el('div');
+    div.append(el('b', {}, `${p.nome}/${p.uf}`), el('div', {}, `${int.format(p.qtd)} editais abertos`));
+    if (p.valor > 0) div.append(el('div', { class: 'mono' }, brl.format(p.valor)));
+    popup.setLngLat(e.features[0].geometry.coordinates).setDOMContent(div).addTo(mapa);
+  });
+  mapa.on('mouseleave', 'cidades', () => { mapa.getCanvas().style.cursor = ''; popup.remove(); });
+  mapa.on('mouseenter', 'grupos', () => { mapa.getCanvas().style.cursor = 'pointer'; });
+  mapa.on('mouseleave', 'grupos', () => { mapa.getCanvas().style.cursor = ''; });
 }
 
 async function resumir() {
   const r = await json('/api/resumo');
-  const n = $('numeros');
-  n.replaceChildren();
-  for (const [v, t] of [[r.abertas, 'editais abertos'], [r.compras, 'compras (90 dias)'], [r.itens, 'itens']]) {
-    const d = el('div', { class: 'numero' }); d.appendChild(el('b', {}, int.format(v))); d.appendChild(el('span', {}, t)); n.appendChild(d);
+  const n = $('numeros'); n.replaceChildren();
+  for (const [v, t] of [[r.abertas, 'editais abertos'], [r.compras, 'compras no banco'], [r.itens, 'itens']]) {
+    const d = el('div', { class: 'numero' }); d.append(el('b', {}, int.format(v)), el('span', {}, t)); n.append(d);
   }
   const ult = r.estados[0];
-  $('estado').textContent = ult ? `Última sincronização: ${dataBr(ult.ultima_execucao)} · ${r.estados.length} de 15 combinações UF × modalidade com estado` : '';
+  $('estado').textContent = ult ? `Última sincronização: ${dataBr(ult.ultima_execucao)} · ${r.estados.length} de 15 combinações UF × modalidade` : '';
 }
 
-async function buscar() {
-  const params = new URLSearchParams();
-  if ($('q').value.trim()) params.set('q', $('q').value.trim());
-  if ($('uf').value) params.set('uf', $('uf').value);
-  await Promise.all([desenharEditais(params), listar(params)]);
-}
-
-$('form').addEventListener('submit', (e) => { e.preventDefault(); buscar().catch(mostrarErro); });
-function mostrarErro(e) { $('lista').replaceChildren(el('div', { class: 'vazio' }, 'Erro: ' + e.message)); }
-desenharFundo().then(buscar).catch(mostrarErro);
+function erro(e) { $('lista').replaceChildren(el('div', { class: 'vazio' }, 'Erro: ' + e.message)); }
+$('form').addEventListener('submit', (e) => { e.preventDefault(); cidade = null; Promise.all([carregarEditais(), listar()]).catch(erro); });
+mapa.on('load', () => { carregarMunicipios().then(carregarEditais).catch(erro); });
+listar().catch(erro);
 resumir().catch(() => {});
 </script>
 </body>
