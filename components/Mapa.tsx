@@ -34,6 +34,8 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
       // maplibre-gl 6 é só ESM: sem export default.
       const maplibregl = await import('maplibre-gl');
       if (cancelado || !caixa.current) return;
+      // No celular a gaveta da lista cobre a parte de baixo (38% da janela): reserva esse espaço no enquadramento inicial.
+      const celular = window.matchMedia('(max-width: 767px)').matches;
       const m = new maplibregl.Map({
         container: caixa.current,
         style: {
@@ -43,9 +45,18 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
           layers: [{ id: 'fundo', type: 'background', paint: { 'background-color': '#ebe6d9' } }],
         },
         bounds: LIMITES_INICIAIS,
-        fitBoundsOptions: { padding: 24 },
+        fitBoundsOptions: {
+          padding: celular ? { top: 24, right: 24, left: 24, bottom: Math.round(window.innerHeight * 0.38) + 24 } : 24,
+        },
         attributionControl: false,
+        // Textos nativos do MapLibre em português do Brasil.
+        locale: { 'Map.Title': 'Mapa de editais', 'NavigationControl.ZoomIn': 'Aproximar', 'NavigationControl.ZoomOut': 'Afastar' },
+        // Sem bússola, o usuário não consegue voltar ao norte: nada de rotação nem inclinação.
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchPitch: false,
       });
+      m.touchZoomRotate.disableRotation();
       mapa.current = m;
       m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
       const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10 });
@@ -135,5 +146,11 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
     };
   }, []);
 
-  return <div ref={caixa} className="absolute inset-0" role="region" aria-label="Mapa de editais abertos por município" />;
+  // O MapLibre põe `position: relative` (CSS sem camada) no contêiner do mapa e vencia o `absolute` do Tailwind:
+  // o mapa fica num filho que só preenche o pai.
+  return (
+    <div className="absolute inset-0" role="region" aria-label="Mapa de editais abertos por município">
+      <div ref={caixa} className="h-full w-full" />
+    </div>
+  );
 }
