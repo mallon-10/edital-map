@@ -51,7 +51,7 @@ export function lerModalidades(valor: string | undefined): number[] {
   return modalidades;
 }
 
-export function lerSupabase(env: NodeJS.ProcessEnv = process.env): { url: string; chave: string } {
+export function lerSupabase(env: Record<string, string | undefined> = process.env): { url: string; chave: string } {
   const url = env.SUPABASE_URL;
   const chave = env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !chave) {

@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #f4f1e8;
+  --color-raised: #ffffff;
+  --color-sunken: #ebe6d9;
+  --color-line: #ddd6c6;
+  --color-line-strong: #847c6a;
+  --color-ink: #0c2340;
+  --color-ink-muted: #3e5373;
+  --color-pin: #ff5a1f;
+  --color-pin-strong: #b33a0e;
+  --color-pin-soft: #ffe3d6;
+  --color-on-pin: #0c2340;
+  --color-mata: #0b6b53;
+  --color-mata-soft: #ddf1e9;
+  --color-ouro: #f2b705;
+  --color-ouro-strong: #7a5600;
+  --color-ouro-soft: #fcefc2;
+  --color-rio: #2558c4;
+  --color-rio-soft: #e1eafb;
+  --color-map-dot: #b9b3a3;
+  --font-sans: var(--fonte-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--fonte-mono), ui-monospace, Menlo, monospace;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-rio);
+  outline-offset: 2px;
+}
+
+.maplibregl-popup-content {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--color-ink);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 2px rgba(12, 35, 64, 0.08), 0 8px 24px rgba(12, 35, 64, 0.12);
+}
