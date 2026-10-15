@@ -15,7 +15,7 @@ returns setof public.contratacoes language sql stable as $$
   select distinct on (a.codigo_ibge, a.encerramento_em, a.valor_estimado, public.objeto_normalizado(a.objeto)) a.*
   from public.abertas(q, p_ufs, null) a
   order by a.codigo_ibge, a.encerramento_em, a.valor_estimado, public.objeto_normalizado(a.objeto),
-           (a.link_origem is null), a.atualizada_pncp_em desc
+           (a.link_origem is null), a.atualizada_pncp_em desc, a.id
 $$;
 
 -- Lista: primeiro quem tem o termo no objeto, depois quem só tem nos itens; dentro de cada bloco, prazo mais próximo.
@@ -34,7 +34,8 @@ language sql stable as $$
            t.tq
     from public.abertas_unicas(q, p_ufs) u, t
     where (p_ibge is null or u.codigo_ibge = p_ibge)
-      and (p_dias is null or u.encerramento_em <= now() + make_interval(days => p_dias))
+      -- p_dias conta dias de calendário de Brasília (até o fim do dia hoje + p_dias), como o prazo do card.
+      and (p_dias is null or u.encerramento_em < (date_trunc('day', now() at time zone 'America/Sao_Paulo') + make_interval(days => p_dias + 1)) at time zone 'America/Sao_Paulo')
   ),
   -- Corta a página antes de procurar o trecho do item (só para as linhas que vão sair).
   pagina as (
@@ -62,7 +63,7 @@ language sql stable as $$
          count(*), sum(nullif(u.valor_estimado, 0)), min(u.encerramento_em)
   from public.abertas_unicas(q, p_ufs) u
   join public.municipios m on m.codigo_ibge = u.codigo_ibge
-  where (p_dias is null or u.encerramento_em <= now() + make_interval(days => p_dias))
+  where (p_dias is null or u.encerramento_em < (date_trunc('day', now() at time zone 'America/Sao_Paulo') + make_interval(days => p_dias + 1)) at time zone 'America/Sao_Paulo')
   group by m.codigo_ibge, m.nome, m.uf, m.lat, m.lng
   order by m.codigo_ibge
 $$;
