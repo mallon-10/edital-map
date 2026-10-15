@@ -1,0 +1,74 @@
+export const TIPOS_EVENTO = ['busca', 'abriu_edital', 'clicou_edital_oficial', 'quer_recurso'] as const;
+export type TipoEvento = (typeof TIPOS_EVENTO)[number];
+
+export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia'] as const;
+export type Recurso = (typeof RECURSOS)[number];
+
+export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
+  ['Sul', ['PR', 'RS', 'SC']],
+  ['Sudeste', ['ES', 'MG', 'RJ', 'SP']],
+  ['Centro-Oeste', ['DF', 'GO', 'MS', 'MT']],
+  ['Nordeste', ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE']],
+  ['Norte', ['AC', 'AM', 'AP', 'PA', 'RO', 'RR', 'TO']],
+];
+export const UFS_BRASIL: readonly string[] = REGIOES.flatMap(([, ufs]) => ufs);
+
+export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5 } as const;
+export const SLUG_EDITAL = /^\d{14}-\d{4}-\d{1,7}$/;
+
+export type Detalhe = Record<string, string | number | null>;
+export type PedidoAlerta = { email: string; termos: string[]; ufs: string[] };
+export type Resultado<T> = { ok: true; valor: T } | { ok: false; erro: string; silencioso?: boolean };
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function objeto(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+export function validarEvento(corpo: unknown): Resultado<{ tipo: TipoEvento; detalhe: Detalhe }> {
+  if (!objeto(corpo)) return { ok: false, erro: 'corpo inválido' };
+  const tipo = corpo.tipo;
+  const d = objeto(corpo.detalhe) ? corpo.detalhe : {};
+  if (typeof tipo !== 'string' || !(TIPOS_EVENTO as readonly string[]).includes(tipo)) return { ok: false, erro: 'tipo inválido' };
+  const edital = typeof d.edital === 'string' && SLUG_EDITAL.test(d.edital) ? d.edital : null;
+
+  if (tipo === 'busca') {
+    const q = typeof d.q === 'string' ? d.q.trim().slice(0, 100) : '';
+    const uf = typeof d.uf === 'string' && UFS_BRASIL.includes(d.uf) ? d.uf : null;
+    return { ok: true, valor: { tipo, detalhe: { q: q || null, uf, dias: d.dias === 7 ? 7 : null } } };
+  }
+  if (tipo === 'quer_recurso') {
+    if (typeof d.recurso !== 'string' || !(RECURSOS as readonly string[]).includes(d.recurso)) return { ok: false, erro: 'recurso inválido' };
+    if (!edital) return { ok: false, erro: 'edital inválido' };
+    return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, edital } } };
+  }
+  if (!edital) return { ok: false, erro: 'edital inválido' };
+  return { ok: true, valor: { tipo: tipo as TipoEvento, detalhe: { edital } } };
+}
+
+export function validarPedidoAlerta(corpo: unknown): Resultado<PedidoAlerta> {
+  if (!objeto(corpo)) return { ok: false, erro: 'Formulário inválido.' };
+  if (typeof corpo.site === 'string' && corpo.site.trim() !== '') return { ok: false, erro: 'robô', silencioso: true };
+
+  const email = typeof corpo.email === 'string' ? corpo.email.trim().toLowerCase() : '';
+  if (email.length > 254 || !EMAIL.test(email)) return { ok: false, erro: 'Confira o e-mail.' };
+
+  const termos: string[] = [];
+  for (const t of Array.isArray(corpo.termos) ? corpo.termos : []) {
+    if (typeof t !== 'string') continue;
+    const limpo = t.trim().replace(/\s+/g, ' ');
+    if (limpo.length < 2 || limpo.length > 60) continue;
+    if (!termos.some((x) => x.toLowerCase() === limpo.toLowerCase())) termos.push(limpo);
+  }
+  if (termos.length === 0) return { ok: false, erro: 'Diga pelo menos uma coisa que sua empresa vende.' };
+  if (termos.length > 10) return { ok: false, erro: 'Use até 10 termos.' };
+
+  const ufs = [
+    ...new Set((Array.isArray(corpo.ufs) ? corpo.ufs : []).filter((u): u is string => typeof u === 'string' && UFS_BRASIL.includes(u))),
+  ];
+  if (ufs.length === 0) return { ok: false, erro: 'Escolha pelo menos um estado.' };
+  if (corpo.aceite !== true) return { ok: false, erro: 'Confirme o uso do e-mail para o aviso.' };
+
+  return { ok: true, valor: { email, termos, ufs } };
+}
