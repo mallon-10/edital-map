@@ -69,7 +69,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
               {e.modalidade_nome ? <span className={ETIQUETA}>{e.modalidade_nome}</span> : null}
               {e.srp ? <span className={ETIQUETA}>Registro de preços</span> : null}
             </div>
-            <h1 className="text-[26px] font-bold leading-tight tracking-[-0.015em] md:text-[32px]">{e.objeto}</h1>
+            <h1 className="break-words text-[26px] font-bold leading-tight tracking-[-0.015em] md:text-[32px]">{e.objeto}</h1>
             <p className="text-[15px] text-ink-muted">{[e.orgao_nome, e.unidade_nome, local].filter(Boolean).join(' · ')}</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -108,7 +108,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             {e.info_complementar ? (
               <section className="rounded-lg border border-line bg-raised p-5">
                 <h2 className="mb-2 text-[17px] font-bold">Informações complementares</h2>
-                <p className="whitespace-pre-line text-[15px]">{e.info_complementar}</p>
+                <p className="whitespace-pre-line break-words text-[15px]">{e.info_complementar}</p>
               </section>
             ) : null}
           </div>

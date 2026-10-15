@@ -26,11 +26,11 @@ export function VitrineEmBreve({ slug }: { slug: string }) {
               disabled={pedido}
               onClick={() => {
                 registrar('quer_recurso', { recurso: item.id, edital: slug });
-                setPedidos([...pedidos, item.id]);
+                setPedidos((p) => [...p, item.id]);
               }}
               className="h-9 self-start rounded-sm bg-pin px-3 text-[13px] font-semibold text-on-pin disabled:bg-white/20 disabled:text-surface"
             >
-              {pedido ? 'Anotado. Avisamos quando estiver pronto.' : 'Quero ser avisado'}
+              {pedido ? 'Anotado. Obrigado pelo interesse!' : 'Quero ser avisado'}
             </button>
           </div>
         );

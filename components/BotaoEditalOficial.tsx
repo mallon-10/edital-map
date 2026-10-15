@@ -9,6 +9,9 @@ export function BotaoEditalOficial({ href, slug }: { href: string; slug: string 
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => registrar('clicou_edital_oficial', { edital: slug })}
+      onAuxClick={(e) => {
+        if (e.button === 1) registrar('clicou_edital_oficial', { edital: slug });
+      }}
       className="inline-flex h-11 items-center gap-2 rounded-sm bg-ink px-4 text-sm font-semibold text-surface hover:bg-[#1b3a63]"
     >
       Abrir edital oficial
