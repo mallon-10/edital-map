@@ -2,7 +2,7 @@
 
 Mapa de licitações públicas abertas no Brasil (dados do PNCP) para PMEs que vendem ao governo. Nicho de largada: EPI e uniformes.
 
-Fase atual: **2 · Mapa**. Site Next.js na Vercel (https://edital-map.vercel.app (domínio próprio pendente)) sobre o espelho do PNCP (SC, PR, RS) atualizado a cada 2 h.
+Fase atual: **2 · Mapa**. Site Next.js na Vercel em https://edital-map.vercel.app (domínio próprio pendente) sobre o espelho do PNCP (SC, PR, RS) atualizado a cada 2 h.
 - Spec: docs/superpowers/specs/2026-10-15-fase-2-mapa-design.md
 - Plano: docs/superpowers/plans/2026-10-15-fase-2-mapa.md
 - Portão: docs/fase-2-portao.sql
@@ -16,7 +16,8 @@ Referências:
 - Worker Node 24 + TypeScript (tsx) em worker/, agendado no GitHub Actions (.github/workflows/sync.yml, a cada 2 h).
 - Supabase (Postgres), projeto edital-map em sa-east-1. Schema em supabase/migrations/; mudança só com nova migration.
 - Supabase: ref omtwaflypzlebjoeubvp, região sa-east-1.
-- Fases seguintes: Next.js (App Router) + MapLibre sem mapa de fundo, Resend, Asaas.
+- Site: Next.js 16 (App Router) + React 19 + Tailwind 4 + maplibre-gl 6 (sem mapa de fundo), na Vercel (região gru1).
+- Fases seguintes: Resend, Asaas.
 
 ## Regras
 - O worker grava pelo supabase-js com SUPABASE_SERVICE_ROLE_KEY. Essa chave nunca vai para o navegador nem para o git.
@@ -31,6 +32,8 @@ Referências:
 - TDD: teste primeiro (vitest). npm test e npm run typecheck passam antes de cada commit.
 - Vercel: projeto edital-map no time JPM Company, região gru1, publicado pela CLI (`vercel deploy --prod`), sem Git ligado; `.vercelignore` impede o envio do `.env`.
 - maplibre-gl 6 (só ESM): o worker vem do pacote via `setWorkerUrl` em components/Mapa.tsx (o Turbopack zera o import.meta.url).
+- Site: dados só pelo servidor (lib/servidor/*, `server-only`); cache de 5 min; `noindex` até a Fase 3; eventos e pedidos de alerta só pelas rotas /api.
+- Medição: ao trocar de domínio, remarcar /sobre?interno=1 em cada navegador do dono e fazer uma busca (o cookie em_interno é por domínio).
 
 ## Comandos
 - npm test / npm run typecheck

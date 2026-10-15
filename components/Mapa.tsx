@@ -61,6 +61,7 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
         touchPitch: false,
       });
       m.touchZoomRotate.disableRotation();
+      m.keyboard.disableRotation();
       mapa.current = m;
       m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
       const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10 });

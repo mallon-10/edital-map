@@ -20,6 +20,12 @@ describe('validarEvento', () => {
     });
     expect(validarEvento({ tipo: 'clicou_edital_oficial', detalhe: { edital: 'x' } }).ok).toBe(false);
   });
+  it('aceita CNPJ alfanumérico (12 caracteres [0-9A-Z] + 2 dígitos) e recusa minúsculas', () => {
+    expect(validarEvento({ tipo: 'abriu_edital', detalhe: { edital: '12ABC34501DE35-2026-7' } })).toEqual({
+      ok: true, valor: { tipo: 'abriu_edital', detalhe: { edital: '12ABC34501DE35-2026-7' } },
+    });
+    expect(validarEvento({ tipo: 'abriu_edital', detalhe: { edital: '12abc34501de35-2026-7' } }).ok).toBe(false);
+  });
   it('quer_recurso exige recurso conhecido', () => {
     expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'resumo_ia', edital: SLUG } }).ok).toBe(true);
     expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'outro', edital: SLUG } }).ok).toBe(false);

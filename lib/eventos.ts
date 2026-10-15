@@ -14,7 +14,7 @@ export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
 export const UFS_BRASIL: readonly string[] = REGIOES.flatMap(([, ufs]) => ufs);
 
 export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5 } as const;
-export const SLUG_EDITAL = /^\d{14}-\d{4}-\d{1,7}$/;
+export const SLUG_EDITAL = /^[0-9A-Z]{12}\d{2}-\d{4}-\d{1,7}$/;
 
 export type Detalhe = Record<string, string | number | null>;
 export type PedidoAlerta = { email: string; termos: string[]; ufs: string[] };
