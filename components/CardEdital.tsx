@@ -42,6 +42,7 @@ export function CardEdital({ edital, agora }: { edital: EditalResumo; agora: Dat
         </p>
         <Link
           href={`/edital/${edital.slug}`}
+          aria-label={`Ver edital: ${edital.objeto}`}
           className="h-9 whitespace-nowrap rounded-sm bg-ink px-3.5 text-[13px] font-semibold leading-9 text-surface hover:bg-[#1b3a63]"
         >
           Ver edital

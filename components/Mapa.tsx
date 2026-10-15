@@ -6,6 +6,7 @@ import type { GeoJSONSource, Map as MapaLibre } from 'maplibre-gl';
 import { moeda, numero } from '@/lib/formato';
 import { paraGeoJSON, type PropsPonto } from '@/lib/geo';
 import type { Cidade, PontoMapa } from '@/lib/tipos';
+import { ALTURA_GAVETA_RECOLHIDA } from './GavetaCelular';
 
 // Começa enquadrando o Sul (cobertura atual); o usuário pode afastar para ver o Brasil.
 const LIMITES_INICIAIS: [[number, number], [number, number]] = [[-58.2, -33.8], [-47.8, -22.4]];
@@ -37,7 +38,7 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
       // O Turbopack reescreve import.meta.url do maplibre-gl e o worker padrão some (URL vazia):
       // aponta o worker para o arquivo do pacote, que o bundler publica como asset estático.
       maplibregl.setWorkerUrl(new URL('../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).href);
-      // No celular a gaveta da lista cobre a parte de baixo (38% da janela): reserva esse espaço no enquadramento inicial.
+      // No celular a gaveta recolhida cobre a base do mapa (que termina na base da janela): reserva esse espaço no enquadramento inicial.
       const celular = window.matchMedia('(max-width: 767px)').matches;
       const m = new maplibregl.Map({
         container: caixa.current,
@@ -49,7 +50,7 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
         },
         bounds: LIMITES_INICIAIS,
         fitBoundsOptions: {
-          padding: celular ? { top: 24, right: 24, left: 24, bottom: Math.round(window.innerHeight * 0.38) + 24 } : 24,
+          padding: celular ? { top: 24, right: 24, left: 24, bottom: ALTURA_GAVETA_RECOLHIDA + 24 } : 24,
         },
         attributionControl: false,
         // Textos nativos do MapLibre em português do Brasil.
