@@ -55,21 +55,21 @@ export function FormAlerta({ ufsIniciais }: { ufsIniciais: string[] }) {
     return (
       <div role="status" className={CAIXA}>
         <h2 className="text-xl font-bold">Pedido registrado</h2>
-        <p>Vamos te avisar em <strong>{email}</strong> quando os alertas estiverem prontos. Enquanto isso, o mapa já mostra os editais abertos.</p>
+        <p>Vamos te avisar em <strong className="break-all">{email}</strong> quando os alertas estiverem prontos. Enquanto isso, o mapa já mostra os editais abertos.</p>
         <Link href="/" className="self-start rounded-sm bg-pin px-5 py-3 text-sm font-semibold text-on-pin">Voltar ao mapa</Link>
       </div>
     );
   }
 
   return (
-    <form onSubmit={enviar} className="flex flex-col gap-5">
+    <form onSubmit={enviar} noValidate className="flex flex-col gap-5">
       <section className={CAIXA}>
         <h2 className="text-base font-bold">1. O que você vende</h2>
         <div className="flex flex-wrap gap-2">
           {termos.map((t) => (
-            <span key={t} className="inline-flex h-9 items-center gap-1 rounded-full bg-ink pl-3 pr-1 text-[13.5px] font-semibold text-surface">
-              {t}
-              <button type="button" onClick={() => setTermos(termos.filter((x) => x !== t))} aria-label={`Remover ${t}`} className="size-7">×</button>
+            <span key={t} className="inline-flex h-9 max-w-full items-center gap-1 rounded-full bg-ink pl-3 pr-1 text-[13.5px] font-semibold text-surface">
+              <span className="truncate" title={t}>{t}</span>
+              <button type="button" onClick={() => setTermos(termos.filter((x) => x !== t))} aria-label={`Remover ${t}`} className="size-7 shrink-0">×</button>
             </span>
           ))}
         </div>
@@ -93,7 +93,7 @@ export function FormAlerta({ ufsIniciais }: { ufsIniciais: string[] }) {
         </div>
         <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink-muted">
           <span>Sugestões:</span>
-          {SUGESTOES.filter((s) => !termos.includes(s)).slice(0, 4).map((s) => (
+          {SUGESTOES.filter((s) => !termos.some((t) => t.toLowerCase() === s.toLowerCase())).slice(0, 4).map((s) => (
             <button key={s} type="button" onClick={() => adicionar(s)} className="h-8 rounded-full border border-dashed border-line-strong px-3 font-semibold text-ink">
               + {s}
             </button>
@@ -115,7 +115,7 @@ export function FormAlerta({ ufsIniciais }: { ufsIniciais: string[] }) {
                   type="button"
                   aria-pressed={ativo}
                   onClick={() => alternarUf(uf)}
-                  className={`h-9 w-12 rounded-sm border text-[13px] font-semibold ${ativo ? 'border-[#0b6b53] bg-[#0b6b53] text-white' : 'border-line-strong bg-raised text-ink-muted'}`}
+                  className={`h-9 w-12 rounded-sm border text-[13px] font-semibold ${ativo ? 'border-mata bg-mata text-white' : 'border-line-strong bg-raised text-ink-muted'}`}
                 >
                   {uf}
                 </button>
@@ -132,6 +132,7 @@ export function FormAlerta({ ufsIniciais }: { ufsIniciais: string[] }) {
           id="email"
           type="email"
           required
+          maxLength={254}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="voce@empresa.com.br"
@@ -139,7 +140,7 @@ export function FormAlerta({ ufsIniciais }: { ufsIniciais: string[] }) {
           className="h-11 rounded-sm border border-line-strong px-3"
         />
         <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} className="mt-0.5 size-5 accent-[#0b6b53]" />
+          <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} className="mt-0.5 size-5 accent-mata" />
           Pode usar meu e-mail só para avisar quando os alertas estiverem prontos.
         </label>
         <div aria-hidden="true" className="hidden">
