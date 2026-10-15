@@ -1,6 +1,6 @@
 # Edital Map · Fase 2 · Mapa — design
 
-Data: 15/10/2026 · Status: aprovado no brainstorming, aguardando revisão da spec escrita.
+Data: 15/10/2026 · Status: aprovada pelo usuário em 15/10/2026. Plano: `docs/superpowers/plans/2026-10-15-fase-2-mapa.md`.
 
 Referências:
 - Spec da Fase 1 (dados): `docs/superpowers/specs/2026-10-14-fase-1-dados-design.md`
@@ -39,7 +39,7 @@ Portão para seguir para a Fase 3: **10 PMEs usaram, 3 pediram alerta**. O site 
 | `/edital/[cnpj]-[ano]-[seq]` | Situação + contagem regressiva, objeto, órgão e unidade, valor estimado, modalidade, propostas até (data e hora de Brasília), local (sede do órgão com o aviso "o local de entrega pode ser outro: confira no edital"), tabela de itens (50 primeiros + "Ver todos os N itens"), botão "Abrir edital oficial" (`link_origem` ou `https://pncp.gov.br/app/editais/{cnpj}/{ano}/{seq}`), vitrine "Em breve" (preço de referência, quem venceu, resumo com IA) e botão "Criar alerta para editais parecidos". Edital inexistente → 404; edital encerrado → página mostra "Encerrado em …" sem esconder os dados. |
 | `/alertas` | Formulário: o que vende (termos, com sugestões), UFs, e-mail, aceite do uso do e-mail. Confirmação: "Vamos te avisar quando os alertas estiverem prontos." |
 | `/sobre` | De onde vêm os dados (PNCP, Lei 14.133), o que o site faz e não faz (não participa da licitação), cobertura atual, como pedir para apagar o e-mail, contato. |
-| `/api/busca`, `/api/mapa`, `/api/eventos`, `/api/alertas` | Rotas do servidor usadas pelas telas. |
+| `/api/busca`, `/api/mapa`, `/api/eventos`, `/api/alertas`, `/api/interno` | Rotas do servidor usadas pelas telas. |
 
 Card de edital (padrão fixo, igual ao protótipo): linha 1 = situação (Aberto / Prazo próximo) + contagem ("Encerra hoje às 17h" e "Encerra amanhã" em laranja; até 7 dias "Encerra em N dias" em amarelo; acima, "N dias" em cinza); linha 2 = objeto em até 2 linhas; linha 3 = valor estimado grande (ou "Valor não informado") + modalidade; linha 4 = órgão · município/UF; linha 5 = "Propostas até dd.mm.aaaa · HHh" + "Ver edital". Resultado achado só nos itens ganha o rótulo "Encontrado nos itens: <descrição do item>".
 
@@ -59,8 +59,9 @@ Nova função de busca que devolve, além dos campos de `buscar()`, `onde` (`'ob
 Nova função de mapa sobre a versão sem duplicadas. O servidor lê em páginas de 1.000 linhas até o fim (teto padrão do PostgREST) e devolve tudo ao navegador.
 
 ### 5.4 Tabelas novas (RLS ligado, sem políticas: só o servidor grava e lê)
-- `pedidos_alerta`: `id`, `email`, `termos text[]`, `ufs text[]`, `visitante`, `criado_em`.
-- `eventos`: `id`, `visitante`, `tipo` (`busca`, `abriu_edital`, `clicou_edital_oficial`, `pediu_alerta`, `quer_recurso`), `detalhe jsonb`, `criado_em`.
+- `pedidos_alerta`: `id`, `email`, `termos text[]`, `ufs text[]`, `visitante`, `interno`, `ip_hash`, `criado_em`.
+- `eventos`: `id`, `visitante`, `tipo` (`busca`, `abriu_edital`, `clicou_edital_oficial`, `pediu_alerta`, `quer_recurso`), `detalhe jsonb`, `interno`, `ip_hash`, `criado_em`.
+- `ip_hash` = SHA-256 do IP com um sal secreto (`IP_SAL`), só para os limites por hora; o IP em si não é guardado.
 
 ### 5.5 Cache
 Respostas de busca, mapa e página do edital ficam em cache no servidor por 5 minutos (os dados mudam a cada 2 h).
@@ -69,7 +70,7 @@ Respostas de busca, mapa e página do edital ficam em cache no servidor por 5 mi
 
 - Cada navegador recebe um identificador anônimo em cookie (`em_visitante`, UUID, 1 ano, sem dado pessoal).
 - Eventos gravados pelo servidor: `busca` (termos e UF), `abriu_edital` (id), `clicou_edital_oficial` (id), `pediu_alerta` (id do pedido), `quer_recurso` (nome do recurso e id do edital).
-- "10 PMEs usaram" = visitantes distintos com pelo menos uma `busca`, descontando os do dono do produto (o visitante dele é marcado pela página `/sobre?interno=1`, que grava um cookie `em_interno`; eventos com esse cookie ficam com `detalhe.interno = true`).
+- "10 PMEs usaram" = visitantes distintos com pelo menos uma `busca`, descontando os do dono do produto (o visitante dele é marcado pela página `/sobre?interno=1`, que grava um cookie `em_interno`; eventos e pedidos com esse cookie ficam com a coluna `interno = true`).
 - "3 pediram alerta" = e-mails distintos em `pedidos_alerta`, sem os internos.
 - A consulta SQL que responde as duas coisas fica em `docs/fase-2-portao.sql`.
 
@@ -80,9 +81,10 @@ Mesmo repositório. Site Next.js na raiz (`app/`, `components/`, `lib/`); o `wor
 | Unidade | Responsabilidade |
 |---|---|
 | `lib/servidor/supabase.ts` | Cliente com `SUPABASE_SERVICE_ROLE_KEY`, marcado `server-only` |
-| `lib/consultas.ts` | `buscarEditais`, `pontosDoMapa`, `edital`, `itensDoEdital`, `atualizadoEm` — chamam as funções SQL da seção 5 |
+| `lib/servidor/consultas.ts` | `buscarEditais`, `pontosDoMapa`, `edital`, `itensDoEdital`, `atualizadoEm` — chamam as funções SQL da seção 5 |
 | `lib/formato.ts` | Moeda, datas no padrão da marca, regra do prazo (funções puras) |
-| `lib/eventos.ts` | Identificador anônimo, gravação de eventos e pedidos de alerta, validação |
+| `lib/eventos.ts` | Validação de eventos e pedidos de alerta (funções puras) |
+| `lib/servidor/registro.ts` | Identificador anônimo, marca de interno, limites por IP, gravação de eventos e pedidos |
 | `components/Mapa.tsx` | MapLibre agrupado por zoom (componente de cliente) |
 | `components/CardEdital.tsx`, `Lista.tsx`, `Busca.tsx`, `GavetaCelular.tsx`, `VitrineEmBreve.tsx`, `FormAlerta.tsx` | Telas |
 
