@@ -1,3 +1,18 @@
-export default function Inicio() {
-  return <main className="p-6 font-mono text-ink">Edital Map · em construção</main>;
+import { connection } from 'next/server';
+import { Cabecalho } from '@/components/Cabecalho';
+import { Explorador } from '@/components/Explorador';
+import { FaixaCobertura } from '@/components/FaixaCobertura';
+import { lerFiltros } from '@/lib/filtros';
+import { atualizadoEm, buscarEditais } from '@/lib/servidor/consultas';
+
+export default async function Inicio() {
+  await connection();
+  const [inicial, atualizado] = await Promise.all([buscarEditais(lerFiltros(new URLSearchParams())), atualizadoEm()]);
+  return (
+    <>
+      <Cabecalho />
+      <FaixaCobertura atualizadoEm={atualizado} />
+      <Explorador inicial={inicial} agoraInicial={new Date().toISOString()} />
+    </>
+  );
 }

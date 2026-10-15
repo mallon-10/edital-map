@@ -34,6 +34,9 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
       // maplibre-gl 6 é só ESM: sem export default.
       const maplibregl = await import('maplibre-gl');
       if (cancelado || !caixa.current) return;
+      // O Turbopack reescreve import.meta.url do maplibre-gl e o worker padrão some (URL vazia):
+      // aponta o worker para o arquivo do pacote, que o bundler publica como asset estático.
+      maplibregl.setWorkerUrl(new URL('../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).href);
       // No celular a gaveta da lista cobre a parte de baixo (38% da janela): reserva esse espaço no enquadramento inicial.
       const celular = window.matchMedia('(max-width: 767px)').matches;
       const m = new maplibregl.Map({
