@@ -51,6 +51,21 @@ describe('validarPedidoAlerta', () => {
     const onze = Array.from({ length: 11 }, (_, i) => `termo ${i}`);
     expect(validarPedidoAlerta({ ...valido, termos: onze })).toEqual({ ok: false, erro: 'Use até 10 termos.' });
   });
+  it('recusa 10.000 termos distintos', () => {
+    const muitos = Array.from({ length: 10_000 }, (_, i) => `termo ${i}`);
+    expect(validarPedidoAlerta({ ...valido, termos: muitos })).toEqual({ ok: false, erro: 'Use até 10 termos.' });
+  });
+  it('para de ler os termos ao passar do teto', () => {
+    let lidos = 0;
+    const muitos = new Proxy(Array.from({ length: 10_000 }, (_, i) => `termo ${i}`), {
+      get(alvo, chave, receptor) {
+        if (typeof chave === 'string' && /^\d+$/.test(chave)) lidos++;
+        return Reflect.get(alvo, chave, receptor);
+      },
+    });
+    validarPedidoAlerta({ ...valido, termos: muitos });
+    expect(lidos).toBeLessThanOrEqual(11);
+  });
   it('exige UF e aceite', () => {
     expect(validarPedidoAlerta({ ...valido, ufs: [] }).ok).toBe(false);
     expect(validarPedidoAlerta({ ...valido, aceite: false })).toEqual({ ok: false, erro: 'Confirme o uso do e-mail para o aviso.' });

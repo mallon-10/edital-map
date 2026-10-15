@@ -74,6 +74,9 @@ export function haQuanto(iso: string, agora: Date): string {
   return `há ${Math.floor(h / 24)} dias`;
 }
 
+const LINK_HTTP = /^https?:\/\//i;
+
 export function linkOficial(e: { link_origem: string | null; cnpj: string; ano: number; sequencial: number }): string {
-  return e.link_origem?.trim() || `https://pncp.gov.br/app/editais/${e.cnpj}/${e.ano}/${e.sequencial}`;
+  const link = e.link_origem?.trim();
+  return link && LINK_HTTP.test(link) ? link : `https://pncp.gov.br/app/editais/${e.cnpj}/${e.ano}/${e.sequencial}`;
 }

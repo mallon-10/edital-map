@@ -72,4 +72,11 @@ describe('haQuanto e link oficial', () => {
       'https://pncp.gov.br/app/editais/00394452000103/2026/21982',
     );
   });
+  it('só usa link de origem com http ou https', () => {
+    const pncp = 'https://pncp.gov.br/app/editais/00394452000103/2026/21982';
+    const base = { cnpj: '00394452000103', ano: 2026, sequencial: 21982 };
+    expect(linkOficial({ ...base, link_origem: 'javascript:alert(1)' })).toBe(pncp);
+    expect(linkOficial({ ...base, link_origem: 'www.x.gov.br/e' })).toBe(pncp);
+    expect(linkOficial({ ...base, link_origem: 'HTTP://X.GOV.BR/E' })).toBe('HTTP://X.GOV.BR/E');
+  });
 });

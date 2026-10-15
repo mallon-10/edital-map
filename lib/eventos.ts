@@ -59,10 +59,12 @@ export function validarPedidoAlerta(corpo: unknown): Resultado<PedidoAlerta> {
     if (typeof t !== 'string') continue;
     const limpo = t.trim().replace(/\s+/g, ' ');
     if (limpo.length < 2 || limpo.length > 60) continue;
-    if (!termos.some((x) => x.toLowerCase() === limpo.toLowerCase())) termos.push(limpo);
+    if (!termos.some((x) => x.toLowerCase() === limpo.toLowerCase())) {
+      termos.push(limpo);
+      if (termos.length > 10) return { ok: false, erro: 'Use até 10 termos.' };
+    }
   }
   if (termos.length === 0) return { ok: false, erro: 'Diga pelo menos uma coisa que sua empresa vende.' };
-  if (termos.length > 10) return { ok: false, erro: 'Use até 10 termos.' };
 
   const ufs = [
     ...new Set((Array.isArray(corpo.ufs) ? corpo.ufs : []).filter((u): u is string => typeof u === 'string' && UFS_BRASIL.includes(u))),
