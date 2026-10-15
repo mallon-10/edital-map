@@ -2,9 +2,10 @@
 
 Mapa de licitações públicas abertas no Brasil (dados do PNCP) para PMEs que vendem ao governo. Nicho de largada: EPI e uniformes.
 
-Fase atual: **1 · Dados**. Espelho do PNCP (SC, PR, RS) no Supabase, atualizado a cada 2 h.
-- Spec: docs/superpowers/specs/2026-10-14-fase-1-dados-design.md
-- Plano: docs/superpowers/plans/2026-10-14-fase-1-dados.md
+Fase atual: **2 · Mapa**. Site Next.js na Vercel (https://edital-map.vercel.app (domínio próprio pendente)) sobre o espelho do PNCP (SC, PR, RS) atualizado a cada 2 h.
+- Spec: docs/superpowers/specs/2026-10-15-fase-2-mapa-design.md
+- Plano: docs/superpowers/plans/2026-10-15-fase-2-mapa.md
+- Portão: docs/fase-2-portao.sql
 
 Referências:
 - Estrutura do MVP (doc, nome antigo BidAtlas): https://claude.ai/code/artifact/33a5e4e7-9f62-4f3f-8312-9da344fe5c7c
@@ -28,6 +29,8 @@ Referências:
 - Modalidades da v1: 6, 8, 4, 7, 12.
 - Interface em português do Brasil, com o vocabulário "edital" e "Alertas". Visual: design system Edital Map (não as cores do canvas).
 - TDD: teste primeiro (vitest). npm test e npm run typecheck passam antes de cada commit.
+- Vercel: projeto edital-map no time JPM Company, região gru1, publicado pela CLI (`vercel deploy --prod`), sem Git ligado; `.vercelignore` impede o envio do `.env`.
+- maplibre-gl 6 (só ESM): o worker vem do pacote via `setWorkerUrl` em components/Mapa.tsx (o Turbopack zera o import.meta.url).
 
 ## Comandos
 - npm test / npm run typecheck
@@ -35,3 +38,6 @@ Referências:
 - npm run worker:backfill -- --dias 90 --ufs SC,PR,RS
 - npm run worker:sync: sincronização incremental
 - npm run worker:conferir -- --amostra 20 --dias-contagem 3 --idempotencia
+- npm run dev / npm run build: site
+- npm run gerar:municipios: pontos cinza do mapa (public/geo/municipios.json)
+- npm run capturas -- <url> <slug>: capturas de tela (precisa do Edge invisível na porta 9333)

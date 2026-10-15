@@ -117,9 +117,9 @@ Proteção dos formulários: validação no servidor (e-mail válido, até 10 te
 
 ## 11. Critérios de aceite
 
-- [ ] Site no ar no domínio do usuário, com `noindex`.
-- [ ] Busca, filtros, mapa agrupado, lista, página do edital e `/alertas` funcionando em 1440 px e 390 px.
-- [ ] Duplicadas conhecidas aparecem uma vez.
-- [ ] Eventos e pedidos de alerta chegando ao banco; consulta do portão em `docs/fase-2-portao.sql` respondendo.
-- [ ] Primeira carga da página inicial em menos de 2 s (medida com o cache quente).
-- [ ] Testes unitários e typecheck passando.
+- [ ] Site no ar no domínio do usuário, com `noindex` — no ar em https://edital-map.vercel.app com `X-Robots-Tag: noindex, nofollow` e `robots.txt` com `Disallow: /`; falta o domínio próprio (registro pelo usuário).
+- [x] Busca, filtros, mapa agrupado, lista, página do edital e `/alertas` funcionando em 1440 px e 390 px. — capturas de tela em 1440 e 390 px (local e produção) das 4 páginas; formulário de alerta testado ponta a ponta.
+- [x] Duplicadas conhecidas aparecem uma vez. — `abertas_unicas`: 8.916 abertas → 8.575 únicas, 0 grupos duplicados restantes; Balneário Piçarras 21 → 16, Itá 21 → 19.
+- [x] Eventos e pedidos de alerta chegando ao banco; consulta do portão em `docs/fase-2-portao.sql` respondendo. — eventos `busca`, `abriu_edital`, `pediu_alerta` e pedidos gravados (todos de teste, `interno = true`); a consulta responde 0 / 0 / 0 / {}.
+- [x] Primeira carga da página inicial em menos de 2 s (medida com o cache quente). — produção (gru1): 0,15–0,29 s com cache quente; 0,87 s a frio.
+- [x] Testes unitários e typecheck passando. — `npm test` 19 arquivos / 156 testes; `npm run typecheck` limpo.
