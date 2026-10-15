@@ -4,6 +4,7 @@
 //    Start-Process "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" -ArgumentList '--headless=new','--remote-debugging-port=9333',"--user-data-dir=$env:TEMP\edge-capturas",'--use-angle=swiftshader','--enable-unsafe-swiftshader','about:blank' -WindowStyle Hidden
 // 3. node scripts/capturas.mjs http://localhost:3000 <slug-de-um-edital>
 // As imagens ficam em .capturas/ (fora do git). Feche o Edge depois.
+// Com CAPTURAS_INTERNO=1 as visitas saem marcadas como internas (não entram nas métricas do portão).
 import { mkdir } from 'node:fs/promises';
 import puppeteer from 'puppeteer-core';
 
@@ -25,6 +26,9 @@ for (const [largura, altura, tela] of [[1440, 1000, 'computador'], [390, 844, 'c
       const partes = await Promise.all(m.args().map((a) => a.evaluate((x) => (x instanceof Error ? x.message : String(x))).catch(() => '')));
       erros.push(partes.filter(Boolean).join(' ') || m.text());
     });
+    // CAPTURAS_INTERNO=1: marca o visitante como interno (cookie em_interno), para as visitas e cliques
+    // da captura não entrarem nas métricas do portão.
+    if (process.env.CAPTURAS_INTERNO === '1') await p.setCookie({ name: 'em_interno', value: '1', url: base });
     const inicio = Date.now();
     await p.goto(base + caminho, { waitUntil: 'load', timeout: 90000 });
     const ms = Date.now() - inicio;

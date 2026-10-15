@@ -105,6 +105,7 @@ export function itensDoEdital(id: string, limite: number): Promise<{ total: numb
         });
       }
       if (linhas.length < ate - de + 1) break;
+      if (itens.length >= total) break;
     }
     return { total, itens };
   });
