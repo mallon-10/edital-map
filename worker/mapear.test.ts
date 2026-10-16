@@ -85,7 +85,19 @@ describe('itemParaLinha', () => {
       material_ou_servico: 'M',
       sigiloso: false,
       tem_resultado: false,
+      beneficio_id: null,
+      beneficio_nome: null,
+      criterio_julgamento: null,
     });
+  });
+  it('guarda benefício ME/EPP e critério de julgamento', () => {
+    const linha = itemParaLinha(
+      item({ tipoBeneficio: 1, tipoBeneficioNome: 'Participação exclusiva para ME/EPP', criterioJulgamentoNome: ' Menor preço ' }),
+      'C1',
+    );
+    expect(linha.beneficio_id).toBe(1);
+    expect(linha.beneficio_nome).toBe('Participação exclusiva para ME/EPP');
+    expect(linha.criterio_julgamento).toBe('Menor preço');
   });
   it('item com orçamento sigiloso', () => {
     const linha = itemParaLinha(item({ orcamentoSigiloso: true, valorUnitarioEstimado: null }), 'C1');

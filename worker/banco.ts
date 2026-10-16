@@ -18,6 +18,8 @@ export interface Banco {
   removerItensAlem(contratacaoId: string, numeros: number[]): Promise<void>;
   atualizacoesConhecidas(ids: string[]): Promise<Map<string, string>>;
   abertasSemItens(limite: number): Promise<ChaveCompra[]>;
+  /** Compras abertas em ordem de id, a partir de `depoisDe` (exclusivo), até `limite`. */
+  abertas(depoisDe: string | null, limite: number): Promise<ChaveCompra[]>;
   lerEstado(chave: string): Promise<EstadoSync | null>;
   gravarEstado(estado: EstadoSync): Promise<void>;
 }
@@ -82,6 +84,24 @@ export function criarBanco(sb: SupabaseClient, agora: () => Date = () => new Dat
         .order('encerramento_em', { ascending: true })
         .limit(limite);
       falhar('listar abertas sem itens', error);
+      return (data ?? []).map((l) => ({
+        id: l.id as string,
+        cnpj: l.cnpj as string,
+        ano: l.ano as number,
+        sequencial: l.sequencial as number,
+      }));
+    },
+
+    async abertas(depoisDe, limite) {
+      let consulta = sb
+        .from('contratacoes')
+        .select('id, cnpj, ano, sequencial')
+        .gt('encerramento_em', agora().toISOString())
+        .order('id', { ascending: true })
+        .limit(limite);
+      if (depoisDe) consulta = consulta.gt('id', depoisDe);
+      const { data, error } = await consulta;
+      falhar('listar abertas', error);
       return (data ?? []).map((l) => ({
         id: l.id as string,
         cnpj: l.cnpj as string,

@@ -180,6 +180,9 @@ async function itemLinha(numero: number) {
     material_ou_servico: 'M',
     sigiloso: false,
     tem_resultado: false,
+    beneficio_id: null,
+    beneficio_nome: null,
+    criterio_julgamento: null,
   };
 }
 

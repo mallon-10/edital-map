@@ -68,6 +68,14 @@ export class BancoFalso implements Banco {
       .slice(0, limite)
       .map((c) => ({ id: c.id, cnpj: c.cnpj, ano: c.ano, sequencial: c.sequencial }));
   }
+  async abertas(depoisDe: string | null, limite: number): Promise<ChaveCompra[]> {
+    return [...this.contratacoes.values()]
+      .filter((c) => c.encerramento_em !== null && Date.parse(c.encerramento_em) > AGORA.getTime())
+      .filter((c) => depoisDe === null || c.id > depoisDe)
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .slice(0, limite)
+      .map((c) => ({ id: c.id, cnpj: c.cnpj, ano: c.ano, sequencial: c.sequencial }));
+  }
   async lerEstado(chave: string): Promise<EstadoSync | null> {
     return this.estados.get(chave) ?? null;
   }

@@ -47,6 +47,9 @@ export const esquemaItem = z.object({
   materialOuServico: z.string().nullish(),
   orcamentoSigiloso: z.boolean().nullish(),
   temResultado: z.boolean().nullish(),
+  tipoBeneficio: z.number().int().nullish(),
+  tipoBeneficioNome: z.string().nullish(),
+  criterioJulgamentoNome: z.string().nullish(),
 });
 export type ItemPncp = z.infer<typeof esquemaItem>;
 

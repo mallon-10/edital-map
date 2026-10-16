@@ -39,6 +39,9 @@ export type LinhaItem = {
   material_ou_servico: string | null;
   sigiloso: boolean;
   tem_resultado: boolean;
+  beneficio_id: number | null;
+  beneficio_nome: string | null;
+  criterio_julgamento: string | null;
 };
 
 export type ChaveCompra = { id: string; cnpj: string; ano: number; sequencial: number };
@@ -89,6 +92,9 @@ export function itemParaLinha(i: ItemPncp, contratacaoId: string): LinhaItem {
     material_ou_servico: texto(i.materialOuServico),
     sigiloso: i.orcamentoSigiloso ?? false,
     tem_resultado: i.temResultado ?? false,
+    beneficio_id: i.tipoBeneficio ?? null,
+    beneficio_nome: texto(i.tipoBeneficioNome),
+    criterio_julgamento: texto(i.criterioJulgamentoNome),
   };
 }
 

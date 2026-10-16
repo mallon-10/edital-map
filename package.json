@@ -12,6 +12,7 @@
     "worker:backfill": "tsx worker/backfill.ts",
     "worker:sync": "tsx worker/sync.ts",
     "worker:conferir": "tsx worker/conferir.ts",
+    "worker:reler-itens": "tsx worker/reler-itens.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
