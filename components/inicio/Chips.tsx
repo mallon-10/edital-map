@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { BotaoEmBreve } from '@/components/BotaoEmBreve';
-import { MODALIDADES, UFS_COBERTAS, VALORES_MINIMOS } from '@/lib/filtros';
+import { MODALIDADES, UFS_ORDENADAS, VALORES_MINIMOS } from '@/lib/filtros';
 import { haQuanto, numero } from '@/lib/formato';
 import type { Cidade, FiltrosTela, PontoMapa } from '@/lib/tipos';
 import { Cadeado, Seta } from './Icones';
@@ -137,7 +137,7 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar }: Props) 
           aoMudar={(uf) => aoMudar({ ...filtros, uf, cidade: null })}
         >
           <option value="">todas</option>
-          {UFS_COBERTAS.map((u) => (
+          {UFS_ORDENADAS.map((u) => (
             <option key={u} value={u}>
               {u}
             </option>

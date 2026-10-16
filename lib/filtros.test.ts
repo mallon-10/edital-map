@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chaveFiltros, lerFiltros, paraParametros } from './filtros';
+import { chaveFiltros, lerFiltros, paraParametros, UFS_ORDENADAS } from './filtros';
 import type { FiltrosTela } from './tipos';
 
 const ler = (s: string) => lerFiltros(new URLSearchParams(s));
@@ -14,8 +14,12 @@ describe('lerFiltros', () => {
       q: 'EPI e uniformes', uf: 'SC', ibge: '4205407', dias: 7, deslocamento: 50, valorMin: 50000, modalidades: [6, 8],
     });
   });
-  it('descarta UF fora da cobertura, IBGE malformado e dias diferentes de 7', () => {
-    expect(ler('uf=SP&ibge=123&dias=30')).toEqual(BASE);
+  it('descarta UF que não existe, IBGE malformado e dias diferentes de 7', () => {
+    expect(ler('uf=XX&ibge=123&dias=30')).toEqual(BASE);
+  });
+  it('aceita qualquer UF do Brasil', () => {
+    expect(ler('uf=sp').uf).toBe('SP');
+    expect(ler('uf=AM').uf).toBe('AM');
   });
   it('ignora valor fora da lista e modalidades desconhecidas', () => {
     expect(ler('valor=12345&modalidades=1,99,abc')).toEqual(BASE);
@@ -56,5 +60,14 @@ describe('paraParametros', () => {
     expect(lerFiltros(paraParametros(TELA))).toEqual({
       q: 'EPI', uf: 'SC', ibge: '4205407', dias: 7, deslocamento: 0, valorMin: 50000, modalidades: [6, 8],
     });
+  });
+});
+
+describe('UFS_ORDENADAS', () => {
+  it('as 27 UFs em ordem alfabética', () => {
+    expect(UFS_ORDENADAS).toHaveLength(27);
+    expect(UFS_ORDENADAS[0]).toBe('AC');
+    expect(UFS_ORDENADAS[26]).toBe('TO');
+    expect([...UFS_ORDENADAS].sort()).toEqual(UFS_ORDENADAS);
   });
 });

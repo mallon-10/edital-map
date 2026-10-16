@@ -1,13 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { UFS_BRASIL } from '@/lib/eventos';
-import { UFS_COBERTAS } from '@/lib/filtros';
+import { UFS_ORDENADAS } from '@/lib/filtros';
 import { Lupa, PinoMini, Seta } from './Icones';
 
 type Props = { q: string; uf: string; carregando: boolean; aoBuscar: (q: string, uf: string) => void };
-
-const EM_BREVE = UFS_BRASIL.filter((u) => !(UFS_COBERTAS as readonly string[]).includes(u)).sort();
 
 /** "O que sua empresa vende?" + local ("Todo o Brasil" ou UF) + "Buscar no mapa". No computador é uma barra só. */
 export function BuscaPrincipal({ q, uf, carregando, aoBuscar }: Props) {
@@ -46,21 +43,14 @@ export function BuscaPrincipal({ q, uf, carregando, aoBuscar }: Props) {
           <select
             value={local}
             onChange={(e) => setLocal(e.target.value)}
-            className="h-full w-full appearance-none bg-transparent pl-9 pr-8 text-sm font-semibold lg:w-auto [&>option]:bg-raised [&>option]:text-ink [&>optgroup]:bg-raised [&>optgroup]:text-ink"
+            className="h-full w-full appearance-none bg-transparent pl-9 pr-8 text-sm font-semibold lg:w-auto [&>option]:bg-raised [&>option]:text-ink"
           >
             <option value="">Todo o Brasil</option>
-            {UFS_COBERTAS.map((u) => (
+            {UFS_ORDENADAS.map((u) => (
               <option key={u} value={u}>
                 {u}
               </option>
             ))}
-            <optgroup label="Em breve">
-              {EM_BREVE.map((u) => (
-                <option key={u} value={u} disabled>
-                  {u} · em breve
-                </option>
-              ))}
-            </optgroup>
           </select>
           <Seta className="pointer-events-none absolute right-2.5 size-4 text-ink-muted" />
         </label>

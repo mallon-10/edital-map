@@ -103,7 +103,7 @@ export function FormAlerta({ ufsIniciais }: { ufsIniciais: string[] }) {
 
       <section className={CAIXA}>
         <h2 className="text-base font-bold">2. Onde você atende</h2>
-        <p className="text-[13px] text-ink-muted">Hoje cobrimos SC, PR e RS; os outros estados entram depois.</p>
+        <p className="text-[13px] text-ink-muted">Editais abertos de todo o Brasil: marque os estados onde você atende.</p>
         {REGIOES.map(([regiao, lista]) => (
           <div key={regiao} className="flex flex-wrap items-center gap-2">
             <span className="w-24 text-[12.5px] font-semibold text-ink-muted">{regiao}</span>

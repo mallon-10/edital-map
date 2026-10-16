@@ -18,7 +18,7 @@ export default async function PaginaSobre({ searchParams }: Props) {
           <h2 className="text-lg font-bold">De onde vêm os dados</h2>
           <p>
             Do PNCP, o Portal Nacional de Contratações Públicas, onde os órgãos publicam as contratações da Lei 14.133. O Edital Map copia esses
-            dados a cada 3 horas. Hoje cobrimos Santa Catarina, Paraná e Rio Grande do Sul.
+            dados a cada 3 horas: editais abertos de todo o Brasil.
           </p>
         </section>
         <section className="flex flex-col gap-2">

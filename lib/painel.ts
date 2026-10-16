@@ -37,28 +37,29 @@ export function faixaDaUf(qtd: number): 0 | 1 | 2 | 3 | 4 {
 
 /** Tons de azul da escala (o último é o azul-marinho da marca); índice = faixa. */
 export const CORES_FAIXA: readonly string[] = ['#eef2f8', '#d5deeb', '#9db0cc', '#5b7aa6', '#0c2340'];
-export const COR_SEM_COBERTURA = '#ebe6d9';
-
-/** Expressão `match` do MapLibre que pinta cada estado coberto pela faixa e os outros em cinza. */
-export function coresDosEstados(porUf: Record<string, number>, cobertas: readonly string[]): unknown[] {
-  const pares = cobertas.flatMap((uf) => [uf, CORES_FAIXA[faixaDaUf(porUf[uf] ?? 0)]]);
-  return ['match', ['get', 'uf'], ...pares, COR_SEM_COBERTURA];
+/** Expressão `match` do MapLibre que pinta cada estado com editais pela faixa; os sem editais ficam no tom mais claro. */
+export function coresDosEstados(porUf: Record<string, number>): unknown {
+  const pares = Object.keys(porUf)
+    .filter((uf) => (porUf[uf] ?? 0) > 0)
+    .sort()
+    .flatMap((uf) => [uf, CORES_FAIXA[faixaDaUf(porUf[uf])]]);
+  // `match` exige ao menos um rótulo: sem nenhum estado com editais, a cor é uma só.
+  return pares.length > 0 ? ['match', ['get', 'uf'], ...pares, CORES_FAIXA[0]] : CORES_FAIXA[0];
 }
 
 /** Contorno branco comum entre os estados. */
 const CONTORNO_COR = '#ffffff';
 const CONTORNO_LARGURA = 1;
-/** Estado coberto sem resultado na busca: tom mais claro da faixa 0 com contorno azul mais grosso. */
-const CONTORNO_VAZIO_COR = CORES_FAIXA[2];
+/** Estado sem resultado na busca: contorno azul mais grosso, para não sumir no fundo branco. */
+export const CONTORNO_VAZIO_COR = CORES_FAIXA[2];
 const CONTORNO_VAZIO_LARGURA = 1.5;
 
 /**
- * Contorno dos estados: branco comum, e azul mais grosso nos cobertos sem nenhum edital na busca atual,
- * para o estado vazio não sumir no fundo branco. `match` do MapLibre exige ao menos um rótulo:
- * sem estado vazio devolve os valores simples.
+ * Contorno dos estados: branco comum, e azul mais grosso em qualquer UF sem nenhum edital na busca atual.
+ * `match` do MapLibre exige ao menos um rótulo: sem estado vazio devolve os valores simples.
  */
-export function contornosDosEstados(porUf: Record<string, number>, cobertas: readonly string[]): { cor: unknown; largura: unknown } {
-  const vazias = cobertas.filter((uf) => (porUf[uf] ?? 0) === 0);
+export function contornosDosEstados(porUf: Record<string, number>, ufs: readonly string[]): { cor: unknown; largura: unknown } {
+  const vazias = ufs.filter((uf) => (porUf[uf] ?? 0) === 0);
   if (vazias.length === 0) return { cor: CONTORNO_COR, largura: CONTORNO_LARGURA };
   return {
     cor: ['match', ['get', 'uf'], vazias, CONTORNO_VAZIO_COR, CONTORNO_COR],

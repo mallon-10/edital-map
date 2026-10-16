@@ -1,4 +1,4 @@
-import { COR_SEM_COBERTURA, CORES_FAIXA } from '@/lib/painel';
+import { CONTORNO_VAZIO_COR, CORES_FAIXA } from '@/lib/painel';
 
 export function LegendaMapa() {
   return (
@@ -18,8 +18,8 @@ export function LegendaMapa() {
         Tamanho = valor estimado
       </p>
       <p className="mt-1 flex items-center gap-2 text-xs text-ink-muted">
-        <span className="size-2.5 rounded-xs" style={{ background: COR_SEM_COBERTURA }} aria-hidden="true" />
-        Estados em cinza: em breve
+        <span className="size-2.5 rounded-xs border-[1.5px] bg-raised" style={{ borderColor: CONTORNO_VAZIO_COR }} aria-hidden="true" />
+        Contorno azul: estado sem edital nesta busca
       </p>
       <p className="mt-2 text-xs text-ink-muted">O ponto é a sede do órgão, não o local de entrega.</p>
     </section>

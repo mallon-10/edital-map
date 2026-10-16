@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Point } from 'geojson';
 import type { ExpressionSpecification, GeoJSONSource, Map as MapaLibre, Marker } from 'maplibre-gl';
-import { UFS_COBERTAS } from '@/lib/filtros';
+import { UFS_BRASIL } from '@/lib/eventos';
 import { moedaCurta, numero } from '@/lib/formato';
 import { paraGeoJSON, type PropsPonto } from '@/lib/geo';
 import { contornosDosEstados, coresDosEstados } from '@/lib/painel';
@@ -60,8 +60,8 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
   useEffect(() => {
     porUfAtual.current = porUf;
     if (!pronto || !mapa.current) return;
-    const contorno = contornosDosEstados(porUf, UFS_COBERTAS);
-    mapa.current.setPaintProperty('estados', 'fill-color', coresDosEstados(porUf, UFS_COBERTAS) as unknown as ExpressionSpecification);
+    const contorno = contornosDosEstados(porUf, UFS_BRASIL);
+    mapa.current.setPaintProperty('estados', 'fill-color', coresDosEstados(porUf) as unknown as ExpressionSpecification);
     mapa.current.setPaintProperty('estados-contorno', 'line-color', contorno.cor as ExpressionSpecification | string);
     mapa.current.setPaintProperty('estados-contorno', 'line-width', contorno.largura as ExpressionSpecification | number);
   }, [porUf, pronto]);
@@ -125,9 +125,9 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
         m.addSource('estados', { type: 'geojson', data: '/geo/estados.json' });
         m.addLayer({
           id: 'estados', type: 'fill', source: 'estados',
-          paint: { 'fill-color': coresDosEstados(porUfAtual.current, UFS_COBERTAS) as unknown as ExpressionSpecification },
+          paint: { 'fill-color': coresDosEstados(porUfAtual.current) as unknown as ExpressionSpecification },
         });
-        const contorno = contornosDosEstados(porUfAtual.current, UFS_COBERTAS);
+        const contorno = contornosDosEstados(porUfAtual.current, UFS_BRASIL);
         m.addLayer({
           id: 'estados-contorno', type: 'line', source: 'estados',
           paint: { 'line-color': contorno.cor as ExpressionSpecification | string, 'line-width': contorno.largura as ExpressionSpecification | number },
@@ -187,7 +187,7 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
         else if (f.layer.id === 'grupos') linhas = [editais(Number(p.qtd)), ...(valor ? [valor] : []), 'Aproxime para ver as cidades'];
         else {
           const uf = String(p.uf);
-          linhas = (UFS_COBERTAS as readonly string[]).includes(uf) ? [uf, editais(porUfAtual.current[uf] ?? 0)] : [uf, 'Em breve'];
+          linhas = [uf, editais(porUfAtual.current[uf] ?? 0)];
         }
         m.getCanvas().style.cursor = f.layer.id === 'estados' ? '' : 'pointer';
         const texto = linhas.join('|');

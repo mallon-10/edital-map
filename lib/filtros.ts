@@ -1,6 +1,8 @@
+import { UFS_BRASIL } from './eventos';
 import type { FiltrosBusca, FiltrosTela } from './tipos';
 
-export const UFS_COBERTAS = ['SC', 'PR', 'RS'] as const;
+/** As 27 UFs em ordem alfabética, para os seletores de UF. */
+export const UFS_ORDENADAS: readonly string[] = [...UFS_BRASIL].sort();
 export const VALORES_MINIMOS = [10_000, 50_000, 100_000, 500_000, 1_000_000] as const;
 export const MODALIDADES: ReadonlyArray<{ id: number; nome: string }> = [
   { id: 6, nome: 'Pregão eletrônico' },
@@ -14,7 +16,7 @@ const IDS_MODALIDADE = MODALIDADES.map((m) => m.id);
 export function lerFiltros(p: URLSearchParams): FiltrosBusca {
   const q = (p.get('q') ?? '').trim().slice(0, 100) || null;
   const ufBruta = (p.get('uf') ?? '').toUpperCase();
-  const uf = (UFS_COBERTAS as readonly string[]).includes(ufBruta) ? ufBruta : null;
+  const uf = UFS_BRASIL.includes(ufBruta) ? ufBruta : null;
   const ibgeBruto = p.get('ibge') ?? '';
   const ibge = /^\d{7}$/.test(ibgeBruto) ? ibgeBruto : null;
   const dias = p.get('dias') === '7' ? 7 : null;
