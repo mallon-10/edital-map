@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { lerModalidades, lerPorMinuto, lerSupabase, lerUfs } from './config';
+import { lerModalidades, lerPorMinuto, lerSupabase, lerUfs, UF_BRASIL } from './config';
 
 describe('lerUfs', () => {
-  it('usa SC, PR e RS quando não há valor', () => {
-    expect(lerUfs(undefined)).toEqual(['SC', 'PR', 'RS']);
-    expect(lerUfs('  ')).toEqual(['SC', 'PR', 'RS']);
+  it('país inteiro (BR) quando não há valor ou quando o valor é BR', () => {
+    expect(lerUfs(undefined)).toEqual([UF_BRASIL]);
+    expect(lerUfs('  ')).toEqual(['BR']);
+    expect(lerUfs(' br ')).toEqual(['BR']);
+  });
+  it('recusa BR misturado com UFs', () => {
+    expect(() => lerUfs('BR,SC')).toThrow('BR (país inteiro) não se mistura com UFs');
   });
   it('normaliza espaços, caixa e repetições', () => {
     expect(lerUfs(' sc, pr ,SC')).toEqual(['SC', 'PR']);

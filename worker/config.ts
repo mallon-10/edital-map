@@ -23,16 +23,24 @@ export const UFS_BRASIL = [
   'PB', 'PE', 'PI', 'PR', 'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO',
 ] as const;
 
+/** UFS vazio ou "BR" = país inteiro numa consulta só (sem `uf` no PNCP). Chave de estado: atualizacao:BR:<modalidade>. */
+export const UF_BRASIL = 'BR';
+
 export function lerUfs(valor: string | undefined): string[] {
-  const texto = valor?.trim() ? valor : 'SC,PR,RS';
-  const ufs = texto
-    .split(',')
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean);
+  const ufs = [
+    ...new Set(
+      (valor ?? '')
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  ];
+  if (ufs.length === 0 || (ufs.length === 1 && ufs[0] === UF_BRASIL)) return [UF_BRASIL];
   for (const uf of ufs) {
+    if (uf === UF_BRASIL) throw new Error('BR (país inteiro) não se mistura com UFs');
     if (!(UFS_BRASIL as readonly string[]).includes(uf)) throw new Error(`UF inválida: ${uf}`);
   }
-  return [...new Set(ufs)];
+  return ufs;
 }
 
 export function lerPorMinuto(valor: string | undefined): number {

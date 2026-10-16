@@ -10,6 +10,7 @@ import {
   PARALELISMO,
   TENTATIVAS,
   TIMEOUT_MS,
+  UF_BRASIL,
 } from '../config';
 import { paraPncp } from '../datas';
 import type { ChaveCompra } from '../mapear';
@@ -30,7 +31,10 @@ export function urlItens(compra: ChaveCompra, pagina: number, base: string = BAS
   return `${base}/v1/orgaos/${compra.cnpj}/compras/${compra.ano}/${compra.sequencial}/itens?pagina=${pagina}&tamanhoPagina=${PAGINA_ITENS}`;
 }
 
+/** `uf: 'BR'` = país inteiro (a consulta sai sem `uf`). Datas em aaaa-mm-dd. */
 export type FiltroContratacoes = { uf: string; modalidade: number; dataInicial: string; dataFinal: string };
+/** Contratações com recebimento de propostas em aberto: serve só para encontrar (aberta = encerramento_em > now()). */
+export type FiltroPropostas = { uf: string; modalidade: number; dataFinal: string };
 export type PaginaContratacoes = { pagina: number; totalPaginas: number; totalRegistros: number; registros: unknown[] };
 export type OpcoesCliente = {
   fetch?: typeof fetch;
@@ -100,11 +104,26 @@ function urlContratacoes(
     dataInicial: paraPncp(filtro.dataInicial),
     dataFinal: paraPncp(filtro.dataFinal),
     codigoModalidadeContratacao: String(filtro.modalidade),
-    uf: filtro.uf,
-    pagina: String(pagina),
-    tamanhoPagina: String(tamanho),
   });
+  if (filtro.uf !== UF_BRASIL) params.set('uf', filtro.uf);
+  params.set('pagina', String(pagina));
+  params.set('tamanhoPagina', String(tamanho));
   return `${BASE_CONSULTA}/v1/contratacoes/${endpoint}?${params}`;
+}
+
+/**
+ * Único lugar com os parâmetros do /v1/contratacoes/proposta. Manual do PNCP: obrigatórios dataFinal (aaaammdd)
+ * e pagina; opcionais codigoModalidadeContratacao, uf e tamanhoPagina (sem dataInicial).
+ */
+export function urlPropostas(filtro: FiltroPropostas, pagina: number, tamanho: number): string {
+  const params = new URLSearchParams({
+    dataFinal: paraPncp(filtro.dataFinal),
+    codigoModalidadeContratacao: String(filtro.modalidade),
+  });
+  if (filtro.uf !== UF_BRASIL) params.set('uf', filtro.uf);
+  params.set('pagina', String(pagina));
+  params.set('tamanhoPagina', String(tamanho));
+  return `${BASE_CONSULTA}/v1/contratacoes/proposta?${params}`;
 }
 
 export function criarCliente(opcoes: OpcoesCliente = {}) {
@@ -170,12 +189,20 @@ export function criarCliente(opcoes: OpcoesCliente = {}) {
     });
   }
 
-  async function* paginarContratacoes(
+  function paginarContratacoes(
     endpoint: 'publicacao' | 'atualizacao',
     filtro: FiltroContratacoes,
   ): AsyncGenerator<PaginaContratacoes> {
+    return paginar((pagina) => urlContratacoes(endpoint, filtro, pagina, PAGINA_CONTRATACOES));
+  }
+
+  function paginarPropostas(filtro: FiltroPropostas): AsyncGenerator<PaginaContratacoes> {
+    return paginar((pagina) => urlPropostas(filtro, pagina, PAGINA_CONTRATACOES));
+  }
+
+  async function* paginar(montarUrl: (pagina: number) => string): AsyncGenerator<PaginaContratacoes> {
     for (let pagina = 1; ; pagina++) {
-      const resp = await getJson<RespostaContratacoes>(urlContratacoes(endpoint, filtro, pagina, PAGINA_CONTRATACOES));
+      const resp = await getJson<RespostaContratacoes>(montarUrl(pagina));
       const registros = resp?.data ?? [];
       if (registros.length === 0) return;
       const totalPaginas = resp?.totalPaginas ?? pagina;
@@ -186,6 +213,11 @@ export function criarCliente(opcoes: OpcoesCliente = {}) {
 
   async function totalRegistros(endpoint: 'publicacao' | 'atualizacao', filtro: FiltroContratacoes): Promise<number> {
     const resp = await getJson<RespostaContratacoes>(urlContratacoes(endpoint, filtro, 1, 10));
+    return resp?.totalRegistros ?? 0;
+  }
+
+  async function totalPropostas(filtro: FiltroPropostas): Promise<number> {
+    const resp = await getJson<RespostaContratacoes>(urlPropostas(filtro, 1, 10));
     return resp?.totalRegistros ?? 0;
   }
 
@@ -210,7 +242,9 @@ export function criarCliente(opcoes: OpcoesCliente = {}) {
   return {
     getJson,
     paginarContratacoes,
+    paginarPropostas,
     totalRegistros,
+    totalPropostas,
     listarItens,
     detalheCompra,
     estatisticas: () => ({ ...contagem }),

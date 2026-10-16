@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { criarCliente, criarLimitador, criarRitmo, ErroPncp, type OpcoesCliente } from './cliente';
+import { criarCliente, criarLimitador, criarRitmo, ErroPncp, urlPropostas, type OpcoesCliente } from './cliente';
 
 function resposta(status: number, corpo?: unknown): Response {
   return new Response(corpo === undefined ? null : JSON.stringify(corpo), { status });
@@ -96,7 +96,44 @@ describe('paginarContratacoes', () => {
   });
 });
 
-describe('listarItens', () => {
+describe('país inteiro (BR)', () => {
+  it('consulta sem uf quando a UF é BR', async () => {
+    const { cliente, urls } = montar([resposta(200, { data: ['a'], totalPaginas: 1, totalRegistros: 1 })]);
+    const paginas = [];
+    for await (const p of cliente.paginarContratacoes('atualizacao', { ...filtro, uf: 'BR' })) paginas.push(p);
+    expect(paginas).toHaveLength(1);
+    expect(urls[0]).toContain('codigoModalidadeContratacao=6');
+    expect(urls[0]).not.toMatch(/[?&]uf=/);
+  });
+});
+
+describe('propostas em aberto (/proposta)', () => {
+  it('monta a URL só com dataFinal, modalidade, uf (fora BR) e paginação', () => {
+    expect(urlPropostas({ uf: 'BR', modalidade: 12, dataFinal: '2027-10-16' }, 1, 50)).toBe(
+      'https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?dataFinal=20271016&codigoModalidadeContratacao=12&pagina=1&tamanhoPagina=50',
+    );
+    expect(urlPropostas({ uf: 'SP', modalidade: 6, dataFinal: '2026-10-16' }, 2, 10)).toBe(
+      'https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?dataFinal=20261016&codigoModalidadeContratacao=6&uf=SP&pagina=2&tamanhoPagina=10',
+    );
+  });
+  it('pagina até a última página', async () => {
+    const { cliente, urls } = montar([
+      resposta(200, { data: ['a', 'b'], totalPaginas: 2, totalRegistros: 3 }),
+      resposta(200, { data: ['c'], totalPaginas: 2, totalRegistros: 3 }),
+    ]);
+    const paginas = [];
+    for await (const p of cliente.paginarPropostas({ uf: 'BR', modalidade: 12, dataFinal: '2027-10-16' })) paginas.push(p.registros);
+    expect(paginas).toEqual([['a', 'b'], ['c']]);
+    expect(urls[1]).toContain('pagina=2');
+  });
+  it('totalPropostas lê o totalRegistros de uma página pequena', async () => {
+    const { cliente, urls } = montar([resposta(200, { data: ['a'], totalPaginas: 42, totalRegistros: 420 })]);
+    expect(await cliente.totalPropostas({ uf: 'SP', modalidade: 6, dataFinal: '2026-10-16' })).toBe(420);
+    expect(urls[0]).toContain('tamanhoPagina=10');
+  });
+});
+
+describe('listarItens',() => {
   it('junta as páginas até vir uma com menos de 50', async () => {
     const cheia = Array.from({ length: 50 }, (_, i) => ({ numeroItem: i + 1 }));
     const { cliente, urls } = montar([resposta(200, cheia), resposta(200, [{ numeroItem: 51 }])]);
