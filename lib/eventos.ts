@@ -15,6 +15,11 @@ export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
 ];
 export const UFS_BRASIL: readonly string[] = REGIOES.flatMap(([, ufs]) => ufs);
 
+/** Estados já marcados no formulário de alerta: só o `?uf=` válido da URL; sem ele, nenhum (o usuário escolhe). */
+export function ufsIniciaisAlerta(uf: string | undefined): string[] {
+  return uf && UFS_BRASIL.includes(uf) ? [uf] : [];
+}
+
 export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5 } as const;
 export const SLUG_EDITAL = /^[0-9A-Z]{12}\d{2}-\d{4}-\d{1,7}$/;
 

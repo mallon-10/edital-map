@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Cabecalho } from '@/components/Cabecalho';
 import { FormAlerta } from '@/components/FormAlerta';
-import { UFS_BRASIL } from '@/lib/eventos';
+import { ufsIniciaisAlerta } from '@/lib/eventos';
 
 export const metadata: Metadata = { title: 'Criar alerta' };
 
@@ -9,7 +9,7 @@ type Props = { searchParams: Promise<{ uf?: string }> };
 
 export default async function PaginaAlertas({ searchParams }: Props) {
   const { uf } = await searchParams;
-  const iniciais = uf && UFS_BRASIL.includes(uf) ? [uf] : ['SC', 'PR', 'RS'];
+  const iniciais = ufsIniciaisAlerta(uf);
   return (
     <>
       <Cabecalho />

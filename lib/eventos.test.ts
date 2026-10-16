@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { UFS_BRASIL, validarEvento, validarPedidoAlerta } from './eventos';
+import { UFS_BRASIL, ufsIniciaisAlerta, validarEvento, validarPedidoAlerta } from './eventos';
 
 const SLUG = '00394452000103-2026-21982';
 
@@ -85,5 +85,19 @@ describe('validarPedidoAlerta', () => {
   });
   it('lista as 27 UFs', () => {
     expect(UFS_BRASIL).toHaveLength(27);
+  });
+});
+
+describe('ufsIniciaisAlerta', () => {
+  it('sem ?uf= nao pre-seleciona nenhum estado', () => {
+    expect(ufsIniciaisAlerta(undefined)).toEqual([]);
+    expect(ufsIniciaisAlerta('')).toEqual([]);
+  });
+  it('uf valida na URL vira a unica pre-selecao', () => {
+    expect(ufsIniciaisAlerta('SP')).toEqual(['SP']);
+  });
+  it('uf fora da lista ou em outro formato e ignorada', () => {
+    expect(ufsIniciaisAlerta('XX')).toEqual([]);
+    expect(ufsIniciaisAlerta('sc')).toEqual([]);
   });
 });
