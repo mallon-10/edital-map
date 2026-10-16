@@ -87,6 +87,21 @@ describe('partirItem', () => {
     expect(r.obs?.startsWith('CABO UTP CAT5')).toBe(true);
   });
 
+  it('"(L1) 6601.117295-Nome, TIPO: …" vira etiqueta de lote, sem o código e com chaves em maiúsculas', () => {
+    expect(
+      partirItem('(L1) 6601.117295-Botijão, TIPO: Criogênico, USO: Armazenamento de amostras biológicas, DIMENSÃO: Diâmetro da boca 70mm'),
+    ).toEqual({
+      nome: 'Botijão',
+      atributos: [
+        { chave: 'tipo', valor: 'Criogênico' },
+        { chave: 'uso', valor: 'Armazenamento de amostras biológicas' },
+        { chave: 'dimensão', valor: 'Diâmetro da boca 70mm' },
+      ],
+      obs: null,
+      etiquetas: ['Lote 1'],
+    });
+  });
+
   it('palavra repetida de verdade fica (só a repetição no começo do nome sai)', () => {
     expect(partirItem('Papel A4 papel reciclado - cor: branca, gramatura: 75 g').nome).toBe('Papel A4 papel reciclado');
   });

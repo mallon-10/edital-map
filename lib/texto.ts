@@ -24,7 +24,9 @@ const CHAVES_COMPOSTAS = [
 const PALAVRA = /[\p{L}\p{N}²³]+/gu;
 const PREFIXO = /^\s*\[[^\]]*\]\s*[-–]?\s*/;
 const CODIGO = /\b(CATMAT|CATSER)\s*:?\s*(\d+)\b/gi;
-const LOTE = /^lote\s*0*(\d+)\s*[-–:]\s*/i;
+const LOTE = /^(?:lote\s*0*(\d+)\s*[-–:]|\(L0*(\d+)\))\s*/i;
+/** Código do catálogo estadual no começo do item ("6601.117295-Botijão"). */
+const CODIGO_INICIAL = /^\d{4}\.\d{3,}\s*[-–]\s*/;
 const LOTE_TEXTO = /^lote\s*0*\d+\s*[-–:]?\s*/i;
 
 /** Junta quebras de linha, colapsa espaços e tira espaço antes de pontuação. */
@@ -120,6 +122,12 @@ function acharChaves(t: string): Array<{ inicio: number; fim: number; chave: str
       chaves.push({ inicio: i - composta.length, fim: i + m[0].length, chave: antes.slice(i - composta.length) });
       continue;
     }
+    // Chave em maiúsculas ("TIPO: ") só vale no começo ou logo depois de vírgula/ponto e vírgula.
+    const maiuscula = /(?:^|[,;]\s*)(\p{Lu}{2,})$/u.exec(antes);
+    if (maiuscula && !SIGLAS.has(maiuscula[1])) {
+      chaves.push({ inicio: i - maiuscula[1].length, fim: i + m[0].length, chave: maiuscula[1].toLocaleLowerCase('pt-BR') });
+      continue;
+    }
     const simples = /(?:^|[\s,;])(\p{Ll}[\p{L}]*)$/u.exec(antes);
     if (simples) {
       // "Luva de segurança: ..." não é atributo: a palavra logo antes (separada por um espaço) é uma partícula.
@@ -167,9 +175,10 @@ export function partirItem(descricao: string): ItemPartido {
   t = semGritos(limparEspacos(t));
   const lote = LOTE.exec(t);
   if (lote) {
-    etiquetas.unshift(`Lote ${Number(lote[1])}`);
+    etiquetas.unshift(`Lote ${Number(lote[1] ?? lote[2])}`);
     t = t.slice(lote[0].length);
   }
+  t = t.replace(CODIGO_INICIAL, '');
   t = capitalizar(semRepeticaoInicial(t.trim()));
 
   const chaves = acharChaves(t);
