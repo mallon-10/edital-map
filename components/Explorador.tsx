@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { registrar } from '@/lib/cliente/registrar';
+import { resumirPontos } from '@/lib/painel';
 import type { Cidade, PontoMapa, ResultadoBusca } from '@/lib/tipos';
 import { Busca, type ValoresBusca } from './Busca';
 import { GavetaCelular } from './GavetaCelular';
@@ -63,6 +64,7 @@ export function Explorador({ inicial, agoraInicial }: { inicial: ResultadoBusca;
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [erroMapa, setErroMapa] = useState<string | null>(null);
   const [pontos, setPontos] = useState<PontoMapa[]>([]);
+  const painel = useMemo(() => resumirPontos(pontos), [pontos]);
   const [gavetaAberta, setGavetaAberta] = useState(false);
   // Numeração dos pedidos: só a resposta do pedido mais recente pode mudar a tela.
   const pedidoLista = useRef(0);
@@ -159,7 +161,7 @@ export function Explorador({ inicial, agoraInicial }: { inicial: ResultadoBusca;
           aria-label="Mapa"
           className="relative min-h-0 flex-1 overflow-hidden bg-sunken md:h-[72vh] md:min-h-[420px] md:flex-none md:rounded-lg"
         >
-          <Mapa pontos={pontos} aoEscolherCidade={escolherCidade} />
+          <Mapa pontos={pontos} porUf={painel.porUf} destaque={null} aoEscolherCidade={escolherCidade} />
           {erroMapa ? (
             <p
               role="alert"

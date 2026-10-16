@@ -1,23 +1,51 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Point } from 'geojson';
-import type { GeoJSONSource, Map as MapaLibre } from 'maplibre-gl';
-import { moeda, numero } from '@/lib/formato';
+import type { ExpressionSpecification, GeoJSONSource, Map as MapaLibre, Marker } from 'maplibre-gl';
+import { UFS_COBERTAS } from '@/lib/filtros';
+import { moedaCurta, numero } from '@/lib/formato';
 import { paraGeoJSON, type PropsPonto } from '@/lib/geo';
+import { coresDosEstados } from '@/lib/painel';
 import type { Cidade, PontoMapa } from '@/lib/tipos';
 import { ALTURA_GAVETA_RECOLHIDA } from './GavetaCelular';
 
-// Começa enquadrando o Sul (cobertura atual); o usuário pode afastar para ver o Brasil.
-const LIMITES_INICIAIS: [[number, number], [number, number]] = [[-58.2, -33.8], [-47.8, -22.4]];
+// Abre mostrando o Brasil inteiro.
+const BRASIL: [[number, number], [number, number]] = [[-74.2, -33.9], [-34.6, 5.4]];
+// Raio pela raiz do valor estimado (R$ 1 mi ≈ 7 px; R$ 100 mi ≈ 12 px; R$ 2,5 bi ≈ 22 px).
+const RAIO: ExpressionSpecification = ['interpolate', ['linear'], ['sqrt', ['get', 'valor']], 0, 5, 1000, 7, 10000, 12, 50000, 22];
+const PINO =
+  '<svg viewBox="0 0 22 28" width="26" height="33" aria-hidden="true"><path d="M11 0C4.9 0 0 4.9 0 11c0 8.3 11 17 11 17s11-8.7 11-17C22 4.9 17.1 0 11 0z" fill="#ff5a1f" stroke="#0c2340" stroke-width="1.5"/><circle cx="11" cy="11" r="3.5" fill="#f4f1e8"/></svg>';
 
-type Props = { pontos: PontoMapa[]; aoEscolherCidade: (c: Cidade) => void };
+type Props = {
+  pontos: PontoMapa[];
+  porUf: Record<string, number>;
+  /** Código IBGE da cidade do edital selecionado: ganha o pino. */
+  destaque: string | null;
+  aoEscolherCidade: (c: Cidade) => void;
+};
 
-export function Mapa({ pontos, aoEscolherCidade }: Props) {
+function conteudo(linhas: string[]): HTMLElement {
+  const div = document.createElement('div');
+  linhas.forEach((texto, i) => {
+    const linha = document.createElement('div');
+    if (i === 0) linha.style.fontWeight = '700';
+    linha.textContent = texto;
+    div.append(linha);
+  });
+  return div;
+}
+
+const editais = (n: number) => `${numero(n)} ${n === 1 ? 'edital aberto' : 'editais abertos'}`;
+
+export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<MapaLibre | null>(null);
-  const carregado = useRef(false);
+  const biblioteca = useRef<typeof import('maplibre-gl') | null>(null);
+  const pino = useRef<Marker | null>(null);
+  const [pronto, setPronto] = useState(false);
   const pontosAtuais = useRef(pontos);
+  const porUfAtual = useRef(porUf);
   const escolher = useRef(aoEscolherCidade);
 
   useEffect(() => {
@@ -26,8 +54,31 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
 
   useEffect(() => {
     pontosAtuais.current = pontos;
-    if (carregado.current) (mapa.current?.getSource('editais') as GeoJSONSource | undefined)?.setData(paraGeoJSON(pontos));
-  }, [pontos]);
+    if (pronto) (mapa.current?.getSource('editais') as GeoJSONSource | undefined)?.setData(paraGeoJSON(pontos));
+  }, [pontos, pronto]);
+
+  useEffect(() => {
+    porUfAtual.current = porUf;
+    if (pronto) mapa.current?.setPaintProperty('estados', 'fill-color', coresDosEstados(porUf, UFS_COBERTAS) as unknown as ExpressionSpecification);
+  }, [porUf, pronto]);
+
+  useEffect(() => {
+    const m = mapa.current;
+    const lib = biblioteca.current;
+    if (!pronto || !m || !lib) return;
+    const ponto = destaque ? pontos.find((p) => p.codigo_ibge === destaque) : undefined;
+    if (!ponto) {
+      pino.current?.remove();
+      pino.current = null;
+      return;
+    }
+    if (!pino.current) {
+      const el = document.createElement('div');
+      el.innerHTML = PINO; // SVG fixo, sem dado de usuário
+      pino.current = new lib.Marker({ element: el, anchor: 'bottom' });
+    }
+    pino.current.setLngLat([ponto.lng, ponto.lat]).addTo(m);
+  }, [pronto, destaque, pontos]);
 
   useEffect(() => {
     let cancelado = false;
@@ -35,23 +86,21 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
       // maplibre-gl 6 é só ESM: sem export default.
       const maplibregl = await import('maplibre-gl');
       if (cancelado || !caixa.current) return;
+      biblioteca.current = maplibregl;
       // O Turbopack reescreve import.meta.url do maplibre-gl e o worker padrão some (URL vazia):
       // aponta o worker para o arquivo do pacote, que o bundler publica como asset estático.
       maplibregl.setWorkerUrl(new URL('../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).href);
-      // No celular a gaveta recolhida cobre a base do mapa (que termina na base da janela): reserva esse espaço no enquadramento inicial.
-      const celular = window.matchMedia('(max-width: 767px)').matches;
+      // No celular a gaveta recolhida cobre a base do mapa: reserva esse espaço no enquadramento inicial.
+      const celular = window.matchMedia('(max-width: 1023px)').matches;
       const m = new maplibregl.Map({
         container: caixa.current,
         style: {
           version: 8,
-          glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
           sources: {},
-          layers: [{ id: 'fundo', type: 'background', paint: { 'background-color': '#ebe6d9' } }],
+          layers: [{ id: 'fundo', type: 'background', paint: { 'background-color': '#ffffff' } }],
         },
-        bounds: LIMITES_INICIAIS,
-        fitBoundsOptions: {
-          padding: celular ? { top: 24, right: 24, left: 24, bottom: ALTURA_GAVETA_RECOLHIDA + 24 } : 24,
-        },
+        bounds: BRASIL,
+        fitBoundsOptions: { padding: celular ? { top: 16, right: 16, left: 16, bottom: ALTURA_GAVETA_RECOLHIDA + 16 } : 16 },
         attributionControl: false,
         // Textos nativos do MapLibre em português do Brasil.
         locale: { 'Map.Title': 'Mapa de editais', 'NavigationControl.ZoomIn': 'Aproximar', 'NavigationControl.ZoomOut': 'Afastar' },
@@ -64,42 +113,29 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
       m.keyboard.disableRotation();
       mapa.current = m;
       m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10 });
+      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
 
       m.on('load', () => {
-        m.addSource('municipios', { type: 'geojson', data: '/geo/municipios.json' });
+        m.addSource('estados', { type: 'geojson', data: '/geo/estados.json' });
         m.addLayer({
-          id: 'municipios', type: 'circle', source: 'municipios',
-          paint: { 'circle-color': '#b9b3a3', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 1.1, 7, 2.2, 10, 3] },
+          id: 'estados', type: 'fill', source: 'estados',
+          paint: { 'fill-color': coresDosEstados(porUfAtual.current, UFS_COBERTAS) as unknown as ExpressionSpecification },
         });
+        m.addLayer({ id: 'estados-contorno', type: 'line', source: 'estados', paint: { 'line-color': '#ffffff', 'line-width': 1 } });
         m.addSource('editais', {
           type: 'geojson', data: paraGeoJSON(pontosAtuais.current),
-          cluster: true, clusterRadius: 48, clusterMaxZoom: 8,
-          clusterProperties: { qtd: ['+', ['get', 'qtd']] },
+          cluster: true, clusterRadius: 40, clusterMaxZoom: 8,
+          clusterProperties: { qtd: ['+', ['get', 'qtd']], valor: ['+', ['get', 'valor']] },
         });
         m.addLayer({
           id: 'grupos', type: 'circle', source: 'editais', filter: ['has', 'point_count'],
-          paint: {
-            'circle-color': '#0c2340', 'circle-stroke-color': '#f4f1e8', 'circle-stroke-width': 2,
-            'circle-radius': ['step', ['get', 'qtd'], 14, 50, 18, 200, 23, 1000, 30],
-          },
-        });
-        m.addLayer({
-          id: 'grupos-numero', type: 'symbol', source: 'editais', filter: ['has', 'point_count'],
-          layout: {
-            'text-field': ['number-format', ['get', 'qtd'], { locale: 'pt-BR' }],
-            'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-allow-overlap': true,
-          },
-          paint: { 'text-color': '#f4f1e8' },
+          paint: { 'circle-color': '#ff5a1f', 'circle-opacity': 0.9, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-radius': RAIO },
         });
         m.addLayer({
           id: 'cidades', type: 'circle', source: 'editais', filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-color': '#ff5a1f', 'circle-opacity': 0.9, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5,
-            'circle-radius': ['interpolate', ['linear'], ['get', 'qtd'], 1, 5, 10, 8, 50, 13, 200, 20],
-          },
+          paint: { 'circle-color': '#ff5a1f', 'circle-opacity': 0.9, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-radius': RAIO },
         });
-        carregado.current = true;
+        setPronto(true);
       });
 
       m.on('click', 'grupos', async (e) => {
@@ -110,42 +146,35 @@ export function Mapa({ pontos, aoEscolherCidade }: Props) {
       });
       m.on('click', 'cidades', (e) => {
         const p = e.features?.[0]?.properties as PropsPonto | undefined;
-        if (p) escolher.current({ ibge: p.ibge, nome: p.nome, uf: p.uf });
+        if (p) escolher.current({ ibge: String(p.ibge), nome: p.nome, uf: p.uf });
       });
-      m.on('mouseenter', 'cidades', (e) => {
-        m.getCanvas().style.cursor = 'pointer';
-        const f = e.features?.[0];
-        if (!f) return;
-        const p = f.properties as PropsPonto;
-        const div = document.createElement('div');
-        const titulo = document.createElement('b');
-        titulo.textContent = `${p.nome}/${p.uf}`;
-        const linha = document.createElement('div');
-        linha.textContent = `${numero(Number(p.qtd))} ${Number(p.qtd) === 1 ? 'edital aberto' : 'editais abertos'}`;
-        div.append(titulo, linha);
-        const valor = moeda(p.valor);
-        if (valor) {
-          const v = document.createElement('div');
-          v.className = 'font-mono';
-          v.textContent = valor;
-          div.append(v);
+      // Uma dica só, para o que estiver por cima: cidade, grupo ou estado.
+      m.on('mousemove', (e) => {
+        const [f] = m.queryRenderedFeatures(e.point, { layers: ['cidades', 'grupos', 'estados'] });
+        if (!f) {
+          popup.remove();
+          m.getCanvas().style.cursor = '';
+          return;
         }
-        popup.setLngLat((f.geometry as Point).coordinates as [number, number]).setDOMContent(div).addTo(m);
+        const p = (f.properties ?? {}) as Record<string, unknown>;
+        const valor = moedaCurta(Number(p.valor ?? 0));
+        let linhas: string[];
+        if (f.layer.id === 'cidades') linhas = [`${p.nome}/${p.uf}`, editais(Number(p.qtd)), ...(valor ? [valor] : [])];
+        else if (f.layer.id === 'grupos') linhas = [editais(Number(p.qtd)), ...(valor ? [valor] : []), 'Aproxime para ver as cidades'];
+        else {
+          const uf = String(p.uf);
+          linhas = (UFS_COBERTAS as readonly string[]).includes(uf) ? [uf, editais(porUfAtual.current[uf] ?? 0)] : [uf, 'Em breve'];
+        }
+        m.getCanvas().style.cursor = f.layer.id === 'estados' ? '' : 'pointer';
+        popup.setLngLat(e.lngLat).setDOMContent(conteudo(linhas)).addTo(m);
       });
-      m.on('mouseleave', 'cidades', () => {
-        m.getCanvas().style.cursor = '';
-        popup.remove();
-      });
-      m.on('mouseenter', 'grupos', () => {
-        m.getCanvas().style.cursor = 'pointer';
-      });
-      m.on('mouseleave', 'grupos', () => {
-        m.getCanvas().style.cursor = '';
-      });
+      m.on('mouseout', () => popup.remove());
     })();
     return () => {
       cancelado = true;
-      carregado.current = false;
+      pino.current?.remove();
+      pino.current = null;
+      setPronto(false);
       mapa.current?.remove();
       mapa.current = null;
     };

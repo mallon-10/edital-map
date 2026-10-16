@@ -16,7 +16,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "gerar:municipios": "tsx scripts/gerar-municipios-geojson.ts",
     "gerar:estados": "node --use-system-ca --import tsx scripts/gerar-estados-geojson.ts",
     "capturas": "node scripts/capturas.mjs"
   },
