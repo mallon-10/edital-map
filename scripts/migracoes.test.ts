@@ -54,6 +54,9 @@ describe('migração 0006 (retenção e agenda)', () => {
     expect(sql).toContain('drop table public.itens;');
     expect(sql).not.toContain('cascade');
   });
+  it('o workflow sincroniza o país inteiro (UFS: BR)', () => {
+    expect(ler('.github/workflows/sync.yml')).toMatch(/UFS: BR\r?\n/);
+  });
   it('sync a cada 3 h no pg_cron (só altera se diferente) e no GitHub Actions', () => {
     expect(sql).toContain("schedule := '17 */3 * * *'");
     expect(sql).toContain("schedule is distinct from '17 */3 * * *'");

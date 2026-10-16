@@ -1,3 +1,4 @@
+import { somarDias } from './datas';
 export const MODALIDADES = [6, 8, 4, 7, 12] as const;
 export const PARALELISMO = 3;
 export const TENTATIVAS = 4;
@@ -68,4 +69,14 @@ export function lerSupabase(env: Record<string, string | undefined> = process.en
     throw new Error('Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (arquivo .env ou Secrets do GitHub).');
   }
   return { url, chave };
+}
+
+/** Quantos dias à frente vai o dataFinal do /proposta na carga e na conferência (a Task 16 confere contra hoje). */
+export const PROPOSTA_DIAS_A_FRENTE = 365;
+
+export function lerPropostaAte(valor: string | undefined, hoje: string): string {
+  if (!valor?.trim()) return somarDias(hoje, PROPOSTA_DIAS_A_FRENTE);
+  const data = valor.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new Error(`--proposta-ate inválido (use aaaa-mm-dd): ${valor}`);
+  return data;
 }

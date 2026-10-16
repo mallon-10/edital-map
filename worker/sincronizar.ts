@@ -12,12 +12,12 @@ import {
   type LinhaContratacao,
   type LinhaItem,
 } from './mapear';
-import type { ClientePncp, FiltroContratacoes } from './pncp/cliente';
+import type { ClientePncp, FiltroContratacoes, PaginaContratacoes } from './pncp/cliente';
 import { validarContratacao, validarItem } from './pncp/esquemas';
 import type { Resumo } from './resumo';
 
 export type Dependencias = {
-  cliente: Pick<ClientePncp, 'paginarContratacoes' | 'listarItens'>;
+  cliente: Pick<ClientePncp, 'paginarContratacoes' | 'paginarPropostas' | 'listarItens'>;
   banco: Banco;
   resumo: Resumo;
   agora: () => Date;
@@ -128,15 +128,19 @@ export async function gravarPagina(recebidas: LinhaContratacao[], deps: Dependen
   if (definitivas.length > 0) await deps.banco.upsertContratacoes(definitivas);
 }
 
-export async function processarJanela(
+export async function processarPaginas(paginas: AsyncIterable<PaginaContratacoes>, deps: Dependencias): Promise<void> {
+  for await (const pagina of paginas) {
+    deps.resumo.contarPagina();
+    await gravarPagina(processarRegistros(pagina.registros, deps.resumo), deps);
+  }
+}
+
+export function processarJanela(
   endpoint: 'publicacao' | 'atualizacao',
   filtro: FiltroContratacoes,
   deps: Dependencias,
 ): Promise<void> {
-  for await (const pagina of deps.cliente.paginarContratacoes(endpoint, filtro)) {
-    deps.resumo.contarPagina();
-    await gravarPagina(processarRegistros(pagina.registros, deps.resumo), deps);
-  }
+  return processarPaginas(deps.cliente.paginarContratacoes(endpoint, filtro), deps);
 }
 
 export function chaveEstado(uf: string, modalidade: number): string {

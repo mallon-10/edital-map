@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lerModalidades, lerPorMinuto, lerSupabase, lerUfs, UF_BRASIL } from './config';
+import { lerModalidades, lerPorMinuto, lerPropostaAte, lerSupabase, lerUfs, UF_BRASIL } from './config';
 
 describe('lerUfs', () => {
   it('país inteiro (BR) quando não há valor ou quando o valor é BR', () => {
@@ -52,5 +52,15 @@ describe('lerSupabase', () => {
       url: 'https://x.supabase.co',
       chave: 'k',
     });
+  });
+});
+
+describe('lerPropostaAte', () => {
+  it('padrão: hoje + 365 dias', () => {
+    expect(lerPropostaAte(undefined, '2026-10-16')).toBe('2027-10-16');
+  });
+  it('aceita aaaa-mm-dd e recusa outro formato', () => {
+    expect(lerPropostaAte(' 2026-10-16 ', '2026-10-16')).toBe('2026-10-16');
+    expect(() => lerPropostaAte('16/10/2026', '2026-10-16')).toThrow('--proposta-ate inválido');
   });
 });

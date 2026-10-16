@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { Banco, EstadoSync } from '../banco';
 import type { ResumoItensBanco } from '../itens';
 import type { ChaveCompra, LinhaContratacao } from '../mapear';
-import type { FiltroContratacoes, PaginaContratacoes } from '../pncp/cliente';
+import type { FiltroContratacoes, FiltroPropostas, PaginaContratacoes } from '../pncp/cliente';
 import { Resumo } from '../resumo';
 import type { Dependencias } from '../sincronizar';
 
@@ -97,20 +97,26 @@ type Endpoint = 'publicacao' | 'atualizacao';
 export function clienteFalso(
   opcoes: {
     paginas?: (endpoint: Endpoint, filtro: FiltroContratacoes) => unknown[][];
+    propostas?: (filtro: FiltroPropostas) => unknown[][];
     itens?: (compra: ChaveCompra) => unknown[];
   } = {},
 ) {
   const chamadas: Array<{ endpoint: Endpoint; filtro: FiltroContratacoes }> = [];
+  const propostasPedidas: FiltroPropostas[] = [];
   const itensPedidos: string[] = [];
+  const emPaginas = (paginas: unknown[][]): PaginaContratacoes[] =>
+    paginas.map((registros, i) => ({ pagina: i + 1, totalPaginas: paginas.length, totalRegistros: paginas.flat().length, registros }));
   return {
     chamadas,
+    propostasPedidas,
     itensPedidos,
     async *paginarContratacoes(endpoint: Endpoint, filtro: FiltroContratacoes): AsyncGenerator<PaginaContratacoes> {
       chamadas.push({ endpoint, filtro });
-      const paginas = opcoes.paginas?.(endpoint, filtro) ?? [];
-      for (let i = 0; i < paginas.length; i++) {
-        yield { pagina: i + 1, totalPaginas: paginas.length, totalRegistros: paginas.flat().length, registros: paginas[i] };
-      }
+      yield* emPaginas(opcoes.paginas?.(endpoint, filtro) ?? []);
+    },
+    async *paginarPropostas(filtro: FiltroPropostas): AsyncGenerator<PaginaContratacoes> {
+      propostasPedidas.push(filtro);
+      yield* emPaginas(opcoes.propostas?.(filtro) ?? []);
     },
     async listarItens(compra: ChaveCompra): Promise<unknown[]> {
       itensPedidos.push(compra.id);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { executarBackfill, janelas } from './carga';
-import { AGORA, BancoFalso, clienteFalso, contratacaoBruta, montarDeps } from './testes/fakes';
+import { AGORA, BancoFalso, clienteFalso, contratacaoBruta, idDe, montarDeps } from './testes/fakes';
 
 describe('janelas', () => {
   it('corta o período em blocos de 7 dias, com o último menor', () => {
@@ -55,5 +55,26 @@ describe('executarBackfill', () => {
     expect(deps.resumo.erros.map((e) => e.chave)).toEqual(['atualizacao:SC:6']);
     expect(banco.estados.has('atualizacao:SC:6')).toBe(false);
     expect(banco.estados.get('atualizacao:SC:8')?.status).toBe('ok');
+  });
+  it('com propostaAte, lê também o /proposta da chave e grava o que vier', async () => {
+    const banco = new BancoFalso();
+    const cliente = clienteFalso({ propostas: () => [[contratacaoBruta({ sequencial: 5 })]] });
+    await executarBackfill(montarDeps(banco, cliente), { dias: 3, ufs: ['BR'], modalidades: [12], propostaAte: '2027-10-14' });
+    expect(cliente.chamadas.map((c) => c.filtro.uf)).toEqual(['BR']);
+    expect(cliente.propostasPedidas).toEqual([{ uf: 'BR', modalidade: 12, dataFinal: '2027-10-14' }]);
+    expect(banco.contratacoes.has(idDe(5))).toBe(true);
+    expect(banco.estados.get('atualizacao:BR:12')?.ultima_data).toBe('2026-10-14');
+  });
+  it('sem propostaAte não chama o /proposta', async () => {
+    const cliente = clienteFalso();
+    await executarBackfill(montarDeps(new BancoFalso(), cliente), { dias: 3, ufs: ['BR'], modalidades: [6] });
+    expect(cliente.propostasPedidas).toEqual([]);
+  });
+  it('não sobrescreve o estado que o sync já gravou', async () => {
+    const banco = new BancoFalso();
+    const doSync = { chave: 'atualizacao:BR:6', ultima_data: '2026-10-14', ultima_execucao: '2026-10-14T14:00:00.000Z', status: 'ok', erro: null };
+    await banco.gravarEstado(doSync);
+    await executarBackfill(montarDeps(banco, clienteFalso()), { dias: 3, ufs: ['BR'], modalidades: [6] });
+    expect(banco.estados.get('atualizacao:BR:6')).toEqual(doSync);
   });
 });
