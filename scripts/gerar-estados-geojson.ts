@@ -1,4 +1,5 @@
 // Gera public/geo/estados.json (contorno das 27 UFs) a partir da malha do IBGE (qualidade mínima).
+// O IBGE não envia o certificado intermediário (Sectigo); --use-system-ca usa o repositório de certificados do SO. A verificação continua ligada.
 import { mkdir, writeFile } from 'node:fs/promises';
 import { UF_POR_CODIGO } from '../worker/municipios';
 

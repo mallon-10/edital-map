@@ -33,7 +33,11 @@ export function BotaoEmBreve({ recurso, className, rotulo, children }: Props) {
           Os planos chegam em breve. Enquanto isso, crie um alerta grátis para ser avisado.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
-          <Link href="/alertas" className="inline-flex h-10 items-center rounded-sm bg-pin px-4 text-sm font-semibold text-on-pin">
+          <Link
+            href="/alertas"
+            onClick={() => dialogo.current?.close()}
+            className="inline-flex h-10 items-center rounded-sm bg-pin px-4 text-sm font-semibold text-on-pin"
+          >
             Criar alerta
           </Link>
           <button

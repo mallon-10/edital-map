@@ -143,6 +143,7 @@ export function FormAlerta({ ufsIniciais }: { ufsIniciais: string[] }) {
           <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} className="mt-0.5 size-5 accent-mata" />
           Pode usar meu e-mail só para avisar quando os alertas estiverem prontos.
         </label>
+        <Link href="/sobre" className="text-[13px] font-semibold text-pin-strong hover:underline">Como usamos seu e-mail</Link>
         <div aria-hidden="true" className="hidden">
           <label htmlFor="site">Não preencha</label>
           <input id="site" tabIndex={-1} autoComplete="off" value={site} onChange={(e) => setSite(e.target.value)} />
