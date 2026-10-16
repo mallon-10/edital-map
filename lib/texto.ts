@@ -119,7 +119,7 @@ function acharChaves(t: string): Array<{ inicio: number; fim: number; chave: str
     const baixo = antes.toLocaleLowerCase('pt-BR');
     const composta = CHAVES_COMPOSTAS.find((c) => baixo.endsWith(c) && /(^|[\s,;])$/.test(baixo.slice(0, baixo.length - c.length)));
     if (composta) {
-      chaves.push({ inicio: i - composta.length, fim: i + m[0].length, chave: antes.slice(i - composta.length) });
+      chaves.push({ inicio: i - composta.length, fim: i + m[0].length, chave: antes.slice(i - composta.length).toLocaleLowerCase('pt-BR') });
       continue;
     }
     // Chave em maiúsculas ("TIPO: ") só vale no começo ou logo depois de vírgula/ponto e vírgula.
