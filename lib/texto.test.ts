@@ -162,3 +162,99 @@ describe('lotesDaInfo e paragrafos', () => {
     ]);
   });
 });
+
+describe('correções da revisão (rodada 1)', () => {
+  describe('I1: primeira linha só vira nome quando é um título de verdade', () => {
+    it('frase quebrada em duas linhas depois de vírgula continua inteira', () => {
+      expect(partirItem('Caneta esferográfica azul, corpo transparente,\nponta fina 1,0 mm, caixa com 50 unidades')).toEqual({
+        nome: 'Caneta esferográfica azul, corpo transparente, ponta fina 1,0 mm, caixa com 50 unidades',
+        atributos: [],
+        obs: null,
+        etiquetas: [],
+      });
+    });
+    it('segunda linha em minúscula é continuação da frase', () => {
+      const r = partirItem('Uniforme escolar para os alunos da rede\nmunicipal de ensino');
+      expect(r.nome).toBe('Uniforme escolar para os alunos da rede municipal de ensino');
+      expect(r.obs).toBeNull();
+    });
+  });
+
+  describe('I2: o último valor só é cortado onde começa uma palavra capitalizada', () => {
+    it('unidade com maiúscula no fim do valor fica no valor', () => {
+      const r = partirItem('Lâmpada LED potência: 9 W, tensão: 220 V');
+      expect(r.atributos).toEqual([
+        { chave: 'potência', valor: '9 W' },
+        { chave: 'tensão', valor: '220 V' },
+      ]);
+      expect(r.obs).toBeNull();
+    });
+    it('sigla com várias maiúsculas fica no valor', () => {
+      const r = partirItem('Placa cerâmica material: porcelanato, norma: ABNT NBR 5');
+      expect(r.atributos[r.atributos.length - 1]).toEqual({ chave: 'norma', valor: 'ABNT NBR 5' });
+      expect(r.obs).toBeNull();
+    });
+  });
+
+  describe('I3: o rótulo "LOTE nn" só sai quando é o mesmo número de (Ln)', () => {
+    it('rótulo diferente de (Ln) fica no texto', () => {
+      const r = lotesDaInfo('(L1):LOTE 05 Botina de segurança,(L2):LOTE 06 Luva nitrílica');
+      expect(r).toEqual([
+        { numero: 1, texto: 'LOTE 05 Botina de segurança' },
+        { numero: 2, texto: 'LOTE 06 Luva nitrílica' },
+      ]);
+      expect(r?.[0].texto).toContain('05');
+      expect(r?.[1].texto).toContain('06');
+    });
+    it('"Lote 20 unidades" não é rótulo; "Lote 2" no (L2) é', () => {
+      const r = lotesDaInfo('(L1):Lote 20 unidades de camisa,(L2):Lote 2 calças');
+      expect(r).not.toBeNull();
+      expect(r?.[0].texto).toContain('20 unidades de camisa');
+      expect(r?.[1].texto).toBe('Calças');
+    });
+  });
+
+  describe('chave simples logo depois de partícula não conta', () => {
+    it('"Luva de segurança: ..." não vira nome "Luva de"', () => {
+      const r = partirItem('Luva de segurança: tamanho M, cor: azul');
+      expect(r.nome).not.toBe('Luva de');
+      expect(r.atributos.map((a) => a.chave)).not.toContain('segurança');
+    });
+    it('"prazo de entrega" é chave composta', () => {
+      const r = partirItem('Bota material: couro, cor: preta, prazo de entrega: 10 dias');
+      expect(r.atributos).toContainEqual({ chave: 'prazo de entrega', valor: '10 dias' });
+      expect(r.atributos).toContainEqual({ chave: 'cor', valor: 'preta' });
+    });
+  });
+
+  describe('siglas do nicho (EPI e uniformes)', () => {
+    it('CA e tamanhos de roupa ficam em maiúsculas', () => {
+      expect(semGritos('BOTINA DE SEGURANÇA CA 12345 TAMANHO GG')).toBe('Botina de segurança CA 12345 tamanho GG');
+    });
+  });
+
+  describe('robustez', () => {
+    it('palavra do protótipo de objeto (constructor) não vira "function"', () => {
+      // Pedido original: texto todo em maiúsculas (não chegava a falhar, pois as chaves de UNIDADES são maiúsculas).
+      expect(semGritos('ITEM CONSTRUCTOR E VALOR PARA TODOS OS LOTES')).not.toContain('function');
+      // Caso que realmente reproduz: palavra em minúsculo dentro de texto majoritariamente em maiúsculas.
+      const r = semGritos('ITEM PARA TODOS OS LOTES DO PROJETO ESCOLAR constructor');
+      expect(r).not.toContain('function');
+      expect(r).toBe('Item para todos os lotes do projeto escolar constructor');
+    });
+    it('código entre parênteses não deixa "()" e etiqueta repetida some', () => {
+      expect(partirItem('Caneta azul (CATMAT 123) CATMAT 123')).toEqual({
+        nome: 'Caneta azul',
+        atributos: [],
+        obs: null,
+        etiquetas: ['CATMAT 123'],
+      });
+    });
+    it('item que é só código ou só rótulo de lote não fica com nome vazio', () => {
+      const a = partirItem('CATMAT 123');
+      const b = partirItem('LOTE 08 - ');
+      expect(a.nome).not.toBe('');
+      expect(b.nome).not.toBe('');
+    });
+  });
+});

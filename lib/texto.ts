@@ -6,6 +6,8 @@ const SIGLAS = new Set([
   'EPI', 'LED', 'PVC', 'GLP', 'ISO', 'INMETRO', 'ANVISA', 'CATMAT', 'CATSER', 'PCD', 'DML', 'PNCP', 'SRP', 'TI',
   'USB', 'HDMI', 'LCD', 'GPS', 'SAMU', 'UTI', 'APAE', 'CMEI', 'EMEF', 'EMEI', 'ESF', 'IPTU', 'ICMS', 'ISS', 'INSS',
   'FGTS', 'CNH', 'ONG', 'MDF', 'SSD', 'RAM', 'CPU', 'TV', 'DVD', 'NR', 'ABS', 'HD',
+  // EPI e uniformes: Certificado de Aprovação e tamanhos de roupa
+  'CA', 'PP', 'P', 'M', 'G', 'GG', 'XG', 'XGG', 'EG', 'EGG', 'XL', 'XXL',
   // UFs, sem SE e PE (em maiúsculas costumam ser "se" e "pé")
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PI', 'RJ', 'RN',
   'RS', 'RO', 'RR', 'SC', 'SP', 'TO',
@@ -17,7 +19,7 @@ const UNIDADES: Record<string, string> = {
 const PARTICULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'nas', 'nos', 'a', 'o', 'para']);
 const CHAVES_COMPOSTAS = [
   'características adicionais', 'informações adicionais', 'especificações técnicas', 'especificações mínimas',
-  'unidade de fornecimento', 'prazo de validade', 'forma de apresentação',
+  'unidade de fornecimento', 'prazo de validade', 'forma de apresentação', 'prazo de entrega', 'local de entrega',
 ];
 const PALAVRA = /[\p{L}\p{N}²³]+/gu;
 const PREFIXO = /^\s*\[[^\]]*\]\s*[-–]?\s*/;
@@ -56,7 +58,7 @@ export function semGritos(t: string): string {
   if (!emMaiusculas(t)) return t;
   const baixo = t.replace(PALAVRA, (p) => {
     if (SIGLAS.has(p) || ROMANOS.test(p)) return p;
-    if (UNIDADES[p]) return UNIDADES[p];
+    if (Object.hasOwn(UNIDADES, p)) return UNIDADES[p];
     if (/\d/.test(p)) return p;
     return p.toLocaleLowerCase('pt-BR');
   });
@@ -119,19 +121,32 @@ function acharChaves(t: string): Array<{ inicio: number; fim: number; chave: str
       continue;
     }
     const simples = /(?:^|[\s,;])(\p{Ll}[\p{L}]*)$/u.exec(antes);
-    if (simples) chaves.push({ inicio: i - simples[1].length, fim: i + m[0].length, chave: simples[1] });
+    if (simples) {
+      // "Luva de segurança: ..." não é atributo: a palavra logo antes (separada por um espaço) é uma partícula.
+      const anterior = /(\p{L}+) $/u.exec(antes.slice(0, antes.length - simples[1].length));
+      if (anterior && PARTICULAS.has(anterior[1].toLocaleLowerCase('pt-BR'))) continue;
+      chaves.push({ inicio: i - simples[1].length, fim: i + m[0].length, chave: simples[1] });
+    }
   }
   return chaves;
 }
 
+/** Tira "CATMAT 123" / "CATSER 123" (guardando em `codigos`, se vier) e os parênteses que ficam vazios. */
+function semCodigos(t: string, codigos?: string[]): string {
+  return t
+    .replace(CODIGO, (_, tipo: string, n: string) => {
+      codigos?.push(`${tipo.toUpperCase()} ${n}`);
+      return '';
+    })
+    .replace(/\(\s*\)/g, '');
+}
+
 /** Organiza a descrição de um item: nome em destaque, atributos "chave: valor", observação e etiquetas (lote, código do catálogo). */
 export function partirItem(descricao: string): ItemPartido {
-  const etiquetas: string[] = [];
+  const codigos: string[] = [];
   const linhas = descricao.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  let t = limparEspacos(descricao).replace(CODIGO, (_, tipo: string, n: string) => {
-    etiquetas.push(`${tipo.toUpperCase()} ${n}`);
-    return '';
-  });
+  let t = semCodigos(limparEspacos(descricao), codigos);
+  const etiquetas = [...new Set(codigos)];
   t = semGritos(limparEspacos(t));
   const lote = LOTE.exec(t);
   if (lote) {
@@ -150,7 +165,7 @@ export function partirItem(descricao: string): ItemPartido {
         let valor = t.slice(c.fim, k + 1 < chaves.length ? chaves[k + 1].inicio : undefined).trim().replace(/[\s,;]+$/, '');
         if (k === chaves.length - 1) {
           // No fim costuma vir o texto livre do órgão, começando com maiúscula.
-          const corte = /\s(?=\p{Lu})/u.exec(valor);
+          const corte = /\s(?=\p{Lu}\p{Ll})/u.exec(valor);
           if (corte && corte.index > 0) {
             obs = valor.slice(corte.index + 1).trim();
             valor = valor.slice(0, corte.index).trim();
@@ -163,8 +178,9 @@ export function partirItem(descricao: string): ItemPartido {
   }
 
   // O órgão costuma pôr o título do item na primeira linha.
-  if (linhas.length > 1 && !lote) {
-    const primeira = capitalizar(semGritos(limparEspacos(linhas[0].replace(CODIGO, ''))));
+  // Só vale se a linha não termina em pontuação de continuação e a seguinte começa uma frase (maiúscula ou número).
+  if (linhas.length > 1 && !lote && !/[,;:\-–]$/.test(linhas[0]) && /^[\p{Lu}\p{N}]/u.test(linhas[1])) {
+    const primeira = capitalizar(semGritos(limparEspacos(semCodigos(linhas[0]))));
     if (primeira.length >= 3 && primeira.length <= 80 && t.startsWith(primeira)) {
       const resto = capitalizar(t.slice(primeira.length).trim());
       return { nome: primeira, atributos: [], obs: resto || null, etiquetas };
@@ -175,7 +191,11 @@ export function partirItem(descricao: string): ItemPartido {
   if (ponto >= 10 && ponto <= 100) {
     return { nome: t.slice(0, ponto), atributos: [], obs: capitalizar(t.slice(ponto + 2).trim()) || null, etiquetas };
   }
-  if (t.length <= 100) return { nome: t.replace(/\.$/, ''), atributos: [], obs: null, etiquetas };
+  if (t.length <= 100) {
+    // Item que é só código ou só "LOTE 08 - ": o nome vazio não serve, usa a descrição original limpa.
+    const nome = t.replace(/\.$/, '') || capitalizar(semGritos(limparEspacos(descricao)));
+    return { nome, atributos: [], obs: null, etiquetas };
+  }
   const espaco = t.lastIndexOf(' ', 90);
   return { nome: `${t.slice(0, espaco > 20 ? espaco : 90).replace(/[\s,;:.-]+$/, '')}…`, atributos: [], obs: t, etiquetas };
 }
@@ -188,7 +208,9 @@ export function lotesDaInfo(info: string): Lote[] | null {
   if (!/^\(L\d+\):/.test(t)) return null;
   const lotes: Lote[] = [];
   for (const m of t.matchAll(/\(L(\d+)\):\s*([\s\S]*?)(?=,?\s*\(L\d+\):|$)/g)) {
-    const texto = textoLimpo(m[2].replace(LOTE_TEXTO, '').replace(/,\s*$/, ''));
+    // O rótulo "LOTE nn" só sai quando é o mesmo número de (Ln); "Lote 20 unidades..." ou outro número fica no texto.
+    const rotulo = Number(/^lote\s*0*(\d+)\b/i.exec(m[2])?.[1]) === Number(m[1]);
+    const texto = textoLimpo((rotulo ? m[2].replace(LOTE_TEXTO, '') : m[2]).replace(/,\s*$/, ''));
     if (texto) lotes.push({ numero: Number(m[1]), texto });
   }
   return lotes.length >= 2 ? lotes : null;
