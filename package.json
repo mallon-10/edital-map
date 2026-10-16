@@ -17,6 +17,7 @@
     "build": "next build",
     "start": "next start",
     "gerar:municipios": "tsx scripts/gerar-municipios-geojson.ts",
+    "gerar:estados": "tsx scripts/gerar-estados-geojson.ts",
     "capturas": "node scripts/capturas.mjs"
   },
   "dependencies": {
