@@ -23,16 +23,20 @@ export function moeda(v: number | string | null | undefined): string | null {
 const fmtInteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
 const fmtUmaCasa = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const fmtDuasCasas = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const NBSP = '\u00a0';
 
-/** Valor abreviado para cards e painéis: "R$ 860 mil", "R$ 1,25 mi", "R$ 2,1 bi" (espaços inseparáveis). */
+/** Valor abreviado para cards e painéis: "R$ 860 mil", "R$ 1,25 mi", "R$ 2,1 bi", com espaço inseparável após R$ e antes da unidade. Faixa escolhida pelo valor já arredondado. */
 export function moedaCurta(v: number | string | null | undefined): string | null {
   if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  if (n >= 1e9) return `R$ ${fmtUmaCasa.format(n / 1e9)} bi`;
-  if (n >= 1e6) return `R$ ${fmtDuasCasas.format(n / 1e6)} mi`;
-  if (n >= 1e3) return `R$ ${fmtInteiro.format(Math.floor(n / 1e3))} mil`;
-  return `R$ ${fmtInteiro.format(Math.round(n))}`;
+  if (!Number.isFinite(n) || n < 0.5) return null;
+  const mi = Math.round(n / 1e4) / 100;
+  if (n >= 1e9 || mi >= 1000) return `R$${NBSP}${fmtUmaCasa.format(n / 1e9)}${NBSP}bi`;
+  if (n >= 1e6) return `R$${NBSP}${fmtDuasCasas.format(mi)}${NBSP}mi`;
+  if (n >= 1e3) return `R$${NBSP}${fmtInteiro.format(Math.floor(n / 1e3))}${NBSP}mil`;
+  const reais = Math.round(n);
+  if (reais >= 1000) return `R$${NBSP}1${NBSP}mil`;
+  return `R$${NBSP}${fmtInteiro.format(reais)}`;
 }
 
 export function numero(n: number): string {

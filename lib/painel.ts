@@ -14,7 +14,13 @@ export function resumirPontos(pontos: PontoMapa[], top = 5): Painel {
     total += p.qtd;
   }
   const topMunicipios = [...pontos]
-    .sort((a, b) => b.qtd - a.qtd || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .sort(
+      (a, b) =>
+        b.qtd - a.qtd ||
+        a.nome.localeCompare(b.nome, 'pt-BR') ||
+        a.uf.localeCompare(b.uf, 'pt-BR') ||
+        a.codigo_ibge.localeCompare(b.codigo_ibge, 'pt-BR'),
+    )
     .slice(0, top)
     .map((p) => ({ nome: p.nome, uf: p.uf, ibge: p.codigo_ibge, qtd: p.qtd }));
   return { porUf, topMunicipios, valorTotal, ufs: Object.keys(porUf).length, total };

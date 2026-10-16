@@ -82,14 +82,23 @@ describe('haQuanto e link oficial', () => {
 });
 
 describe('moedaCurta e diaMes', () => {
-  it('abrevia', () => {
-    expect(moedaCurta(850)).toBe('R$ 850');
-    expect(moedaCurta(860_000)).toBe('R$ 860 mil');
-    expect(moedaCurta(999_600)).toBe('R$ 999 mil');
-    expect(moedaCurta(1_250_000)).toBe('R$ 1,25 mi');
-    expect(moedaCurta(1_284_000)).toBe('R$ 1,28 mi');
-    expect(moedaCurta(2_105_000_000)).toBe('R$ 2,1 bi');
-    expect(moedaCurta('50000')).toBe('R$ 50 mil');
+  it('abrevia com espaço inseparável (U+00A0) após R$ e antes da unidade', () => {
+    expect(moedaCurta(850)).toBe('R$\u00a0850');
+    expect(moedaCurta(860_000)).toBe('R$\u00a0860\u00a0mil');
+    expect(moedaCurta(860_000)).not.toMatch(/\x20/);
+    expect(moedaCurta(999_600)).toBe('R$\u00a0999\u00a0mil');
+    expect(moedaCurta(1_250_000)).toBe('R$\u00a01,25\u00a0mi');
+    expect(moedaCurta(1_284_000)).toBe('R$\u00a01,28\u00a0mi');
+    expect(moedaCurta(2_105_000_000)).toBe('R$\u00a02,1\u00a0bi');
+    expect(moedaCurta('50000')).toBe('R$\u00a050\u00a0mil');
+  });
+  it('arredondamento não deixa 1.000 na unidade anterior', () => {
+    expect(moedaCurta(999_999_999)).toBe('R$\u00a01,0\u00a0bi');
+    expect(moedaCurta(999.6)).toBe('R$\u00a01\u00a0mil');
+    expect(moedaCurta(1_000_000)).toBe('R$\u00a01,00\u00a0mi');
+  });
+  it('valor que arredonda para R$ 0 vira null', () => {
+    expect(moedaCurta(0.4)).toBeNull();
   });
   it('zero e vazio viram null', () => {
     expect(moedaCurta(0)).toBeNull();

@@ -22,6 +22,16 @@ describe('resumirPontos', () => {
       { nome: 'Florianópolis', uf: 'SC', ibge: '4205407', qtd: 120 },
     ]);
   });
+  it('empate: qtd, depois nome, UF e código IBGE, independente da ordem de entrada', () => {
+    const empate = [
+      P('4216602', 'Bom Jesus', 'SC', 10, 1e6),
+      P('2907301', 'Bom Jesus', 'RS', 10, 1e6),
+      P('4113205', 'Bom Jesus', 'PR', 10, 1e6),
+    ];
+    const ordem = ['PR', 'RS', 'SC'];
+    expect(resumirPontos(empate).topMunicipios.map((m) => m.uf)).toEqual(ordem);
+    expect(resumirPontos([...empate].reverse()).topMunicipios.map((m) => m.uf)).toEqual(ordem);
+  });
   it('sem pontos', () => {
     expect(resumirPontos([])).toEqual({ porUf: {}, topMunicipios: [], valorTotal: 0, ufs: 0, total: 0 });
   });
