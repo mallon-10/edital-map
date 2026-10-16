@@ -14,6 +14,7 @@
     "worker:conferir": "tsx worker/conferir.ts",
     "worker:reler-itens": "tsx worker/reler-itens.ts",
     "db:aplicar": "tsx scripts/aplicar-migracao.ts",
+    "db:medir": "tsx scripts/medir-banco.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
