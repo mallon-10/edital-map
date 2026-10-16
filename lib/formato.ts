@@ -20,6 +20,21 @@ export function moeda(v: number | string | null | undefined): string | null {
   return Number.isFinite(n) && n > 0 ? fmtMoeda.format(n) : null;
 }
 
+const fmtInteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+const fmtUmaCasa = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmtDuasCasas = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Valor abreviado para cards e painéis: "R$ 860 mil", "R$ 1,25 mi", "R$ 2,1 bi" (espaços inseparáveis). */
+export function moedaCurta(v: number | string | null | undefined): string | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n >= 1e9) return `R$ ${fmtUmaCasa.format(n / 1e9)} bi`;
+  if (n >= 1e6) return `R$ ${fmtDuasCasas.format(n / 1e6)} mi`;
+  if (n >= 1e3) return `R$ ${fmtInteiro.format(Math.floor(n / 1e3))} mil`;
+  return `R$ ${fmtInteiro.format(Math.round(n))}`;
+}
+
 export function numero(n: number): string {
   return fmtNumero.format(n);
 }
@@ -44,6 +59,12 @@ export function dataHora(iso: string): string {
   return `${data(iso)} · ${hora(iso)}`;
 }
 
+/** "25.09" (dia e mês de Brasília). */
+export function diaMes(iso: string): string {
+  const p = partes(new Date(iso));
+  return `${p.dia}.${p.mes}`;
+}
+
 /** Diferença em dias de calendário de Brasília (hoje = 0). */
 export function diasAte(iso: string, agora: Date): number {
   const a = partes(agora);
@@ -62,6 +83,19 @@ export function prazo(iso: string | null, agora: Date): Prazo {
   if (d === 1) return { situacao: 'Prazo próximo', tom: 'urgente', texto: `Encerra amanhã às ${hora(iso)}` };
   if (d <= 7) return { situacao: 'Prazo próximo', tom: 'proximo', texto: `Encerra em ${d} dias` };
   return { situacao: 'Aberto', tom: 'longe', texto: d > 365 ? 'mais de 1 ano' : `${d} dias` };
+}
+
+export type TomEtiqueta = 'urgente' | 'proximo' | 'novo' | 'aberto';
+export type Etiqueta = { texto: string; tom: TomEtiqueta };
+
+/** Etiqueta do card compacto: prazo curto primeiro; depois "Novo" (publicado nos últimos 3 dias de calendário); senão "Aberto". */
+export function etiqueta(e: { encerramento_em: string; publicada_em: string | null }, agora: Date): Etiqueta {
+  const d = diasAte(e.encerramento_em, agora);
+  if (d <= 0) return { texto: 'Encerra hoje', tom: 'urgente' };
+  if (d === 1) return { texto: 'Encerra amanhã', tom: 'urgente' };
+  if (d <= 7) return { texto: `Encerra em ${d} dias`, tom: 'proximo' };
+  if (e.publicada_em && diasAte(e.publicada_em, agora) >= -2) return { texto: 'Novo', tom: 'novo' };
+  return { texto: 'Aberto', tom: 'aberto' };
 }
 
 export function haQuanto(iso: string, agora: Date): string {

@@ -67,3 +67,16 @@ export type ItemEdital = {
   valor_total_estimado: number | null;
   sigiloso: boolean;
 };
+
+export type ResumoItens = {
+  total: number;
+  materiais: number;
+  servicos: number;
+  /** Itens que têm a informação de benefício (preenchida pela releitura do worker). */
+  comBeneficio: number;
+  /** Participação exclusiva para ME/EPP (tipoBeneficio 1). */
+  exclusivos: number;
+  /** Cota reservada para ME/EPP (tipoBeneficio 3). */
+  cota: number;
+  criterios: string[];
+};

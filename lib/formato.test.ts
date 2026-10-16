@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { data, dataHora, diasAte, haQuanto, hora, linkOficial, moeda, numero, prazo, quantidade } from './formato';
+import { data, dataHora, diasAte, diaMes, etiqueta, haQuanto, hora, linkOficial, moeda, moedaCurta, numero, prazo, quantidade } from './formato';
 
 // 15/10/2026 12h em Brasília
 const AGORA = new Date('2026-10-15T15:00:00Z');
@@ -78,5 +78,41 @@ describe('haQuanto e link oficial', () => {
     expect(linkOficial({ ...base, link_origem: 'javascript:alert(1)' })).toBe(pncp);
     expect(linkOficial({ ...base, link_origem: 'www.x.gov.br/e' })).toBe(pncp);
     expect(linkOficial({ ...base, link_origem: 'HTTP://X.GOV.BR/E' })).toBe('HTTP://X.GOV.BR/E');
+  });
+});
+
+describe('moedaCurta e diaMes', () => {
+  it('abrevia', () => {
+    expect(moedaCurta(850)).toBe('R$ 850');
+    expect(moedaCurta(860_000)).toBe('R$ 860 mil');
+    expect(moedaCurta(999_600)).toBe('R$ 999 mil');
+    expect(moedaCurta(1_250_000)).toBe('R$ 1,25 mi');
+    expect(moedaCurta(1_284_000)).toBe('R$ 1,28 mi');
+    expect(moedaCurta(2_105_000_000)).toBe('R$ 2,1 bi');
+    expect(moedaCurta('50000')).toBe('R$ 50 mil');
+  });
+  it('zero e vazio viram null', () => {
+    expect(moedaCurta(0)).toBeNull();
+    expect(moedaCurta(null)).toBeNull();
+  });
+  it('dia e mês no padrão da marca', () => {
+    expect(diaMes('2026-09-25T13:00:00Z')).toBe('25.09');
+  });
+});
+
+describe('etiqueta', () => {
+  const longe = '2026-11-14T13:00:00Z';
+  it('prazo manda primeiro', () => {
+    expect(etiqueta({ encerramento_em: '2026-10-15T20:00:00Z', publicada_em: null }, AGORA)).toEqual({ texto: 'Encerra hoje', tom: 'urgente' });
+    expect(etiqueta({ encerramento_em: '2026-10-16T12:30:00Z', publicada_em: null }, AGORA)).toEqual({ texto: 'Encerra amanhã', tom: 'urgente' });
+    expect(etiqueta({ encerramento_em: '2026-10-20T13:00:00Z', publicada_em: '2026-10-15T12:00:00Z' }, AGORA)).toEqual({
+      texto: 'Encerra em 5 dias',
+      tom: 'proximo',
+    });
+  });
+  it('novo: publicado nos últimos 3 dias de calendário', () => {
+    expect(etiqueta({ encerramento_em: longe, publicada_em: '2026-10-13T12:00:00Z' }, AGORA)).toEqual({ texto: 'Novo', tom: 'novo' });
+    expect(etiqueta({ encerramento_em: longe, publicada_em: '2026-10-12T12:00:00Z' }, AGORA)).toEqual({ texto: 'Aberto', tom: 'aberto' });
+    expect(etiqueta({ encerramento_em: longe, publicada_em: null }, AGORA)).toEqual({ texto: 'Aberto', tom: 'aberto' });
   });
 });
