@@ -29,16 +29,16 @@ async function resumo() {
     if (error) throw new Error(error.message);
     return count ?? 0;
   };
-  const [compras, abertas, itens] = await Promise.all([
+  const [compras, abertas, comItens] = await Promise.all([
     contar('contratacoes'),
     contar('contratacoes', (q) => q.gt('encerramento_em', agora)),
-    contar('itens'),
+    contar('contratacoes', (q) => q.not('itens_resumo', 'is', null)),
   ]);
   const { data: estados } = await sb
     .from('sync_estado')
     .select('chave, status, ultima_execucao')
     .order('ultima_execucao', { ascending: false });
-  return { compras, abertas, itens, estados: estados ?? [] };
+  return { compras, abertas, itens: comItens, estados: estados ?? [] };
 }
 
 async function rpc(nome: string, args: Record<string, unknown>) {

@@ -43,3 +43,27 @@ describe('migração 0005 (palavras dos itens)', () => {
     expect(sql).toContain("case when jsonb_typeof(x.r -> 'criterios') = 'array'");
   });
 });
+
+describe('migração 0006 (retenção e agenda)', () => {
+  const sql = ler('supabase/migrations/0006_retencao.sql');
+  it('apaga todo dia as encerradas há mais de 7 dias e as sem prazo', () => {
+    expect(sql).toContain("where encerramento_em is null or encerramento_em < now() - interval '7 days'");
+    expect(sql).toContain("cron.schedule('retencao-contratacoes', '45 4 * * *', $$select public.aplicar_retencao()$$)");
+  });
+  it('remove a tabela itens sem cascade (algo inesperado dependendo dela faz a migração falhar)', () => {
+    expect(sql).toContain('drop table public.itens;');
+    expect(sql).not.toContain('cascade');
+  });
+  it('sync a cada 3 h no pg_cron (só altera se diferente) e no GitHub Actions', () => {
+    expect(sql).toContain("schedule := '17 */3 * * *'");
+    expect(sql).toContain("schedule is distinct from '17 */3 * * *'");
+    expect(ler('.github/workflows/sync.yml')).toContain("- cron: '17 */3 * * *'");
+  });
+  it('só o servidor executa aplicar_retencao', () => {
+    expect(sql).toContain('revoke execute on function public.aplicar_retencao() from public, anon, authenticated;');
+    expect(sql).toContain('grant execute on function public.aplicar_retencao() to service_role;');
+  });
+  it('o site diz que atualiza a cada 3 horas', () => {
+    expect(ler('app/sobre/page.tsx')).toContain('a cada 3 horas');
+  });
+});

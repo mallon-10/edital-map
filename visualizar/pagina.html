@@ -253,7 +253,7 @@ async function carregarEditais() {
 async function resumir() {
   const r = await json('/api/resumo');
   const n = $('numeros'); n.replaceChildren();
-  for (const [v, t] of [[r.abertas, 'editais abertos'], [r.compras, 'compras no banco'], [r.itens, 'itens']]) {
+  for (const [v, t] of [[r.abertas, 'editais abertos'], [r.compras, 'compras no banco'], [r.itens, 'com itens lidos']]) {
     const d = el('div', { class: 'numero' }); d.append(el('b', {}, int.format(v)), el('span', {}, t)); n.append(d);
   }
   const ult = r.estados[0];
