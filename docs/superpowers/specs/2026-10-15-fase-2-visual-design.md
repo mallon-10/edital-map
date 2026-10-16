@@ -161,10 +161,10 @@ Contador de buscas, Salvos, estrela de salvar, login, planos de verdade, Brasil 
 
 ## 10. Critérios de aceite
 
-- [ ] Página inicial no desenho do mockup em 1440 px e utilizável em 390 px sem rolagem lateral.
-- [ ] Filtros de UF, município, valor, modalidade e 7 dias funcionando juntos na lista e no mapa.
-- [ ] Mapa abre no Brasil, estados cobertos coloridos pela busca, círculos por valor, pino no selecionado.
-- [ ] Página do edital com principais informações, itens organizados e textos limpos nos exemplos da seção 8.
-- [ ] ME/EPP e critério aparecendo nos editais abertos depois da releitura.
-- [ ] Cliques em Planos, Assinar Pro e chip Pro registrados como `quer_recurso`.
-- [ ] Publicado em https://edital-map.vercel.app; testes e typecheck passando.
+- [x] Página inicial no desenho do mockup em 1440 px e utilizável em 390 px sem rolagem lateral. — capturas de 16/10 em 1440 e 390 px (local e publicado).
+- [x] Filtros de UF, município, valor, modalidade e 7 dias funcionando juntos na lista e no mapa. — SQL: valor 50 mil 6.207 = 6.207 direto; pregão 4.312 = 4.312; /api/busca?valor=1000000&modalidades=6 → 836 no ar.
+- [x] Mapa abre no Brasil, estados cobertos coloridos pela busca, círculos por valor, pino no selecionado. — captura inicio-computador de 16/10.
+- [x] Página do edital com principais informações, itens organizados e textos limpos nos exemplos da seção 8. — capturas de 3 editais (CATMAT, LOTE, (L1)); regras extras de nome de item em 633fe09, 133e540, ba38f00.
+- [x] ME/EPP e critério aparecendo nos editais abertos depois da releitura. — releitura de 16/10: 99,3% de 178.245 itens com benefício e critério.
+- [x] Cliques em Planos, Assinar Pro e chip Pro registrados como `quer_recurso`. — eventos plano_pro e filtros_pro gravados (internos) em 16/10.
+- [x] Publicado em https://edital-map.vercel.app; testes e typecheck passando. — deploy de 16/10; 251 testes; typecheck limpo.
