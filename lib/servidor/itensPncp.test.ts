@@ -81,4 +81,16 @@ describe('itensDoPncp', () => {
     await itensDoPncp(compra, 50, f, 'http://127.0.0.1:9');
     expect(urls[0].startsWith('http://127.0.0.1:9/v1/orgaos/')).toBe(true);
   });
+  it('prazo total esgotado vira exceção, não lista parcial', async () => {
+    let chamadas = 0;
+    const lento = ((_url: string | URL | Request, init?: RequestInit) => {
+      chamadas++;
+      if (chamadas === 1) return Promise.resolve(ok(pagina(1, 50)));
+      return new Promise<Response>((_, rejeitar) => {
+        init?.signal?.addEventListener('abort', () => rejeitar(new DOMException('aborted', 'AbortError')));
+      });
+    }) as typeof fetch;
+    await expect(itensDoPncp(compra, 2000, lento, 'https://pncp.gov.br/api/pncp', 50)).rejects.toThrow('prazo total esgotado');
+    expect(chamadas).toBe(2);
+  });
 });

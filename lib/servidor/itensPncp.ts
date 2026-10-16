@@ -7,6 +7,8 @@ import type { ItemEdital } from '../tipos';
 
 /** Tempo máximo de cada chamada à base de itens antes de desistir (a página mostra "Itens indisponíveis agora"). */
 const TIMEOUT_MS = 8_000;
+/** Prazo para a leitura inteira (todas as páginas): passou disso, vale como falha e não como lista parcial. */
+const PRAZO_TOTAL_MS = 20_000;
 
 export function paraItemEdital(l: LinhaItem): ItemEdital {
   return {
@@ -34,14 +36,27 @@ export async function itensDoPncp(
   limite: number,
   buscar: typeof fetch = fetch,
   base: string = process.env.PNCP_ITENS_BASE || BASE_PNCP,
+  prazoTotalMs: number = PRAZO_TOTAL_MS,
 ): Promise<ItemEdital[]> {
+  const prazo = AbortSignal.timeout(prazoTotalMs);
+  const esgotado = () => new Error('itens do PNCP: prazo total esgotado');
   const porNumero = new Map<number, ItemEdital>();
   for (let pagina = 1; pagina <= MAX_PAGINAS_ITENS && porNumero.size < limite; pagina++) {
-    const resp = await buscar(urlItens(compra, pagina, base), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (resp.status === 204) break;
-    if (!resp.ok) throw new Error(`itens do PNCP: HTTP ${resp.status}`);
-    const corpo = await resp.text();
-    const lote: unknown = corpo ? JSON.parse(corpo) : [];
+    if (prazo.aborted) throw esgotado();
+    let lote: unknown;
+    try {
+      const resp = await buscar(urlItens(compra, pagina, base), {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.any([AbortSignal.timeout(TIMEOUT_MS), prazo]),
+      });
+      if (resp.status === 204) break;
+      if (!resp.ok) throw new Error(`itens do PNCP: HTTP ${resp.status}`);
+      const corpo = await resp.text();
+      lote = corpo ? JSON.parse(corpo) : [];
+    } catch (erro) {
+      if (prazo.aborted) throw esgotado();
+      throw erro;
+    }
     if (!Array.isArray(lote)) throw new Error('itens do PNCP: resposta fora do formato');
     for (const bruto of lote) {
       const v = validarItem(bruto, compra.id);

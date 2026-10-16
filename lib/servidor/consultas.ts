@@ -99,7 +99,7 @@ export function edital(slug: string): Promise<Edital | null> {
 /** Itens do edital vindos do PNCP na hora (cache de 5 min; falha não fica no cache). `null` = PNCP indisponível agora. */
 export function itensDoEdital(compra: ChaveCompra, limite: number): Promise<ItemEdital[] | null> {
   return cache(`itens:${compra.id}:${limite}`, () => itensDoPncp(compra, limite)).catch((erro: unknown) => {
-    console.error(erro);
+    console.error(`itens do edital ${compra.id}:`, erro);
     return null;
   });
 }
