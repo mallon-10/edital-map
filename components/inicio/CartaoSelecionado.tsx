@@ -5,7 +5,10 @@ import { nomeProprio, tituloCurto } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
 import { PinoMini } from './Icones';
 
-const ROTULO = 'font-mono text-[10px] uppercase tracking-[0.08em] text-[#a9c9c4]';
+const ROTULO_BASE = 'font-mono text-[10px] uppercase tracking-[0.08em]';
+const ROTULO = `${ROTULO_BASE} text-[#a9c9c4]`;
+/** "CIDADE · UF" no topo do cartão, em laranja como no mockup. */
+const SOBRETITULO = `${ROTULO_BASE} text-pin`;
 
 /** Resumo escuro do edital selecionado, com "Ver edital". */
 export function CartaoSelecionado({ edital: e, agora, aoFechar }: { edital: EditalResumo; agora: Date; aoFechar?: () => void }) {
@@ -19,7 +22,7 @@ export function CartaoSelecionado({ edital: e, agora, aoFechar }: { edital: Edit
           ×
         </button>
       ) : null}
-      <p className={`flex items-center gap-2 ${ROTULO}`}>
+      <p className={`flex items-center gap-2 ${SOBRETITULO}`}>
         <PinoMini className="h-3.5 w-2.5" />
         {e.municipio_nome ?? '—'} · {e.uf}
       </p>

@@ -46,7 +46,7 @@ export function BuscaPrincipal({ q, uf, carregando, aoBuscar }: Props) {
           <select
             value={local}
             onChange={(e) => setLocal(e.target.value)}
-            className="h-full w-full appearance-none bg-transparent pl-9 pr-8 text-sm font-semibold lg:w-auto"
+            className="h-full w-full appearance-none bg-transparent pl-9 pr-8 text-sm font-semibold lg:w-auto [&>option]:bg-raised [&>option]:text-ink [&>optgroup]:bg-raised [&>optgroup]:text-ink"
           >
             <option value="">Todo o Brasil</option>
             {UFS_COBERTAS.map((u) => (

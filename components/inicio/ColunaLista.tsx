@@ -27,11 +27,10 @@ const ALTERNADOR = 'h-8 flex-1 rounded-sm text-[13px] font-semibold transition-c
 export function ColunaLista(p: Props) {
   const { total, editais } = p.resultado;
   const lista = useRef<HTMLDivElement>(null);
-  const primeiro = editais[0]?.id;
-  // Resultado novo (não "carregar mais"): volta ao topo da lista.
+  // Toda busca nova (inclusive a que traz o mesmo primeiro edital) volta ao topo; "carregar mais" não mexe em `carregandoLista`.
   useEffect(() => {
-    lista.current?.scrollTo({ top: 0 });
-  }, [primeiro]);
+    if (p.carregandoLista) lista.current?.scrollTo({ top: 0 });
+  }, [p.carregandoLista]);
 
   const valor = moedaCurta(p.painel.valorTotal);
   return (
@@ -44,7 +43,7 @@ export function ColunaLista(p: Props) {
           <span className="text-[15px] font-bold">{total === 1 ? 'edital aberto' : 'editais abertos'}</span>
         </p>
         <p className="mt-1 font-mono text-xs text-ink-muted">
-          {p.painel.ufs} {p.painel.ufs === 1 ? 'UF' : 'UFs'} · {valor ?? 'R$ 0'} em valor estimado
+          {p.painel.ufs} {p.painel.ufs === 1 ? 'UF' : 'UFs'} · {valor ? `${valor} em valor estimado` : 'valor não informado'}
         </p>
         <div className="mt-3 flex gap-1 rounded-md bg-sunken p-1" role="group" aria-label="Prazo">
           <button

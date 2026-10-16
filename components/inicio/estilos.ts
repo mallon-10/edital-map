@@ -1,10 +1,11 @@
 import type { TomEtiqueta } from '@/lib/formato';
 
-/** Chip de filtro; ativo em azul-marinho como no mockup. */
-export function chip(ativo: boolean): string {
-  return `inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[13px] font-semibold ${
-    ativo ? 'border-ink bg-ink text-surface' : 'border-line-strong bg-raised text-ink hover:bg-sunken'
-  }`;
+const BASE_CHIP = 'inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[13px] font-semibold';
+
+/** Chip de filtro; ativo em azul-marinho como no mockup. A variante `pro` (recurso em breve) é tracejada e sem fundo; `ativo` não se aplica a ela. */
+export function chip(ativo: boolean, variante: 'padrao' | 'pro' = 'padrao'): string {
+  if (variante === 'pro') return `${BASE_CHIP} border-dashed border-line-strong bg-transparent text-ink-muted hover:bg-sunken`;
+  return `${BASE_CHIP} ${ativo ? 'border-ink bg-ink text-surface' : 'border-line-strong bg-raised text-ink hover:bg-sunken'}`;
 }
 
 export const ESTILO_ETIQUETA: Record<TomEtiqueta, string> = {
