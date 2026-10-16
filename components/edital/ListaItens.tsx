@@ -3,8 +3,15 @@ import { numero } from '@/lib/formato';
 import type { ItemEdital } from '@/lib/tipos';
 import { ItemOrganizado } from './ItemOrganizado';
 
-export function ListaItens({ itens, total, slug, todos }: { itens: ItemEdital[]; total: number; slug: string; todos: boolean }) {
-  if (total === 0) return <p className="text-ink-muted">O PNCP ainda não trouxe os itens deste edital. Veja no edital oficial.</p>;
+export function ListaItens({ itens, total, slug, todos }: { itens: ItemEdital[] | null; total: number; slug: string; todos: boolean }) {
+  if (itens === null) {
+    return (
+      <p className="text-ink-muted">
+        Itens indisponíveis agora. O PNCP não respondeu: veja no edital oficial ou tente de novo em alguns minutos.
+      </p>
+    );
+  }
+  if (itens.length === 0) return <p className="text-ink-muted">O PNCP ainda não trouxe os itens deste edital. Veja no edital oficial.</p>;
   return (
     <>
       <div className="hidden grid-cols-[2.5rem_minmax(0,1fr)_7rem_8rem_8rem] gap-x-2 border-b border-line pb-2 text-xs font-semibold text-ink-muted xl:grid" aria-hidden="true">

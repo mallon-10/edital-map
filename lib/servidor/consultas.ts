@@ -1,7 +1,9 @@
 import 'server-only';
+import type { ChaveCompra } from '@/worker/mapear';
 import { criarCache } from '../cache';
 import { chaveFiltros } from '../filtros';
 import type { Edital, EditalResumo, FiltrosBusca, ItemEdital, PontoMapa, ResultadoBusca, ResumoItens } from '../tipos';
+import { itensDoPncp } from './itensPncp';
 import { supabaseServidor } from './supabase';
 
 const cache = criarCache(5 * 60 * 1000);
@@ -95,48 +97,15 @@ export function edital(slug: string): Promise<Edital | null> {
   });
 }
 
-/** Até `limite` itens, em páginas de 1.000 (teto do PostgREST), e o total do edital. */
-export function itensDoEdital(id: string, limite: number): Promise<{ total: number; itens: ItemEdital[] }> {
-  return cache(`itens:${id}:${limite}`, async () => {
-    const itens: ItemEdital[] = [];
-    let total = 0;
-    for (let de = 0; de < limite; de += 1000) {
-      const ate = Math.min(de + 1000, limite) - 1;
-      const { data, error, count } = await supabaseServidor()
-        .from('itens')
-        .select(
-          'numero, descricao, quantidade, unidade, valor_unitario_estimado, valor_total_estimado, sigiloso, material_ou_servico, beneficio_id, beneficio_nome, criterio_julgamento',
-          { count: 'exact' },
-        )
-        .eq('contratacao_id', id)
-        .order('numero')
-        .range(de, ate);
-      if (error) throw new Error(`itens: ${error.message}`);
-      total = count ?? 0;
-      const linhas = (data ?? []) as Linha[];
-      for (const l of linhas) {
-        itens.push({
-          numero: Number(l.numero),
-          descricao: String(l.descricao),
-          quantidade: num(l.quantidade),
-          unidade: texto(l.unidade),
-          valor_unitario_estimado: num(l.valor_unitario_estimado),
-          valor_total_estimado: num(l.valor_total_estimado),
-          sigiloso: Boolean(l.sigiloso),
-          material_ou_servico: texto(l.material_ou_servico),
-          beneficio_id: num(l.beneficio_id),
-          beneficio_nome: texto(l.beneficio_nome),
-          criterio_julgamento: texto(l.criterio_julgamento),
-        });
-      }
-      if (linhas.length < ate - de + 1) break;
-      if (itens.length >= total) break;
-    }
-    return { total, itens };
+/** Itens do edital vindos do PNCP na hora (cache de 5 min; falha não fica no cache). `null` = PNCP indisponível agora. */
+export function itensDoEdital(compra: ChaveCompra, limite: number): Promise<ItemEdital[] | null> {
+  return cache(`itens:${compra.id}:${limite}`, () => itensDoPncp(compra, limite)).catch((erro: unknown) => {
+    console.error(erro);
+    return null;
   });
 }
 
-/** Tipos, ME/EPP e critérios de todos os itens do edital (função SQL `resumo_itens`). */
+/** Tipos, ME/EPP e critérios dos itens do edital (função SQL `resumo_itens`, que lê `itens_resumo`). */
 export function resumoItens(id: string): Promise<ResumoItens> {
   return cache(`resumo-itens:${id}`, async () => {
     const { data, error } = await supabaseServidor().rpc('resumo_itens', { p_contratacao: id }).single();

@@ -1,9 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-const faixas: Array<[number, number]> = [];
-let total = 0;
 // Chamadas de rpc registradas: o contrato TS↔SQL é o nome da função e as chaves dos argumentos.
 const chamadas: Array<{ nome: string; args: Record<string, unknown> }> = [];
 let respostaRpc: unknown = [];
@@ -20,87 +18,46 @@ vi.mock('./supabase', () => ({
         then: (ok: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => resposta.then(ok, ko),
       };
     },
-    from: () => {
-      const consulta = {
-        select: () => consulta,
-        eq: () => consulta,
-        order: () => consulta,
-        // Devolve só as linhas que existem dentro da faixa pedida, como o PostgREST.
-        range: (de: number, ate: number) => {
-          faixas.push([de, ate]);
-          const quantas = Math.max(0, Math.min(ate + 1, total) - de);
-          const data = Array.from({ length: quantas }, (_, i) => ({
-            numero: de + i + 1,
-            descricao: `Item ${de + i + 1}`,
-            quantidade: 1,
-            unidade: 'UN',
-            valor_unitario_estimado: 1,
-            valor_total_estimado: 1,
-            sigiloso: false,
-          }));
-          return Promise.resolve({ data, error: null, count: total });
-        },
-      };
-      return consulta;
-    },
   }),
 }));
 
 const { buscarEditais, itensDoEdital, pontosDoMapa, resumoItens } = await import('./consultas');
 
-describe('itensDoEdital', () => {
-  beforeEach(() => {
-    faixas.length = 0;
+const compra = (id: string) => ({ id, cnpj: '00394452000103', ano: 2026, sequencial: 21982 });
+
+describe('itensDoEdital (PNCP na hora)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  it('lê uma página só quando o edital cabe nela', async () => {
-    total = 50;
-    const r = await itensDoEdital('a', 2000);
-    expect(r.total).toBe(50);
-    expect(r.itens).toHaveLength(50);
-    expect(faixas).toEqual([[0, 999]]);
+  it('devolve os itens do PNCP mapeados para a lista do edital', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify([{ numeroItem: 1, descricao: 'Luva nitrílica', materialOuServico: 'M' }]), { status: 200 })),
+    );
+    expect(await itensDoEdital(compra('ok-1'), 50)).toEqual([
+      expect.objectContaining({ numero: 1, descricao: 'Luva nitrílica', material_ou_servico: 'M' }),
+    ]);
   });
 
-  it('não pede faixa além do fim quando o edital tem exatamente 1.000 itens', async () => {
-    total = 1000;
-    const r = await itensDoEdital('b', 2000);
-    expect(r.itens).toHaveLength(1000);
-    expect(faixas).toEqual([[0, 999]]);
+  it('PNCP fora do ar vira null (a página mostra "Itens indisponíveis agora")', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('fetch failed'))));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    expect(await itensDoEdital(compra('falha-1'), 50)).toBeNull();
   });
 
-  it('não pede faixa além do fim quando o edital tem exatamente 2.000 itens', async () => {
-    total = 2000;
-    const r = await itensDoEdital('c', 2000);
-    expect(r.itens).toHaveLength(2000);
-    expect(faixas).toEqual([[0, 999], [1000, 1999]]);
-  });
-
-  it('lê em duas páginas e para no fim quando o edital tem 1.536 itens', async () => {
-    total = 1536;
-    const r = await itensDoEdital('d', 2000);
-    expect(r.total).toBe(1536);
-    expect(r.itens).toHaveLength(1536);
-    expect(faixas).toEqual([[0, 999], [1000, 1999]]);
-  });
-
-  it('respeita o limite pedido e informa o total do edital', async () => {
-    total = 5002;
-    const r = await itensDoEdital('e', 50);
-    expect(r.total).toBe(5002);
-    expect(r.itens).toHaveLength(50);
-    expect(faixas).toEqual([[0, 49]]);
-  });
-
-  it('limita a 2.000 itens quando o edital tem mais', async () => {
-    total = 5002;
-    const r = await itensDoEdital('f', 2000);
-    expect(r.total).toBe(5002);
-    expect(r.itens).toHaveLength(2000);
-    expect(faixas).toEqual([[0, 999], [1000, 1999]]);
+  it('falha não fica no cache: a próxima visita tenta de novo', async () => {
+    const f = vi.fn(async () => Promise.reject(new TypeError('fetch failed')));
+    vi.stubGlobal('fetch', f);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await itensDoEdital(compra('falha-2'), 50);
+    await itensDoEdital(compra('falha-2'), 50);
+    expect(f).toHaveBeenCalledTimes(2);
   });
 });
 
-describe('contrato com as funções SQL (0004)', () => {
+describe('contrato com as funções SQL (0005)', () => {
   beforeEach(() => {
     chamadas.length = 0;
     respostaRpc = [];
@@ -108,7 +65,7 @@ describe('contrato com as funções SQL (0004)', () => {
 
   const chaves = (args: Record<string, unknown>) => Object.keys(args).sort();
 
-  it('buscarEditais chama buscar_editais com os argumentos da 0004', async () => {
+  it('buscarEditais chama buscar_editais com os argumentos da 0005', async () => {
     await buscarEditais({ q: 'luva', uf: 'SC', ibge: '4209102', dias: 7, deslocamento: 50, valorMin: 1000, modalidades: [6, 8] });
     expect(chamadas).toHaveLength(1);
     expect(chamadas[0].nome).toBe('buscar_editais');

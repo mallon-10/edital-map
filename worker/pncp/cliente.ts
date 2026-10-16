@@ -25,6 +25,11 @@ export class ErroPncp extends Error {
   }
 }
 
+/** Endereço de uma página de itens da compra na base de itens do PNCP. */
+export function urlItens(compra: ChaveCompra, pagina: number, base: string = BASE_PNCP): string {
+  return `${base}/v1/orgaos/${compra.cnpj}/compras/${compra.ano}/${compra.sequencial}/itens?pagina=${pagina}&tamanhoPagina=${PAGINA_ITENS}`;
+}
+
 export type FiltroContratacoes = { uf: string; modalidade: number; dataInicial: string; dataFinal: string };
 export type PaginaContratacoes = { pagina: number; totalPaginas: number; totalRegistros: number; registros: unknown[] };
 export type OpcoesCliente = {
@@ -192,8 +197,7 @@ export function criarCliente(opcoes: OpcoesCliente = {}) {
           `Mais de ${MAX_PAGINAS_ITENS} páginas de itens (${MAX_PAGINAS_ITENS * PAGINA_ITENS} itens): ${compra.id}`,
         );
       }
-      const url = `${BASE_PNCP}/v1/orgaos/${compra.cnpj}/compras/${compra.ano}/${compra.sequencial}/itens?pagina=${pagina}&tamanhoPagina=${PAGINA_ITENS}`;
-      const lote = (await getJson<unknown[]>(url)) ?? [];
+      const lote = (await getJson<unknown[]>(urlItens(compra, pagina))) ?? [];
       todos.push(...lote);
       if (lote.length < PAGINA_ITENS) return todos;
     }

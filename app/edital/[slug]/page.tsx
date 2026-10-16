@@ -44,10 +44,12 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
 
   const todos = modoItens === 'todos';
   const [itens, resumo, atualizado] = await Promise.all([
-    itensDoEdital(e.id, todos ? 2000 : 50),
+    itensDoEdital(e, todos ? 2000 : 50),
     resumoItens(e.id).catch(() => RESUMO_VAZIO),
     atualizadoEm(),
   ]);
+  // O total vem do resumo gravado pelo worker; sem resumo ainda, do que o PNCP devolveu agora.
+  const totalItens = Math.max(resumo.total, itens?.length ?? 0);
   const agora = new Date();
   const p = prazo(e.encerramento_em, agora);
   const titulo = assunto(e.objeto);
@@ -95,13 +97,13 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
           </div>
         </section>
 
-        <PrincipaisInformacoes edital={e} resumo={{ ...resumo, total: resumo.total || itens.total }} agora={agora} />
+        <PrincipaisInformacoes edital={e} resumo={{ ...resumo, total: totalItens }} agora={agora} />
 
         <div className="flex flex-wrap items-start gap-5">
           <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5">
             <section className="rounded-lg border border-line bg-raised p-5">
               <h2 className="mb-3 text-[17px] font-bold">Itens da licitação</h2>
-              <ListaItens itens={itens.itens} total={itens.total} slug={e.slug} todos={todos} />
+              <ListaItens itens={itens} total={totalItens} slug={e.slug} todos={todos} />
             </section>
             {titulo.titulo !== objetoCompleto ? (
               <section className="rounded-lg border border-line bg-raised p-5">
