@@ -94,8 +94,10 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
       // O Turbopack reescreve import.meta.url do maplibre-gl e o worker padrão some (URL vazia):
       // aponta o worker para o arquivo do pacote, que o bundler publica como asset estático.
       maplibregl.setWorkerUrl(new URL('../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).href);
-      // No celular a gaveta recolhida cobre a base do mapa: reserva esse espaço no enquadramento inicial.
+      // No celular a gaveta recolhida cobre a base do mapa: reserva esse espaço no enquadramento inicial,
+      // mas no máximo metade da altura, senão em tela baixa o fitBounds desiste e o mapa fica em [0,0].
       const celular = window.matchMedia('(max-width: 1023px)').matches;
+      const baixo = Math.min(ALTURA_GAVETA_RECOLHIDA + 16, Math.floor(caixa.current.clientHeight / 2));
       const m = new maplibregl.Map({
         container: caixa.current,
         style: {
@@ -104,7 +106,7 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
           layers: [{ id: 'fundo', type: 'background', paint: { 'background-color': '#ffffff' } }],
         },
         bounds: BRASIL,
-        fitBoundsOptions: { padding: celular ? { top: 16, right: 16, left: 16, bottom: ALTURA_GAVETA_RECOLHIDA + 16 } : 16 },
+        fitBoundsOptions: { padding: celular ? { top: 16, right: 16, left: 16, bottom: baixo } : 16 },
         attributionControl: false,
         // Textos nativos do MapLibre em português do Brasil.
         locale: { 'Map.Title': 'Mapa de editais', 'NavigationControl.ZoomIn': 'Aproximar', 'NavigationControl.ZoomOut': 'Afastar' },

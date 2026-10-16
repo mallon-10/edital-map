@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { moedaCurta, numero } from '@/lib/formato';
 import type { Painel } from '@/lib/painel';
-import type { EditalResumo, ResultadoBusca } from '@/lib/tipos';
+import type { Cidade, EditalResumo, ResultadoBusca } from '@/lib/tipos';
 import { CardCompacto } from './CardCompacto';
 
 type Props = {
@@ -19,6 +19,9 @@ type Props = {
   erro: string | null;
   /** No celular, com a gaveta recolhida só a contagem e o alternador aparecem. */
   recolhida: boolean;
+  /** Município escolhido no mapa: no celular a linha de chips fica atrás da gaveta, então o filtro aparece e sai daqui. */
+  cidade: Cidade | null;
+  aoTirarCidade: () => void;
   aoSelecionar: (e: EditalResumo) => void;
   aoMudarPrazo: (seteDias: boolean) => void;
   aoCarregarMais: () => void;
@@ -39,12 +42,25 @@ export function ColunaLista(p: Props) {
   return (
     <>
       <div className="shrink-0">
-        <p aria-live="polite" className="flex items-baseline gap-2">
-          <span className="font-mono text-[26px] font-semibold leading-none tracking-[-0.02em] lg:text-[34px]">
-            {p.carregandoLista && editais.length === 0 ? '…' : numero(total)}
-          </span>
-          <span className="text-[15px] font-bold">{total === 1 ? 'edital aberto' : 'editais abertos'}</span>
-        </p>
+        {/* A pílula fica na mesma linha da contagem para não aumentar a gaveta recolhida (ALTURA_GAVETA_RECOLHIDA). */}
+        <div className="flex items-center gap-2">
+          <p aria-live="polite" className="flex shrink-0 items-baseline gap-2">
+            <span className="font-mono text-[26px] font-semibold leading-none tracking-[-0.02em] lg:text-[34px]">
+              {p.carregandoLista && editais.length === 0 ? '…' : numero(total)}
+            </span>
+            <span className="text-[15px] font-bold">{total === 1 ? 'edital aberto' : 'editais abertos'}</span>
+          </p>
+          {p.cidade ? (
+            <span className="inline-flex min-w-0 items-center gap-1 rounded-sm bg-ink pl-2 text-xs font-semibold text-surface lg:hidden">
+              <span className="truncate">
+                {p.cidade.nome}/{p.cidade.uf}
+              </span>
+              <button type="button" onClick={p.aoTirarCidade} aria-label="Tirar filtro de cidade" className="size-6 shrink-0 text-base leading-none">
+                ×
+              </button>
+            </span>
+          ) : null}
+        </div>
         <p className="mt-1 font-mono text-xs text-ink-muted">
           {painelPronto
             ? `${p.painel.ufs} ${p.painel.ufs === 1 ? 'UF' : 'UFs'} · ${valor ? `${valor} em valor estimado` : 'valor não informado'}`
@@ -70,11 +86,14 @@ export function ColunaLista(p: Props) {
         </div>
       </div>
       <div className={`mt-3 flex min-h-0 flex-1 flex-col ${p.recolhida ? 'max-lg:hidden' : ''}`}>
+        <p className="mb-3 shrink-0 font-mono text-[11px] text-ink-muted lg:hidden">
+          Hoje cobrimos SC, PR e RS · o ponto é a sede do órgão, não o local de entrega
+        </p>
         {p.erro ? <p role="alert" className="mb-3 shrink-0 rounded-sm bg-pin-soft px-3 py-2 text-sm text-pin-strong">{p.erro}</p> : null}
         <div
           ref={lista}
           aria-busy={p.carregandoLista}
-          className={`flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1 transition-opacity ${p.carregandoLista ? 'opacity-60' : ''}`}
+          className={`flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-1 transition-opacity ${p.carregandoLista ? 'opacity-60' : ''}`}
         >
           {editais.length === 0 && !p.carregandoLista && !p.erro ? (
             <p className="px-2 py-6 text-ink-muted">Nenhum edital aberto para essa busca. Tente outro termo ou tire um filtro.</p>

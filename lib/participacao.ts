@@ -46,6 +46,7 @@ export function modalidadeCurta(nome: string | null): string | null {
 }
 
 export function oQueCompram(r: ResumoItens): string {
+  if (r.total === 0) return 'Itens não informados';
   const n = `${numero(r.total)} ${r.total === 1 ? 'item' : 'itens'}`;
   if (r.materiais > 0 && r.servicos > 0) return `${n} · materiais e serviços`;
   if (r.materiais > 0) return `${n} · materiais`;
@@ -61,7 +62,7 @@ export function textoMeEpp(r: ResumoItens): string | null {
     else partes.push(`Exclusivo para ME/EPP em ${numero(r.exclusivos)} de ${numero(r.total)} itens`);
   }
   if (r.cota > 0) partes.push(`Cota reservada em ${numero(r.cota)} ${r.cota === 1 ? 'item' : 'itens'}`);
-  return partes.length ? partes.join(' · ') : 'Sem benefício para ME/EPP';
+  return partes.length ? partes.join(' · ') : 'Sem exclusividade nem cota para ME/EPP';
 }
 
 export function criterioTexto(criterios: string[]): string | null {

@@ -55,6 +55,9 @@ describe('textos dos itens', () => {
     expect(oQueCompram(resumo({ total: 3, materiais: 2, servicos: 1 }))).toBe('3 itens · materiais e serviços');
     expect(oQueCompram(resumo({ total: 2 }))).toBe('2 itens');
   });
+  it('o que compram, sem itens no PNCP', () => {
+    expect(oQueCompram(resumo({ total: 0 }))).toBe('Itens não informados');
+  });
   it('ME/EPP', () => {
     expect(textoMeEpp(resumo({ total: 25, comBeneficio: 0 }))).toBeNull();
     expect(textoMeEpp(resumo({ total: 25, comBeneficio: 25, exclusivos: 25 }))).toBe('Exclusivo para ME/EPP em todos os 25 itens');
@@ -62,7 +65,7 @@ describe('textos dos itens', () => {
     expect(textoMeEpp(resumo({ total: 25, comBeneficio: 25, exclusivos: 18, cota: 2 }))).toBe(
       'Exclusivo para ME/EPP em 18 de 25 itens · Cota reservada em 2 itens',
     );
-    expect(textoMeEpp(resumo({ total: 4, comBeneficio: 4 }))).toBe('Sem benefício para ME/EPP');
+    expect(textoMeEpp(resumo({ total: 4, comBeneficio: 4 }))).toBe('Sem exclusividade nem cota para ME/EPP');
   });
   it('critério de julgamento', () => {
     expect(criterioTexto([])).toBeNull();

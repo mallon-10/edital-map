@@ -184,6 +184,8 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
             carregandoMais={carregandoMais}
             erro={erroLista}
             recolhida={!gavetaAberta}
+            cidade={filtros.cidade}
+            aoTirarCidade={() => aplicar({ ...filtros, cidade: null })}
             aoSelecionar={selecionar}
             aoMudarPrazo={(seteDias) => aplicar({ ...filtros, seteDias })}
             aoCarregarMais={carregarMais}

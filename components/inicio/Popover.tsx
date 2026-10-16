@@ -39,10 +39,10 @@ export function Popover({ nome, rotulo, ativo, children }: Props) {
       setAberto(false);
       botao.current?.focus();
     };
-    // Painel `fixed` não acompanha a rolagem: fecha em qualquer rolagem da página, menos a da própria lista do painel.
+    // Painel `fixed` não acompanha a rolagem: fecha quando rola a página ou quem contém o botão (ele sai do lugar).
+    // Rolagem da própria lista do painel ou de outra área (a lista de editais volta ao topo a cada busca) não fecha.
     const rolar = (e: Event) => {
-      if (e.target instanceof Node && painel.current?.contains(e.target)) return;
-      setAberto(false);
+      if (e.target === document || (e.target instanceof Node && e.target.contains(botao.current))) setAberto(false);
     };
     // Só a mudança de largura fecha; o teclado do celular ao focar a busca altera só a altura.
     const redimensionar = () => {
