@@ -2,35 +2,28 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { registrar } from '@/lib/cliente/registrar';
+import { paraParametros } from '@/lib/filtros';
 import { resumirPontos } from '@/lib/painel';
-import type { Cidade, PontoMapa, ResultadoBusca } from '@/lib/tipos';
-import { Busca, type ValoresBusca } from './Busca';
+import type { Cidade, EditalResumo, FiltrosTela, PontoMapa, ResultadoBusca } from '@/lib/tipos';
 import { GavetaCelular } from './GavetaCelular';
-import { Lista } from './Lista';
 import { Mapa } from './Mapa';
+import { BuscaPrincipal } from './inicio/BuscaPrincipal';
+import { CartaoSelecionado } from './inicio/CartaoSelecionado';
+import { Chips } from './inicio/Chips';
+import { ColunaLista } from './inicio/ColunaLista';
+import { LegendaMapa } from './inicio/LegendaMapa';
+import { OndeMaisCompram } from './inicio/OndeMaisCompram';
 
-const VAZIO: ValoresBusca = { q: '', uf: '', seteDias: false };
-
+const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false };
 const ERRO_LISTA = 'Não foi possível buscar agora. Confira a conexão e tente de novo.';
 const ERRO_MAPA = 'Não foi possível carregar o mapa agora.';
 const TEMPO_LIMITE_MS = 20_000;
-
-function parametros(v: ValoresBusca, cidade: Cidade | null, deslocamento = 0): URLSearchParams {
-  const p = new URLSearchParams();
-  if (v.q.trim()) p.set('q', v.q.trim());
-  if (v.uf) p.set('uf', v.uf);
-  if (v.seteDias) p.set('dias', '7');
-  if (cidade) p.set('ibge', cidade.ibge);
-  if (deslocamento) p.set('deslocamento', String(deslocamento));
-  return p;
-}
 
 /** Busca JSON da API. O erro lançado sempre traz texto em português: o da API, quando houver, ou o `padrao`. */
 async function obter<T>(url: string, padrao: string): Promise<T> {
   let resposta: Response;
   try {
-    // Sem prazo, uma busca travada deixaria o botão "Buscando…" desabilitado para sempre
-    // (AbortSignal.timeout não existe em navegadores mais antigos: nesses, segue sem prazo).
+    // Sem prazo, uma busca travada deixaria o botão "Buscando…" desabilitado para sempre.
     const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(TEMPO_LIMITE_MS) : undefined;
     resposta = await fetch(url, { signal });
   } catch {
@@ -50,13 +43,12 @@ async function obter<T>(url: string, padrao: string): Promise<T> {
   return corpo as T;
 }
 
-function mensagem(e: unknown, padrao: string): string {
-  return e instanceof Error && e.message ? e.message : padrao;
-}
+const mensagem = (e: unknown, padrao: string) => (e instanceof Error && e.message ? e.message : padrao);
 
-export function Explorador({ inicial, agoraInicial }: { inicial: ResultadoBusca; agoraInicial: string }) {
-  const [valores, setValores] = useState<ValoresBusca>(VAZIO);
-  const [cidade, setCidade] = useState<Cidade | null>(null);
+type Props = { inicial: ResultadoBusca; agoraInicial: string; atualizadoEm: string | null };
+
+export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
+  const [filtros, setFiltros] = useState<FiltrosTela>(VAZIO);
   const [resultado, setResultado] = useState<ResultadoBusca>(inicial);
   const [agora, setAgora] = useState(() => new Date(agoraInicial));
   const [carregandoLista, setCarregandoLista] = useState(false);
@@ -64,20 +56,25 @@ export function Explorador({ inicial, agoraInicial }: { inicial: ResultadoBusca;
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [erroMapa, setErroMapa] = useState<string | null>(null);
   const [pontos, setPontos] = useState<PontoMapa[]>([]);
-  const painel = useMemo(() => resumirPontos(pontos), [pontos]);
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(inicial.editais[0]?.id ?? null);
+  const [resumoNoCelular, setResumoNoCelular] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
   // Numeração dos pedidos: só a resposta do pedido mais recente pode mudar a tela.
   const pedidoLista = useRef(0);
   const pedidoMapa = useRef(0);
 
-  const carregarLista = useCallback(async (v: ValoresBusca, c: Cidade | null) => {
+  const painel = useMemo(() => resumirPontos(pontos), [pontos]);
+  const selecionado = resultado.editais.find((e) => e.id === selecionadoId) ?? resultado.editais[0] ?? null;
+
+  const carregarLista = useCallback(async (f: FiltrosTela) => {
     const id = ++pedidoLista.current;
     setCarregandoLista(true);
     setCarregandoMais(false);
     try {
-      const novo = await obter<ResultadoBusca>(`/api/busca?${parametros(v, c)}`, ERRO_LISTA);
+      const novo = await obter<ResultadoBusca>(`/api/busca?${paraParametros(f)}`, ERRO_LISTA);
       if (id !== pedidoLista.current) return;
       setResultado(novo);
+      setSelecionadoId(novo.editais[0]?.id ?? null);
       setAgora(new Date());
       setErroLista(null);
     } catch (e) {
@@ -90,10 +87,10 @@ export function Explorador({ inicial, agoraInicial }: { inicial: ResultadoBusca;
     }
   }, []);
 
-  const carregarMapa = useCallback(async (v: ValoresBusca) => {
+  const carregarMapa = useCallback(async (f: FiltrosTela) => {
     const id = ++pedidoMapa.current;
     try {
-      const novos = await obter<PontoMapa[]>(`/api/mapa?${parametros(v, null)}`, ERRO_MAPA);
+      const novos = await obter<PontoMapa[]>(`/api/mapa?${paraParametros(f, { comCidade: false })}`, ERRO_MAPA);
       if (id !== pedidoMapa.current) return;
       setPontos(novos);
       setErroMapa(null);
@@ -107,26 +104,29 @@ export function Explorador({ inicial, agoraInicial }: { inicial: ResultadoBusca;
     void carregarMapa(VAZIO);
   }, [carregarMapa]);
 
-  function buscar(v: ValoresBusca) {
-    setValores(v);
-    setCidade(null);
-    registrar('busca', { q: v.q.trim() || null, uf: v.uf || null, dias: v.seteDias ? 7 : null });
-    void carregarLista(v, null);
-    void carregarMapa(v);
+  /** Aplica filtros novos: a lista sempre; o mapa só quando muda algo além da cidade. Toda mudança conta como busca. */
+  function aplicar(novo: FiltrosTela) {
+    const mudouMapa =
+      novo.q !== filtros.q ||
+      novo.uf !== filtros.uf ||
+      novo.valorMin !== filtros.valorMin ||
+      novo.seteDias !== filtros.seteDias ||
+      [...novo.modalidades].sort().join() !== [...filtros.modalidades].sort().join();
+    setFiltros(novo);
+    registrar('busca', { q: novo.q.trim() || null, uf: novo.uf || null, dias: novo.seteDias ? 7 : null });
+    void carregarLista(novo);
+    if (mudouMapa) void carregarMapa(novo);
   }
 
-  const escolherCidade = useCallback(
-    (c: Cidade) => {
-      setCidade(c);
-      setGavetaAberta(true);
-      void carregarLista(valores, c);
-    },
-    [carregarLista, valores],
-  );
+  // O Mapa guarda o callback numa ref atualizada a cada render: uma função comum basta.
+  function escolherCidade(c: Cidade) {
+    setGavetaAberta(true);
+    aplicar({ ...filtros, cidade: c });
+  }
 
-  function tirarCidade() {
-    setCidade(null);
-    void carregarLista(valores, null);
+  function selecionar(e: EditalResumo) {
+    setSelecionadoId(e.id);
+    setResumoNoCelular(true);
   }
 
   async function carregarMais() {
@@ -134,8 +134,8 @@ export function Explorador({ inicial, agoraInicial }: { inicial: ResultadoBusca;
     const id = pedidoLista.current;
     setCarregandoMais(true);
     try {
-      const mais = await obter<ResultadoBusca>(`/api/busca?${parametros(valores, cidade, resultado.editais.length)}`, ERRO_LISTA);
-      // Busca ou cidade mudou enquanto esperava: essa página não pertence mais à lista na tela.
+      const mais = await obter<ResultadoBusca>(`/api/busca?${paraParametros(filtros, { deslocamento: resultado.editais.length })}`, ERRO_LISTA);
+      // Busca ou filtro mudou enquanto esperava: essa página não pertence mais à lista na tela.
       if (id !== pedidoLista.current) return;
       setResultado((anterior) => {
         const ids = new Set(anterior.editais.map((e) => e.id));
@@ -151,44 +151,47 @@ export function Explorador({ inicial, agoraInicial }: { inicial: ResultadoBusca;
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col md:block">
-      <div className="shrink-0 px-4 pb-3 pt-3 md:px-6 md:pb-0 md:pt-4">
-        <Busca inicial={VAZIO} carregando={carregandoLista} aoBuscar={buscar} />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 space-y-3 px-4 pt-3 lg:px-6 lg:pt-5">
+        <BuscaPrincipal q={filtros.q} uf={filtros.uf} carregando={carregandoLista} aoBuscar={(q, uf) => aplicar({ ...filtros, q, uf, cidade: null })} />
+        <Chips filtros={filtros} pontos={pontos} atualizadoEm={atualizadoEm} agora={agora} aoMudar={aplicar} />
       </div>
-      <main className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[minmax(0,1fr)_440px] md:gap-6 md:px-6 md:py-4">
+      <main className="flex min-h-0 flex-1 flex-col pt-3 lg:grid lg:grid-cols-[360px_minmax(0,1fr)_300px] lg:grid-rows-[minmax(0,1fr)] lg:gap-5 lg:px-6 lg:pb-6 lg:pt-4">
         <h1 className="sr-only">Editais abertos no mapa</h1>
-        <section
-          aria-label="Mapa"
-          className="relative min-h-0 flex-1 overflow-hidden bg-sunken md:h-[72vh] md:min-h-[420px] md:flex-none md:rounded-lg"
-        >
-          <Mapa pontos={pontos} porUf={painel.porUf} destaque={null} aoEscolherCidade={escolherCidade} />
-          {erroMapa ? (
-            <p
-              role="alert"
-              className="absolute left-3 top-3 z-10 max-w-[calc(100%-4.5rem)] rounded-sm bg-pin-soft px-3 py-2 text-xs text-pin-strong"
-            >
-              {erroMapa}
-            </p>
-          ) : null}
-          <div className="absolute bottom-3 left-3 hidden max-w-[300px] rounded-md border border-line bg-raised px-3 py-2 text-xs leading-[18px] text-ink-muted md:block">
-            <p><span className="mr-1.5 inline-block size-2.5 rounded-full bg-ink align-[-1px]" aria-hidden="true" />Grupo de municípios · número = editais abertos</p>
-            <p><span className="mr-1.5 inline-block size-2.5 rounded-full bg-pin align-[-1px]" aria-hidden="true" />Município · clique para ver os editais</p>
-            <p>O ponto é a sede do órgão, não o local de entrega.</p>
-          </div>
-        </section>
         <GavetaCelular aberta={gavetaAberta} aoAlternar={() => setGavetaAberta((a) => !a)}>
-          <Lista
+          {resumoNoCelular && selecionado ? (
+            <div className="mb-3 shrink-0 lg:hidden">
+              <CartaoSelecionado edital={selecionado} agora={agora} aoFechar={() => setResumoNoCelular(false)} />
+            </div>
+          ) : null}
+          <ColunaLista
             resultado={resultado}
             agora={agora}
-            cidade={cidade}
+            painel={painel}
+            seteDias={filtros.seteDias}
+            selecionadoId={selecionado?.id ?? null}
             carregandoLista={carregandoLista}
             carregandoMais={carregandoMais}
             erro={erroLista}
             recolhida={!gavetaAberta}
-            aoTirarCidade={tirarCidade}
+            aoSelecionar={selecionar}
+            aoMudarPrazo={(seteDias) => aplicar({ ...filtros, seteDias })}
             aoCarregarMais={carregarMais}
           />
         </GavetaCelular>
+        <section aria-label="Mapa" className="relative min-h-0 flex-1 overflow-hidden bg-raised lg:rounded-lg lg:border lg:border-line">
+          <Mapa pontos={pontos} porUf={painel.porUf} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} />
+          {erroMapa ? (
+            <p role="alert" className="absolute left-3 top-3 z-10 max-w-[calc(100%-4.5rem)] rounded-sm bg-pin-soft px-3 py-2 text-xs text-pin-strong">
+              {erroMapa}
+            </p>
+          ) : null}
+        </section>
+        <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
+          {selecionado ? <CartaoSelecionado edital={selecionado} agora={agora} /> : null}
+          <OndeMaisCompram municipios={painel.topMunicipios} termo={filtros.q} aoEscolher={escolherCidade} />
+          <LegendaMapa />
+        </aside>
       </main>
     </div>
   );
