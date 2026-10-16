@@ -2,15 +2,15 @@
 // 1. Suba o site (npm run dev, ou use a URL publicada).
 // 2. Abra um Edge invisível com porta de depuração (PowerShell):
 //    Start-Process "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe" -ArgumentList '--headless=new','--remote-debugging-port=9333',"--user-data-dir=$env:TEMP\edge-capturas",'--use-angle=swiftshader','--enable-unsafe-swiftshader','about:blank' -WindowStyle Hidden
-// 3. node scripts/capturas.mjs http://localhost:3000 <slug-de-um-edital>
+// 3. node scripts/capturas.mjs <url> [slug1 slug2 …]
 // As imagens ficam em .capturas/ (fora do git). Feche o Edge depois.
 // Com CAPTURAS_INTERNO=1 as visitas saem marcadas como internas (não entram nas métricas do portão).
 import { mkdir } from 'node:fs/promises';
 import puppeteer from 'puppeteer-core';
 
-const [base = 'http://localhost:3000', slug] = process.argv.slice(2);
+const [base = 'http://localhost:3000', ...slugs] = process.argv.slice(2);
 const paginas = [['inicio', '/'], ['alertas', '/alertas'], ['sobre', '/sobre']];
-if (slug) paginas.push(['edital', `/edital/${slug}`]);
+slugs.forEach((slug, i) => paginas.push([`edital-${i + 1}`, `/edital/${slug}`]));
 
 const navegador = await puppeteer.connect({ browserURL: 'http://127.0.0.1:9333', defaultViewport: null });
 await mkdir('.capturas', { recursive: true });

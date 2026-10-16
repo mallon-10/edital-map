@@ -33,6 +33,8 @@ Referências:
 - Vercel: projeto edital-map no time JPM Company, região gru1, publicado pela CLI (`vercel deploy --prod`), sem Git ligado; `.vercelignore` impede o envio do `.env`.
 - maplibre-gl 6 (só ESM): o worker vem do pacote via `setWorkerUrl` em components/Mapa.tsx (o Turbopack zera o import.meta.url).
 - Site: dados só pelo servidor (lib/servidor/*, `server-only`); cache de 5 min; `noindex` até a Fase 3; eventos e pedidos de alerta só pelas rotas /api.
+- Textos do PNCP só passam pela limpeza de lib/texto.ts (sem IA); siglas novas entram na lista SIGLAS.
+- Página inicial em três colunas a partir de lg (1024 px); abaixo, mapa em tela cheia e lista na gaveta.
 - Medição: ao trocar de domínio, remarcar /sobre?interno=1 em cada navegador do dono e fazer uma busca (o cookie em_interno é por domínio).
 
 ## Comandos
@@ -42,5 +44,6 @@ Referências:
 - npm run worker:sync: sincronização incremental
 - npm run worker:conferir -- --amostra 20 --dias-contagem 3 --idempotencia
 - npm run dev / npm run build: site
-- npm run gerar:municipios: pontos cinza do mapa (public/geo/municipios.json)
-- npm run capturas -- <url> <slug>: capturas de tela (precisa do Edge invisível na porta 9333)
+- npm run gerar:estados: contorno das UFs do mapa (public/geo/estados.json)
+- npm run worker:reler-itens: relê os itens das compras abertas (uso único, depois de mudar o que se guarda de cada item)
+- npm run capturas -- <url> [slug1 slug2 …]: capturas de tela (precisa do Edge invisível na porta 9333)
