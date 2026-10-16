@@ -69,7 +69,7 @@ Planos, Assinar Pro e o chip Pro abrem um aviso pequeno: "Os planos chegam em br
    3. **Prazo**: "Propostas de dd.mm até dd.mm · HHh" (início omitido se não houver) + contagem regressiva no padrão da Fase 2.
    4. **Como participar**: modalidade limpa · "Registro de preços" · critério de julgamento (quando todos os itens tiverem o mesmo; senão "critérios variados") · "Onde: <sistema>" (seção 4.3).
    5. **Quem compra**: órgão, unidade, esfera (Federal, Estadual, Municipal, Distrital; omitida se "N").
-   6. **ME/EPP**: "Exclusivo para ME/EPP em X de N itens"; "Cota reservada em Y itens" se houver; "Sem benefício para ME/EPP" quando nenhum item tiver. Cartão omitido se nenhum item tiver a informação (itens ainda não relidos).
+   6. **ME/EPP**: "Exclusivo para ME/EPP em X de N itens"; "Cota reservada em Y itens" se houver; "Sem exclusividade nem cota para ME/EPP" quando nenhum item tiver (vale também para subcontratação, tipo 2). Cartão omitido se nenhum item tiver a informação (itens ainda não relidos).
 3. **Itens** (50 primeiros + "Ver todos", como hoje): por item, número · **nome** · quantidade e unidade · unitário · total; etiquetas pequenas (Lote, código CATMAT/CATSER, ME/EPP); abaixo do nome, a especificação em lista "atributo · valor" quando houver; texto restante como "Obs.". Especificação com mais de 3 linhas fica recolhida em "Ver especificação". No celular, cada item vira um bloco (sem tabela larga).
 4. **Objeto completo** (só quando o título curto cortou texto), recolhível.
 5. **Informações complementares**: limpas; lotes "(L1):…" viram lista "Lote 1 · …"; acima de 400 caracteres, recolhível.
@@ -80,7 +80,7 @@ Planos, Assinar Pro e o chip Pro abrem um aviso pequeno: "Os planos chegam em br
 - Espaços: `\r\n` e quebras de linha no meio de frase viram espaço; espaços repetidos colapsam; espaço antes de pontuação some.
 - Prefixo entre colchetes no início ("[Portal de Compras Públicas] -") sai.
 - **Maiúsculas**: se o texto tem mais de 70% das letras em maiúsculas, vira texto normal (primeira letra de cada frase maiúscula), preservando as siglas de uma lista fixa no código (no mínimo: ABNT, NBR, CRAS, CAPS, UBS, SUS, ME, EPP, CNPJ, CPF, ART, RRT, EPI, LED, PVC, GLP, ISO, INMETRO, ANVISA, CATMAT, CATSER, PCD, DML e as siglas de UF, exceto SE e PE, que em maiúsculas costumam ser "se" e "pé"), números com letras (NBR14992, 1/4, 50x70) e unidades em minúsculo (kg, ml, cm, mm, m²).
-- **Título curto**: objeto limpo; se tiver até 160 caracteres, é ele inteiro; senão, corta no fim da primeira frase ou cláusula (". ", "; ", ": ") até 140 caracteres; sem frase curta, corta na palavra e põe "…".
+- **Título curto**: objeto limpo; se tiver até 160 caracteres, é ele inteiro; senão, corta no fim da primeira frase ou cláusula (". " ou "; "; ": " não corta, porque costuma abrir uma lista) até 140 caracteres; sem frase curta, corta na palavra e põe "…".
 - **Item**: nome = trecho antes do primeiro "atributo:" (padrão CATMAT, ex.: "Película Auto-Adesiva material: …") ou a primeira frase; atributos = pares "chave: valor" separados por ", " ou "; " quando a chave tem de 1 a 4 palavras; "LOTE 08 -" no início vira etiqueta "Lote 8"; "CATMAT 123"/"CATSER 17760" vira etiqueta; resto vira "Obs.".
 - **Lotes da informação complementar**: "(L1):texto,(L2):texto" → lista; sem esse padrão, parágrafos limpos.
 

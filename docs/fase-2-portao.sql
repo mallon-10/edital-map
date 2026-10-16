@@ -1,6 +1,7 @@
 -- Portão da Fase 2: "10 PMEs usaram, 3 pediram alerta" (sem acessos internos).
 -- Rodar no SQL Editor do Supabase (projeto edital-map).
 -- Exclui por inteiro quem já apareceu como interno (o que o dono fez antes de marcar o navegador, ou em outro domínio, também sai).
+-- Desde a iteração visual, o evento busca sai a cada busca ou mudança de filtro (valor, modalidade, prazo, cidade): qualquer filtro conta como uso.
 -- Depois de marcar o navegador (/sobre?interno=1), o dono deve fazer uma busca, para o id de visitante dele ficar gravado como interno.
 with internos as (
   select visitante from public.eventos where interno

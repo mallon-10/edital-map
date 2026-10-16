@@ -6,6 +6,8 @@ Fase atual: **2 · Mapa**. Site Next.js na Vercel em https://edital-map.vercel.a
 - Spec: docs/superpowers/specs/2026-10-15-fase-2-mapa-design.md
 - Plano: docs/superpowers/plans/2026-10-15-fase-2-mapa.md
 - Portão: docs/fase-2-portao.sql
+- Iteração visual: spec docs/superpowers/specs/2026-10-15-fase-2-visual-design.md, plano docs/superpowers/plans/2026-10-15-fase-2-visual.md (mockup em docs/superpowers/specs/assets/).
+- **Ordem da migração 0004 (enquanto não aplicada):** 0004 no SQL Editor → conferir o site no ar → merge do fase-2-mapa no main → npm run worker:reler-itens → vercel deploy --prod. Publicar ou fazer o merge antes da 0004 quebra a busca/o edital ou faz o sync parar de gravar itens. Apagar esta linha depois.
 
 Referências:
 - Estrutura do MVP (doc, nome antigo BidAtlas): https://claude.ai/code/artifact/33a5e4e7-9f62-4f3f-8312-9da344fe5c7c
