@@ -35,7 +35,7 @@ export function PrincipaisInformacoes({ edital: e, resumo, agora }: { edital: Ed
         </Cartao>
         <Cartao rotulo="Prazo">
           <span className="font-mono text-[15px] font-medium">{propostas}</span>
-          <span className={`text-[13px] ${TEXTO_PRAZO[p.tom]}`}>{p.texto}</span>
+          {e.encerramento_em ? <span className={`text-[13px] ${TEXTO_PRAZO[p.tom]}`}>{p.texto}</span> : null}
         </Cartao>
         <Cartao rotulo="Como participar">
           {forma ? <span className="text-[15px] font-semibold">{forma}</span> : null}

@@ -12,7 +12,7 @@ export function TextoRecolhivel({ paragrafos, limite = 400 }: { paragrafos: stri
   return (
     <details className="group text-[15px]">
       <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-        <p className="break-words group-open:hidden">{previa}…</p>
+        <span className="block break-words group-open:hidden">{previa}…</span>
         <span className="mt-2 inline-block text-sm font-semibold text-pin-strong">
           <span className="group-open:hidden">Ler tudo</span>
           <span className="hidden group-open:inline">Mostrar menos</span>

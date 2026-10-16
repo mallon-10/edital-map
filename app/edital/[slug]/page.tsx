@@ -53,6 +53,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const titulo = tituloCurto(e.objeto);
   const local = `${e.municipio_nome ?? '—'}/${e.uf}`;
   const lotes = e.info_complementar ? lotesDaInfo(e.info_complementar) : null;
+  const textoInfo = e.info_complementar && !lotes ? paragrafos(e.info_complementar) : [];
   const exclusivoTotal = resumo.total > 0 && resumo.exclusivos === resumo.total;
 
   return (
@@ -108,7 +109,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
                 </details>
               </section>
             ) : null}
-            {e.info_complementar ? (
+            {lotes || textoInfo.length > 0 ? (
               <section className="rounded-lg border border-line bg-raised p-5">
                 <h2 className="mb-2 text-[17px] font-bold">Informações complementares</h2>
                 {lotes ? (
@@ -120,7 +121,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
                     ))}
                   </ol>
                 ) : (
-                  <TextoRecolhivel paragrafos={paragrafos(e.info_complementar)} />
+                  <TextoRecolhivel paragrafos={textoInfo} />
                 )}
               </section>
             ) : null}

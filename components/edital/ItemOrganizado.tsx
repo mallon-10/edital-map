@@ -11,18 +11,24 @@ export function ItemOrganizado({ item }: { item: ItemEdital }) {
   const exclusivo = item.beneficio_id === 1;
   const cota = item.beneficio_id === 3;
   const longa = atributos.length > 3 || (obs?.length ?? 0) > 180;
-  const unitario = item.sigiloso ? 'Sigiloso' : (moeda(item.valor_unitario_estimado) ?? '—');
-  const total = item.sigiloso ? 'Sigiloso' : (moeda(item.valor_total_estimado) ?? '—');
+  const valorUnitario = item.sigiloso ? null : moeda(item.valor_unitario_estimado);
+  const valorTotal = item.sigiloso ? null : moeda(item.valor_total_estimado);
+  const unitario = item.sigiloso ? 'Sigiloso' : (valorUnitario ?? '—');
+  const total = item.sigiloso ? 'Sigiloso' : (valorTotal ?? '—');
+  const qtd = item.quantidade === null ? null : `${quantidade(item.quantidade)} ${item.unidade ?? ''}`.trim();
+  const linhaCelular = [qtd, ...(item.sigiloso ? ['valores sigilosos'] : [valorUnitario ? `${valorUnitario} un.` : null, valorTotal])]
+    .filter(Boolean)
+    .join(' · ');
 
   const especificacao =
     atributos.length || obs ? (
       <div className="mt-1.5 text-[13px] text-ink-muted">
         {atributos.length ? (
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5">
+          <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5">
             {atributos.map((a, i) => (
               <div key={i} className="contents">
-                <dt>{a.chave}</dt>
-                <dd className="text-ink">{a.valor}</dd>
+                <dt className="max-w-[40vw] break-words">{a.chave}</dt>
+                <dd className="break-words text-ink">{a.valor}</dd>
               </div>
             ))}
           </dl>
@@ -37,7 +43,7 @@ export function ItemOrganizado({ item }: { item: ItemEdital }) {
     ) : null;
 
   return (
-    <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-2 border-b border-line py-3 lg:grid-cols-[2.5rem_minmax(0,1fr)_7rem_8rem_8rem]">
+    <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-2 border-b border-line py-3 xl:grid-cols-[2.5rem_minmax(0,1fr)_7rem_8rem_8rem]">
       <span className="font-mono text-[13px] text-ink-muted">{item.numero}</span>
       <div className="min-w-0">
         <p className="break-words text-[14.5px] font-semibold">{nome}</p>
@@ -65,15 +71,20 @@ export function ItemOrganizado({ item }: { item: ItemEdital }) {
             especificacao
           )
         ) : null}
-        <p className="mt-1.5 text-[13px] text-ink-muted lg:hidden">
-          {quantidade(item.quantidade)} {item.unidade ?? ''} · {unitario} un. · {total}
-        </p>
+        {linhaCelular ? <p className="mt-1.5 text-[13px] text-ink-muted xl:hidden">{linhaCelular}</p> : null}
       </div>
-      <span className="hidden text-right font-mono text-[13px] lg:block">
+      <span className="hidden text-right font-mono text-[13px] xl:block">
+        <span className="sr-only">Quantidade: </span>
         {quantidade(item.quantidade)} <span className="font-sans text-ink-muted">{item.unidade ?? ''}</span>
       </span>
-      <span className="hidden text-right font-mono text-[13px] lg:block">{unitario}</span>
-      <span className="hidden text-right font-mono text-[13px] font-medium lg:block">{total}</span>
+      <span className="hidden text-right font-mono text-[13px] xl:block">
+        <span className="sr-only">Valor unitário: </span>
+        {unitario}
+      </span>
+      <span className="hidden text-right font-mono text-[13px] font-medium xl:block">
+        <span className="sr-only">Total: </span>
+        {total}
+      </span>
     </li>
   );
 }
