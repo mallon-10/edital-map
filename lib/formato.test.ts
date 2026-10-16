@@ -61,7 +61,7 @@ describe('prazo', () => {
 
 describe('haQuanto e link oficial', () => {
   it('tempo relativo', () => {
-    expect(haQuanto('2026-10-15T14:59:30Z', AGORA)).toBe('agora há pouco');
+    expect(haQuanto('2026-10-15T14:59:30Z', AGORA)).toBe('há pouco');
     expect(haQuanto('2026-10-15T14:22:00Z', AGORA)).toBe('há 38 min');
     expect(haQuanto('2026-10-15T12:00:00Z', AGORA)).toBe('há 3 h');
     expect(haQuanto('2026-10-13T15:00:00Z', AGORA)).toBe('há 2 dias');

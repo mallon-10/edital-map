@@ -38,11 +38,11 @@ export function tirarPrefixo(t: string): string {
 }
 
 /** Texto com pelo menos 8 letras e mais de 70% delas maiúsculas. */
-export function emMaiusculas(t: string): boolean {
+export function emMaiusculas(t: string, minLetras = 8): boolean {
   const maiusculas = (t.match(/\p{Lu}/gu) ?? []).length;
   const minusculas = (t.match(/\p{Ll}/gu) ?? []).length;
   const letras = maiusculas + minusculas;
-  return letras >= 8 && maiusculas / letras > 0.7;
+  return letras >= minLetras && maiusculas / letras > 0.7;
 }
 
 function capitalizar(t: string): string {
@@ -54,8 +54,8 @@ function maiusculaNasFrases(t: string): string {
 }
 
 /** Texto TODO EM MAIÚSCULAS vira texto normal (frases com inicial maiúscula), preservando siglas, números, romanos e unidades. */
-export function semGritos(t: string): string {
-  if (!emMaiusculas(t)) return t;
+export function semGritos(t: string, minLetras = 8): string {
+  if (!emMaiusculas(t, minLetras)) return t;
   const baixo = t.replace(PALAVRA, (p) => {
     if (SIGLAS.has(p) || ROMANOS.test(p)) return p;
     if (Object.hasOwn(UNIDADES, p)) return UNIDADES[p];
@@ -142,6 +142,23 @@ function semCodigos(t: string, codigos?: string[]): string {
 }
 
 /** Organiza a descrição de um item: nome em destaque, atributos "chave: valor", observação e etiquetas (lote, código do catálogo). */
+/** "CABO HDMI CABO HDMI - …" (classe do catálogo + nome repetidos): a repetição no começo sai. */
+function semRepeticaoInicial(t: string): string {
+  const palavras = [...t.matchAll(/\S+/g)];
+  const chave = (i: number) => palavras[i][0].toLocaleLowerCase('pt-BR');
+  for (let k = Math.min(8, Math.floor(palavras.length / 2)); k >= 1; k--) {
+    let igual = true;
+    for (let i = 0; i < k && igual; i++) igual = chave(i) === chave(k + i);
+    if (igual) return (t.slice(0, palavras[k].index) + t.slice(palavras[2 * k - 1].index + palavras[2 * k - 1][0].length).trimStart()).trim();
+  }
+  return t;
+}
+
+/** Nome do item: maiúsculas viram texto normal já a partir de 4 letras ("MOUSE" → "Mouse"). */
+function nomeDoItem(n: string): string {
+  return capitalizar(semGritos(n, 4));
+}
+
 export function partirItem(descricao: string): ItemPartido {
   const codigos: string[] = [];
   const linhas = descricao.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
@@ -153,11 +170,11 @@ export function partirItem(descricao: string): ItemPartido {
     etiquetas.unshift(`Lote ${Number(lote[1])}`);
     t = t.slice(lote[0].length);
   }
-  t = capitalizar(t.trim());
+  t = capitalizar(semRepeticaoInicial(t.trim()));
 
   const chaves = acharChaves(t);
   if (chaves.length >= 2) {
-    const nome = t.slice(0, chaves[0].inicio).trim().replace(/[\s,;:–-]+$/, '');
+    const nome = nomeDoItem(t.slice(0, chaves[0].inicio).trim().replace(/[\s,;:–-]+$/, ''));
     if (nome) {
       const atributos: Atributo[] = [];
       let obs: string | null = null;
@@ -177,6 +194,12 @@ export function partirItem(descricao: string): ItemPartido {
     }
   }
 
+  // Padrão do catálogo: "CLASSE EM MAIÚSCULAS - Descrição: … Tipo: …" → a classe é o nome, o resto é a especificação.
+  const classe = /^(.{3,80}?)\s[-–]\s(.+)$/su.exec(t);
+  if (!lote && classe && emMaiusculas(classe[1], 4) && !emMaiusculas(classe[2])) {
+    return { nome: nomeDoItem(classe[1]), atributos: [], obs: capitalizar(classe[2].trim()), etiquetas };
+  }
+
   // O órgão costuma pôr o título do item na primeira linha.
   // Só vale se a linha não termina em pontuação de continuação e a seguinte começa uma frase (maiúscula ou número).
   if (linhas.length > 1 && !lote && !/[,;:\-–]$/.test(linhas[0]) && /^[\p{Lu}\p{N}]/u.test(linhas[1])) {
@@ -189,15 +212,15 @@ export function partirItem(descricao: string): ItemPartido {
 
   const ponto = t.indexOf('. ');
   if (ponto >= 10 && ponto <= 100) {
-    return { nome: t.slice(0, ponto), atributos: [], obs: capitalizar(t.slice(ponto + 2).trim()) || null, etiquetas };
+    return { nome: nomeDoItem(t.slice(0, ponto)), atributos: [], obs: capitalizar(t.slice(ponto + 2).trim()) || null, etiquetas };
   }
   if (t.length <= 100) {
     // Item que é só código ou só "LOTE 08 - ": o nome vazio não serve, usa a descrição original limpa.
-    const nome = t.replace(/\.$/, '') || capitalizar(semGritos(limparEspacos(descricao)));
+    const nome = nomeDoItem(t.replace(/\.$/, '')) || capitalizar(semGritos(limparEspacos(descricao)));
     return { nome, atributos: [], obs: null, etiquetas };
   }
   const espaco = t.lastIndexOf(' ', 90);
-  return { nome: `${t.slice(0, espaco > 20 ? espaco : 90).replace(/[\s,;:.-]+$/, '')}…`, atributos: [], obs: t, etiquetas };
+  return { nome: `${nomeDoItem(t.slice(0, espaco > 20 ? espaco : 90)).replace(/[\s,;:.-]+$/, '')}…`, atributos: [], obs: t, etiquetas };
 }
 
 export type Lote = { numero: number; texto: string };

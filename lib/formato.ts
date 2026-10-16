@@ -104,7 +104,7 @@ export function etiqueta(e: { encerramento_em: string; publicada_em: string | nu
 
 export function haQuanto(iso: string, agora: Date): string {
   const s = Math.max(0, (agora.getTime() - Date.parse(iso)) / 1000);
-  if (s < 120) return 'agora há pouco';
+  if (s < 120) return 'há pouco';
   const min = Math.floor(s / 60);
   if (min < 60) return `há ${min} min`;
   const h = Math.floor(min / 60);

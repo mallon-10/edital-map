@@ -69,6 +69,28 @@ describe('tituloCurto', () => {
 });
 
 describe('partirItem', () => {
+  it('nome repetido pelo catálogo sai uma vez só e sem gritos', () => {
+    expect(partirItem('CABO HDMI CABO HDMI - Versão: 2.1 Comprimento: 5 metros').nome).toBe('Cabo HDMI');
+    expect(partirItem('MOUSE MOUSE - Tipo: vertical Conector: USB').nome).toBe('Mouse');
+    expect(
+      partirItem(
+        'COMPONENTES E MATERIAIS DE TELECOMUNICACAO COMPONENTES E MATERIAIS DE TELECOMUNICACAO - Descrição: Carregador USB Tipo: parede',
+      ).nome,
+    ).toBe('Componentes e materiais de telecomunicacao');
+  });
+
+  it('nome longo em maiúsculas vira texto normal mesmo com atributos em minúsculas', () => {
+    const r = partirItem(
+      'CABO ELETRICO ELETRONICO CABO ELETRICO ELETRONICO - CABO UTP CAT5 EXTERNO CABO CARREGADOR TIPO LIGHTNING PARA DISPOSITIVOS MOVEIS COM COMPRIMENTO DE UM METRO E MEIO, cor preta, embalagem individual lacrada com garantia de fabrica de doze meses e nota fiscal',
+    );
+    expect(r.nome).toBe('Cabo eletrico eletronico');
+    expect(r.obs?.startsWith('CABO UTP CAT5')).toBe(true);
+  });
+
+  it('palavra repetida de verdade fica (só a repetição no começo do nome sai)', () => {
+    expect(partirItem('Papel A4 papel reciclado - cor: branca, gramatura: 75 g').nome).toBe('Papel A4 papel reciclado');
+  });
+
   it('item no padrão de catálogo vira nome + atributos + observação', () => {
     expect(
       partirItem(
