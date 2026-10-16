@@ -15,7 +15,7 @@ import { SLUG_EDITAL } from '@/lib/eventos';
 import { data, haQuanto, linkOficial, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
 import { atualizadoEm, edital, itensDoEdital, resumoItens } from '@/lib/servidor/consultas';
-import { lotesDaInfo, nomeProprio, paragrafos, textoLimpo, tituloCurto } from '@/lib/texto';
+import { assunto, lotesDaInfo, nomeProprio, paragrafos, textoLimpo } from '@/lib/texto';
 import type { ResumoItens } from '@/lib/tipos';
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ itens?: string }> };
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!SLUG_EDITAL.test(slug)) return { title: 'Edital' };
   const e = await edital(slug);
   if (!e) return { title: 'Edital não encontrado' };
-  const t = tituloCurto(e.objeto).titulo;
+  const t = assunto(e.objeto).titulo;
   return { title: t.length > 70 ? `${t.slice(0, 69)}…` : t };
 }
 
@@ -50,7 +50,8 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   ]);
   const agora = new Date();
   const p = prazo(e.encerramento_em, agora);
-  const titulo = tituloCurto(e.objeto);
+  const titulo = assunto(e.objeto);
+  const objetoCompleto = textoLimpo(e.objeto);
   const local = `${e.municipio_nome ?? '—'}/${e.uf}`;
   const lotes = e.info_complementar ? lotesDaInfo(e.info_complementar) : null;
   const textoInfo = e.info_complementar && !lotes ? paragrafos(e.info_complementar) : [];
@@ -73,6 +74,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-xs px-2 py-0.5 text-xs font-semibold ${TAG_PRAZO[p.tom]}`}>{p.situacao}</span>
               <span className={`text-[13px] ${TEXTO_PRAZO[p.tom]}`}>{p.texto}</span>
+              {titulo.tipo ? <span className={ETIQUETA}>{titulo.tipo}</span> : null}
               {e.modalidade_nome ? <span className={ETIQUETA}>{modalidadeCurta(e.modalidade_nome)}</span> : null}
               {e.srp ? <span className={ETIQUETA}>Registro de preços</span> : null}
               {exclusivoTotal ? <span className="rounded-xs bg-mata-soft px-2 py-0.5 text-xs font-semibold text-mata">Exclusivo ME/EPP</span> : null}
@@ -101,11 +103,11 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
               <h2 className="mb-3 text-[17px] font-bold">Itens da licitação</h2>
               <ListaItens itens={itens.itens} total={itens.total} slug={e.slug} todos={todos} />
             </section>
-            {titulo.cortado ? (
+            {titulo.titulo !== objetoCompleto ? (
               <section className="rounded-lg border border-line bg-raised p-5">
                 <details>
                   <summary className="cursor-pointer text-[17px] font-bold">Objeto completo</summary>
-                  <p className="mt-2 break-words text-[15px]">{textoLimpo(e.objeto)}</p>
+                  <p className="mt-2 break-words text-[15px]">{objetoCompleto}</p>
                 </details>
               </section>
             ) : null}

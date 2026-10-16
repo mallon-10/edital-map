@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emMaiusculas, limparEspacos, lotesDaInfo, nomeProprio, paragrafos, partirItem, semGritos, tituloCurto } from './texto';
+import { assunto, emMaiusculas, limparEspacos, lotesDaInfo, nomeProprio, paragrafos, partirItem, semGritos, tituloCurto } from './texto';
 
 describe('limparEspacos', () => {
   it('junta quebras de linha, colapsa espaços e tira espaço antes de pontuação', () => {
@@ -33,6 +33,141 @@ describe('nomeProprio', () => {
     expect(nomeProprio('MUNICIPIO DE ITA')).toBe('Municipio de Ita');
     expect(nomeProprio('SECRETARIA DE ESTADO DA ADMINISTRACAO - SC')).toBe('Secretaria de Estado da Administracao - SC');
     expect(nomeProprio('Prefeitura Municipal de Itajaí')).toBe('Prefeitura Municipal de Itajaí');
+  });
+});
+
+describe('assunto', () => {
+  const casos: Array<[string, string, string | null]> = [
+    [
+      'Contratação de empresa especializada para a prestação de serviços de empresa especializada para a prestação de serviços de segurança privada armada e desarmada',
+      'Segurança privada armada e desarmada',
+      'Serviço',
+    ],
+    ['Credenciamento de pessoas jurídicas para prestar serviços de exames diversos na rede municipal de saúde', 'Exames diversos', 'Credenciamento'],
+    [
+      'Contratacao de empresa especializada para a confeccao e fornecimento de 17 dezessete buquês de flores naturais',
+      'Confecção e fornecimento de 17 buquês de flores naturais',
+      'Serviço',
+    ],
+    [
+      'Contratação de empresa especializada para locação de figurinos de alta costura para o espetáculo de Natal',
+      'Locação de figurinos de alta costura para o espetáculo de Natal',
+      'Serviço',
+    ],
+    [
+      'Registro de preços para futura e eventual aquisição de materiais de limpeza para atender as necessidades das secretarias municipais',
+      'Materiais de limpeza',
+      'Compra',
+    ],
+    ['A presente licitação tem por objeto a aquisição de uniformes escolares, conforme termo de referência', 'Uniformes escolares', 'Compra'],
+    ['Aquisição de impressoras térmicas e insumos APS', 'Impressoras térmicas e insumos APS', 'Compra'],
+    [
+      'Contratação de empresa especializada para execução de obra de pavimentação asfáltica da Rua XV de Novembro',
+      'Pavimentação asfáltica da Rua XV de Novembro',
+      'Obra',
+    ],
+    [
+      'Chamamento público para credenciamento de pessoas físicas e jurídicas interessadas na prestação de serviços de transporte escolar',
+      'Transporte escolar',
+      'Credenciamento',
+    ],
+    ['Constitui objeto da presente licitação o fornecimento de gêneros alimentícios para a merenda escolar', 'Gêneros alimentícios para a merenda escolar', 'Compra'],
+    ['Construção de unidade básica de saúde no bairro Centro', 'Construção de unidade básica de saúde no bairro Centro', 'Obra'],
+    ['Fornecimento e instalação de sistema de cercamento eletrônico', 'Fornecimento e instalação de sistema de cercamento eletrônico', null],
+    [
+      'Credenciamento de pessoas jurídicas para prestação de serviços ambulatoriais de Medicina Laboratorial',
+      'Serviços ambulatoriais de Medicina Laboratorial',
+      'Credenciamento',
+    ],
+    [
+      'O presente procedimento licitatório tem por objeto a contratação de empresa especializada para execução de obra de pavimentação em blocos de concreto',
+      'Pavimentação em blocos de concreto',
+      'Obra',
+    ],
+    [
+      'Objeto: Registro de Preços para eventual aquisição de medicamentos. Especificação do Objeto: Medicamentos padronizados',
+      'Medicamentos',
+      'Compra',
+    ],
+    [
+      'Contratação de pessoa jurídica especializada para a execução da obra de implantação de Campo Society no Bairro Mato Preto, localizado na Rua Adélia',
+      'Implantação de Campo Society no Bairro Mato Preto',
+      'Obra',
+    ],
+    [
+      'O presente procedimento tem por objeto a futura e eventual contratação para prestação de serviços continuados de locação de banheiros químicos',
+      'Locação de banheiros químicos',
+      'Serviço',
+    ],
+    [
+      'Credenciamento de pessoas físicas para prestação de serviços técnicos culturais e de monitoria artística, de forma complementar',
+      'Serviços técnicos culturais e de monitoria artística',
+      'Credenciamento',
+    ],
+  ];
+
+  it.each([
+    ['Registro de preços para futuras e eventuais aquisições de marmitas.', 'Marmitas', 'Compra'],
+    ['PE 111 CG 97 Registro de preços para futura aquisição de materiais hospitalares.', 'Materiais hospitalares', 'Compra'],
+    ['RP Aquisicao de material eletrico para manutencao de rede de iluminacao publica', 'Material elétrico para manutenção de rede de iluminação pública', 'Compra'],
+    [
+      'Contratação de empresa especializada para execução de obra para construção de uma quadra de teach tennis e quiosque',
+      'Construção de uma quadra de teach tennis e quiosque',
+      'Obra',
+    ],
+    ['REGISTRO DE PREÇOS destinado a aquisição de pregos para construção de pontes', 'Pregos para construção de pontes', 'Compra'],
+    [
+      'Registro de preços visando a seleção da proposta mais vantajosa para contratação de empresa de engenharia para prestação de serviços de recapeamento asfáltico',
+      'Recapeamento asfáltico',
+      'Obra',
+    ],
+    ['Aquisição de 06 (seis) carretas agrícolas e 08 (oito) roçadeiras', '06 carretas agrícolas e 08 roçadeiras', 'Compra'],
+    ['Credenciamento de prestadores de serviço de silagem para os produtores rurais', 'Silagem para os produtores rurais', 'Credenciamento'],
+    ['Contratação de empresa(s) para prestação de serviços de transporte eventual de passageiros.', 'Transporte eventual de passageiros', 'Serviço'],
+    ['Sistema de registro de preços (SRP) para aquisição de materiais hospitalares e farmacológicos', 'Materiais hospitalares e farmacológicos', 'Compra'],
+    ['Registro de preços, pelo prazo de 12 meses, para futura e eventual aquisição de intercap e solupan.', 'Intercap e solupan', 'Compra'],
+    ['Registro de preços para aquisição parcelada de combustíveis tipo gasolina comum', 'Combustíveis tipo gasolina comum', 'Compra'],
+    ['PREG-E 641/2026 - Aquisição de cadeiras giratórias para escritório', 'Cadeiras giratórias para escritório', 'Compra'],
+    [
+      'Contratação de empresa especializada para a construção de barracão destinado à compostagem de resíduos orgânicos',
+      'Construção de barracão destinado à compostagem de resíduos orgânicos',
+      'Obra',
+    ],
+    [
+      'Contratação de empresa especializada para a execução da obra de fechamento da quadra esportiva da e.b.M. Cristo redentor',
+      'Fechamento da quadra esportiva da e.b.M. Cristo redentor',
+      'Obra',
+    ],
+    [
+      'Edital de Chamamento Público destinado ao credenciamento de pessoas jurídicas, especializadas para a prestação de serviços de fisioterapia',
+      'Fisioterapia',
+      'Credenciamento',
+    ],
+  ])('padrões vistos nos editais reais: %s', (objeto, titulo, tipo) => {
+    expect(assunto(objeto)).toEqual({ titulo, tipo });
+  });
+
+  it('abertura sem assunto ("Registro de Preços, pelo período…") volta ao título normal', () => {
+    const objeto = 'Registro de Preços, pelo período de 1 (um) ano, podendo ser prorrogado por igual período';
+    expect(assunto(objeto)).toEqual({ titulo: tituloCurto(objeto).titulo, tipo: null });
+  });
+
+  it.each(casos)('%s', (objeto, titulo, tipo) => {
+    expect(assunto(objeto)).toEqual({ titulo, tipo });
+  });
+
+  it('o que sobra curto demais volta ao título normal', () => {
+    expect(assunto('Contratação de empresa especializada para a prestação de serviços de TI').titulo).toBe(
+      'Contratação de empresa especializada para a prestação de serviços de TI',
+    );
+  });
+
+  it('título longo corta na palavra', () => {
+    const r = assunto(
+      'Aquisição de equipamentos e mobiliário hospitalar para equipar as unidades de pronto atendimento e o centro de especialidades médicas e odontológicas do consórcio intermunicipal',
+    );
+    expect(r.titulo.length).toBeLessThanOrEqual(121);
+    expect(r.titulo.startsWith('Equipamentos e mobiliário hospitalar')).toBe(true);
   });
 });
 

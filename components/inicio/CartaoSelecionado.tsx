@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { diaMes, hora, moeda, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
-import { nomeProprio, tituloCurto } from '@/lib/texto';
+import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
 import { PinoMini } from './Icones';
 
@@ -26,7 +26,7 @@ export function CartaoSelecionado({ edital: e, agora, aoFechar }: { edital: Edit
         <PinoMini className="h-3.5 w-2.5" />
         {e.municipio_nome ?? '—'} · {e.uf}
       </p>
-      <h2 className="pr-6 text-[17px] font-bold leading-snug">{tituloCurto(e.objeto).titulo}</h2>
+      <h2 className="pr-6 text-[17px] font-bold leading-snug">{assunto(e.objeto).titulo}</h2>
       <p className="text-[13px] text-[#c7d6d3]">{orgao}</p>
       <div className="grid grid-cols-2 gap-3 border-t border-white/15 pt-3">
         <div>

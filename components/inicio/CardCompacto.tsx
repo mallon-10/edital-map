@@ -1,5 +1,5 @@
 import { etiqueta, moedaCurta } from '@/lib/formato';
-import { limparEspacos, nomeProprio, semGritos, tituloCurto } from '@/lib/texto';
+import { assunto, limparEspacos, nomeProprio, semGritos } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
 import { ESTILO_ETIQUETA, PONTO_ETIQUETA } from './estilos';
 
@@ -9,6 +9,7 @@ type Props = { edital: EditalResumo; agora: Date; selecionado: boolean; aoSeleci
 export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props) {
   const et = etiqueta(edital, agora);
   const valor = moedaCurta(edital.valor_estimado);
+  const { titulo, tipo } = assunto(edital.objeto);
   return (
     <button
       type="button"
@@ -19,7 +20,7 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
       }`}
     >
       <span className="flex items-start justify-between gap-3">
-        <span className="line-clamp-3 text-[14px] font-semibold leading-5">{tituloCurto(edital.objeto).titulo}</span>
+        <span className="line-clamp-3 text-[14px] font-semibold leading-5">{titulo}</span>
         {valor ? (
           <span className="shrink-0 whitespace-nowrap font-mono text-[13px] font-medium">{valor}</span>
         ) : (
@@ -27,7 +28,7 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
         )}
       </span>
       <span className="truncate text-xs text-ink-muted">
-        {nomeProprio(edital.orgao_nome)} · {edital.uf}
+        {[tipo, nomeProprio(edital.orgao_nome), edital.uf].filter(Boolean).join(' · ')}
       </span>
       {edital.onde === 'itens' && edital.item_trecho ? (
         <span className="truncate text-xs text-rio">Encontrado nos itens: {semGritos(limparEspacos(edital.item_trecho))}</span>

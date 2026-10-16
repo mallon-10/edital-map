@@ -107,6 +107,124 @@ export function tituloCurto(objeto: string): Titulo {
   return { titulo: `${limpo.slice(0, espaco > 40 ? espaco : 140).replace(/[\s,;:.-]+$/, '')}…`, cortado: true };
 }
 
+export type TipoObjeto = 'Serviço' | 'Compra' | 'Obra' | 'Credenciamento';
+export type Assunto = { titulo: string; tipo: TipoObjeto | null };
+
+/** Palavras comuns que alguns órgãos mandam sem acento. */
+const ACENTOS: Record<string, string> = {
+  contratacao: 'contratação', confeccao: 'confecção', aquisicao: 'aquisição', aquisicoes: 'aquisições',
+  prestacao: 'prestação', servico: 'serviço', servicos: 'serviços', manutencao: 'manutenção', execucao: 'execução',
+  licitacao: 'licitação', preco: 'preço', precos: 'preços', locacao: 'locação', construcao: 'construção',
+  educacao: 'educação', saude: 'saúde', municipio: 'município', pecas: 'peças', veiculos: 'veículos',
+  alimenticios: 'alimentícios', generos: 'gêneros', informatica: 'informática', eletrica: 'elétrica',
+  hidraulica: 'hidráulica', mecanica: 'mecânica', graficos: 'gráficos', medico: 'médico', medicos: 'médicos',
+  odontologicos: 'odontológicos', pavimentacao: 'pavimentação', iluminacao: 'iluminação', reforma: 'reforma',
+  instalacao: 'instalação', ampliacao: 'ampliação', alimentacao: 'alimentação', reposicao: 'reposição',
+  concessao: 'concessão', espacos: 'espaços', publicos: 'públicos', publicas: 'públicas', exploracao: 'exploração',
+  realizacao: 'realização', medicas: 'médicas', juridica: 'jurídica', juridicas: 'jurídicas', fisica: 'física',
+  fisicas: 'físicas', veterinarios: 'veterinários', alimenticio: 'alimentício', perecivel: 'perecível',
+  pereciveis: 'perecíveis', eletronico: 'eletrônico', eletronicos: 'eletrônicos', residuos: 'resíduos',
+  solidos: 'sólidos', transito: 'trânsito', farmacia: 'farmácia', instituicoes: 'instituições',
+  criancas: 'crianças', publico: 'público', publica: 'pública', eletrico: 'elétrico', eletricos: 'elétricos',
+};
+
+function comAcentos(t: string): string {
+  return t.replace(/\p{L}+/gu, (p) => {
+    const certo = ACENTOS[p.toLocaleLowerCase('pt-BR')];
+    if (!certo || certo === p.toLocaleLowerCase('pt-BR')) return p;
+    return p[0] === p[0].toLocaleUpperCase('pt-BR') ? certo[0].toLocaleUpperCase('pt-BR') + certo.slice(1) : certo;
+  });
+}
+
+/** Preposição obrigatória depois do verbo da abertura ("fornecimento de"), para "Fornecimento e instalação" ficar. */
+const DE = String.raw`\s+(?:de|do|da|dos|das|em)\s+`;
+const AO = String.raw`(?:\s+(?:a|o))?`;
+/** "Contratação de empresa especializada para (a)" e variações. */
+const EMPRESA = String.raw`^(?:(?:contratação(?:\s+integrada)?\s+de\s+)?(?:uma\s+)?(?:empresas?|empresa\(s\)|pessoas?\s+jurídicas?)(?:\s+especializadas?)?(?:\s+(?:de|em)\s+engenharia)?,?\s+(?:para|na|no|em|visando|objetivando)${AO}\s+)`;
+/** Quem pode se credenciar, quando é genérico (pessoas, empresas, interessados). */
+const CREDENCIADOS = String.raw`(?:pessoas?|empresas?|interessad[oa]s|prestadores|entidades|instituições)(?:\s+(?:físicas?|jurídicas?)(?:\s+(?:e|ou|e\s*\/\s*ou)\s+(?:físicas?|jurídicas?))?)?(?:,?\s+(?:especializad[oa]s?|interessad[oa]s?))?`;
+
+/** Aberturas burocráticas; o tipo diz o que a abertura informava. Aplicadas em sequência até nada mudar. */
+const ABERTURAS: Array<[RegExp, TipoObjeto | null]> = [
+  // Códigos de processo no começo ("RP", "PE 111 CG 97").
+  [/^(?:(?:RP|SRP|PE|PP|CC|CP|DL|TP|CG|IN)\b\.?\s*(?:n?º?\s*[\d/.-]+\s*)?)+(?=\p{Lu})/u, null],
+  [/^[A-Z]{2,6}(?:-[A-Z]{1,3})?\s*n?º?\s*\d[\d/.-]*\s*[-–:]?\s*(?=\p{L})/u, null],
+  [/^(?:valor\s+)?referente\s+(?:a\s+|à\s+)?/iu, null],
+  [/^(?:processo\s+licitatório|pregão\s+eletrônico(?:\s+tradicional)?|concorrência\s+eletrônica|dispensa\s+eletrônica)(?:\s+de\s+(?:concorrência|pregão)\s+eletrônic[oa])?\s+(?:para|visando)\s+/iu, null],
+  [/^(?:registro\s+de\s+preços?\s+)?(?:visando|objetivando|para)\s+a\s+seleção\s+da\s+proposta\s+mais\s+vantajosa\s+(?:para|visando)(?:\s+a)?\s+/iu, null],
+  // "A presente licitação / O presente procedimento licitatório / O presente chamamento público tem por objeto (a)"
+  [/^(?:a|o)\s+(?:presente|referida)(?:\s+[\p{L}]+){1,3}?\s+(?:tem|têm)\s+(?:por|como)\s+(?:objeto|objetivo|finalidade)(?:\s+(?:a|o))?\s*:?\s*/iu, null],
+  [/^(?:o\s+)?objeto\s+(?:da|do)\s+(?:presente\s+)?(?:[\p{L}]+\s+){1,3}?(?:é|consiste)(?:\s+(?:a|o|na|no|em))?\s*:?\s*/iu, null],
+  [/^constitui\s+(?:o\s+)?objeto\s+(?:da|do|deste|desta)(?:\s+presente)?(?:\s+[\p{L}]+){1,3}?\s+(?:a|o)\s+/iu, null],
+  [/^objeto\s*:\s*/iu, null],
+  [/^(?:futuras?\s+e\s+eventua(?:l|is)|eventua(?:l|is)\s+e\s+futuras?|eventua(?:l|is))\s+(?=aquisi|compra|contrata|fornecimento)/iu, null],
+  [/^(?:sistema\s+de\s+)?registro\s+de\s+preços?(?:\s*\(SRP\))?(?:,\s*pelo\s+(?:prazo|período)\s+de\s+[^,]{1,40},)?(?:\s*[-–:]\s*|\s+(?:para|visando|objetivando|destinad[oa]\s+(?:a|à))(?:\s+(?:a|o))?(?:\s+(?:futuras?|eventua(?:l|is)|parceladas?|e))*\s+)(?=aquisi|compra|contrata|fornecimento|prestação|execução)/iu, null],
+  [new RegExp(String.raw`^(?:(?:a|o)\s+)?(?:(?:edital\s+de\s+)?(?:chamamento|chamada)\s+pública?o?\s+(?:para\s+fins\s+de|destinad[oa]\s+ao|para|de)\s+)?(?:o\s+)?credenciamento(?:\s+e\s+contratação)?\s+(?:de|das|dos)\s+${CREDENCIADOS},?\s+(?:para|na|no|em)${AO}\s+(?:(?:prestar|prestarem|prestação\s+d[eoa]s?)\s+)?(?:serviços?${DE})?`, 'iu'), 'Credenciamento'],
+  [/^credenciamento\s+de\s+prestadores\s+de\s+serviços?\s+(?:de|em)\s+/iu, 'Credenciamento'],
+  [new RegExp(EMPRESA, 'iu'), 'Serviço'],
+  [new RegExp(String.raw`^(?:a\s+)?(?:contratação\s+de\s+)?execução\s+(?:de|da|das)\s+obras?(?:\s+(?:de|do|da|dos|das|em|para)\s+|\s+)`, 'iu'), 'Obra'],
+  [new RegExp(String.raw`^(?:a\s+)?(?:contratação\s+(?:de|para)${AO}\s+)?(?:prestação|execução|realização)(?:\s+continuada)?\s+(?:de|do|dos)\s+serviços?(?:\s+continuados?)?${DE}`, 'iu'), 'Serviço'],
+  [new RegExp(String.raw`^(?:a\s+)?(?:contratação\s+(?:de|para)${AO}\s+)?(?:prestação|execução)(?:\s+continuada)?\s+de\s+(?=serviços?\s)`, 'iu'), 'Serviço'],
+  [new RegExp(String.raw`^(?:(?:a|o)\s+)?(?:contratação\s+de\s+)?(?:aquisição|aquisições|compra|fornecimento)(?:\s+parcelad[oa]s?)?${DE}`, 'iu'), 'Compra'],
+  [new RegExp(String.raw`^(?:a\s+)?contratação\s+de\s+(?=serviços?${DE})`, 'iu'), 'Serviço'],
+  [/^(?:a\s+)?contratação\s+de\s+(?=seguros?\s)/iu, 'Serviço'],
+];
+
+/** Começos que indicam obra mesmo quando a abertura dizia "contratação de empresa". */
+const OBRA = /^(?:construção|pavimentação|recapeamento|reforma|ampliação|implantação|drenagem|execução\s+da\s+obra)\b/iu;
+
+/** Resultados genéricos demais: voltam ao título normal. */
+const GENERICO = /^(?:registro\s+de\s+preços?|registrar\s+preços|contratação|aquisição|serviços?|credenciamento)\b.{0,12}$/iu;
+
+/** Finais que só dizem para quem é, onde fica ou remetem a outro documento. */
+const CAUDA = new RegExp(
+  String.raw`(?:(?<=[\p{Ll}\d)]{2})\.\s+(?=\p{Lu})|;\s+|(?:,\s*|\s+)(?:para\s+(?:atender|suprir|uso|utilização|atendimento)|(?:tudo\s+)?conforme|de\s+acordo\s+com|visando|objetivando|a\s+fim\s+de|com\s+a\s+finalidade|que\s+serão|em\s+atendimento|atendendo|pelo\s+(?:período|prazo)|durante\s+o|no\s+âmbito|junto\s+(?:a|ao|à)|compreendendo|contemplando|incluindo|bem\s+como|mediante|localizad[oa]s?|situad[oa]s?|no\s+município|de\s+forma\s+(?:complementar|integral)|a\s+serem\s|que\s+ser|destinad[oa]s?\s+(?:a|à|ao|aos|às)\s|aos\s+(?:beneficiários|usuários|servidores|alunos|munícipes|pacientes)|(?:na|no|nas|nos|para\s+(?:a|o|as|os))\s+(?:rede|secretarias?|prefeitura|município|fundo|câmara|departamento|unidades?|escolas?)\b))`,
+  'iu',
+);
+
+const NUMEROS = 'um|uma|dois|duas|três|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzent[oa]s|trezent[oa]s|quatrocent[oa]s|quinhent[oa]s|seiscent[oa]s|setecent[oa]s|oitocent[oa]s|novecent[oa]s|mil|e';
+/** "17 dezessete" / "17 (dezessete)" → "17". */
+const EXTENSO = new RegExp(`(\\d+)\\s*\\(?\\s*(?:(?:${NUMEROS})(?:\\s+|(?=\\)))){1,6}\\)?`, 'giu');
+
+/** Assunto do edital em poucas palavras ("Segurança privada"), com o tipo que a abertura burocrática informava. */
+export function assunto(objeto: string): Assunto {
+  const original = tituloCurto(objeto).titulo;
+  let t = comAcentos(textoLimpo(objeto));
+  let tipo: TipoObjeto | null = null;
+  for (let mudou = true, voltas = 0; mudou && voltas < 8; voltas++) {
+    mudou = false;
+    for (const [re, tipoDaAbertura] of ABERTURAS) {
+      const m = re.exec(t);
+      if (m && m[0].length > 0 && m[0].length < t.length) {
+        t = t.slice(m[0].length);
+        // Credenciamento e obra dizem mais que "serviço"; compra vinda depois de "contratação de empresa" vale.
+        if (tipoDaAbertura && tipo !== 'Credenciamento' && tipo !== 'Obra') tipo = tipoDaAbertura;
+        mudou = true;
+      }
+    }
+    const semRepetir = semRepeticaoInicial(t);
+    if (semRepetir !== t) {
+      t = semRepetir;
+      mudou = true;
+    }
+  }
+  t = t.replace(EXTENSO, '$1 ').replace(/\s{2,}/g, ' ');
+  const cauda = CAUDA.exec(t);
+  // "destinado a…" às vezes é o que diz o assunto ("barracão destinado à compostagem"): só corta se sobrar bastante.
+  const minimo = cauda && /destinad/i.test(cauda[0]) ? 30 : 12;
+  if (cauda && cauda.index >= minimo) t = t.slice(0, cauda.index);
+  // Maiúscula só se o título começa por letra ("06 carretas" fica como está).
+  t = t.replace(/[\s,;:.–-]+$/, '').trim().replace(/^\p{Ll}/u, (l) => l.toLocaleUpperCase('pt-BR'));
+  if ((t.match(/\p{L}/gu) ?? []).length < 6 || GENERICO.test(t)) return { titulo: original, tipo: null };
+  if (OBRA.test(t) && tipo !== 'Credenciamento') tipo = 'Obra';
+  return { titulo: tituloCurto(t).titulo.length > 121 ? cortarNaPalavra(t, 120) : t, tipo };
+}
+
+function cortarNaPalavra(t: string, max: number): string {
+  const espaco = t.lastIndexOf(' ', max);
+  return `${t.slice(0, espaco > 40 ? espaco : max).replace(/[\s,;:.–-]+$/, '')}…`;
+}
+
 export type Atributo = { chave: string; valor: string };
 export type ItemPartido = { nome: string; atributos: Atributo[]; obs: string | null; etiquetas: string[] };
 
