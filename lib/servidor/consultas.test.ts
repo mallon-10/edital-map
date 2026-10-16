@@ -101,4 +101,27 @@ describe('contrato com as funções SQL (0005)', () => {
     expect(chamadas[0].args.p_contratacao).toBe('contratacao-1');
     expect(r).toEqual({ total: 12, materiais: 10, servicos: 2, comBeneficio: 9, exclusivos: 6, cota: 3, criterios: ['Menor preço'] });
   });
+
+  it('buscarEditais mapeia as colunas da 0005, sem item_trecho', async () => {
+    respostaRpc = [
+      {
+        id: 'C1', slug: '00394452000103-2026-1', objeto: 'Luvas', orgao_nome: 'Município de Joinville', unidade_nome: null,
+        municipio_nome: 'Joinville', uf: 'SC', codigo_ibge: '4209102', valor_estimado: '1000.50',
+        encerramento_em: '2026-10-20T13:00:00+00:00', publicada_em: null, modalidade_nome: 'Pregão - Eletrônico', srp: false,
+        onde: 'itens', total: 1,
+      },
+    ];
+    const r = await buscarEditais({ q: 'nitrilica', uf: null, ibge: null, dias: null, deslocamento: 0, valorMin: null, modalidades: null });
+    expect(r).toEqual({
+      total: 1,
+      editais: [
+        {
+          id: 'C1', slug: '00394452000103-2026-1', objeto: 'Luvas', orgao_nome: 'Município de Joinville', unidade_nome: null,
+          municipio_nome: 'Joinville', uf: 'SC', codigo_ibge: '4209102', valor_estimado: 1000.5,
+          encerramento_em: '2026-10-20T13:00:00+00:00', publicada_em: null, modalidade_nome: 'Pregão - Eletrônico', srp: false,
+          onde: 'itens',
+        },
+      ],
+    });
+  });
 });

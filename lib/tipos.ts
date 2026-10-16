@@ -35,7 +35,6 @@ export type EditalResumo = {
   modalidade_nome: string | null;
   srp: boolean;
   onde: 'objeto' | 'itens';
-  item_trecho: string | null;
 };
 
 export type ResultadoBusca = { total: number; editais: EditalResumo[] };

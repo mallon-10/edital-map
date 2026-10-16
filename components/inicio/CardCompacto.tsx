@@ -1,5 +1,5 @@
 import { etiqueta, moedaCurta } from '@/lib/formato';
-import { assunto, limparEspacos, nomeProprio, semGritos } from '@/lib/texto';
+import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
 import { ESTILO_ETIQUETA, PONTO_ETIQUETA } from './estilos';
 
@@ -30,9 +30,7 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
       <span className="truncate text-xs text-ink-muted">
         {[tipo, nomeProprio(edital.orgao_nome), edital.uf].filter(Boolean).join(' · ')}
       </span>
-      {edital.onde === 'itens' && edital.item_trecho ? (
-        <span className="truncate text-xs text-rio">Encontrado nos itens: {semGritos(limparEspacos(edital.item_trecho))}</span>
-      ) : null}
+      {edital.onde === 'itens' ? <span className="text-xs text-rio">Encontrado nos itens</span> : null}
       <span className={`inline-flex w-fit items-center gap-1.5 rounded-xs px-2 py-0.5 text-xs font-semibold ${ESTILO_ETIQUETA[et.tom]}`}>
         <span className={`size-[7px] rounded-full ${PONTO_ETIQUETA[et.tom]}`} aria-hidden="true" />
         {et.texto}

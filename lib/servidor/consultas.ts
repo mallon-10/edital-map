@@ -44,7 +44,6 @@ export function buscarEditais(f: FiltrosBusca): Promise<ResultadoBusca> {
         modalidade_nome: texto(l.modalidade_nome),
         srp: Boolean(l.srp),
         onde: l.onde === 'itens' ? 'itens' : 'objeto',
-        item_trecho: texto(l.item_trecho),
       })),
     };
   });
