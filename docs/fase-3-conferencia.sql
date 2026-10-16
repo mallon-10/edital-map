@@ -39,19 +39,22 @@ select t, count(*) filter (where antigo) as pela_tabela, count(*) filter (where 
        count(*) filter (where novo and not antigo) as ganhas
 from cmp group by t order by t;
 
--- ── [M1-b] Todo edital com itens ganhou resumo com o total certo. Esperado: 0 e 0
--- (antes de qualquer rodada do worker antigo depois da 0005).
+-- ── [M1-b] Todo edital com itens dentro da janela de retenção ganhou resumo com o total certo. Esperado: 0 e 0
+-- (antes de qualquer rodada do worker antigo depois da 0005). A 0005 só preenche encerramento nos últimos
+-- 7 dias ou depois; aqui 6 dias, para a hora do relógio entre a migração e a consulta não acusar a borda.
 select count(*) filter (where c.itens_resumo is null) as sem_resumo,
        count(*) filter (where (c.itens_resumo ->> 'total')::int <> r.total) as total_diferente
 from (select contratacao_id, count(*)::int as total from public.itens group by 1) r
-join public.contratacoes c on c.id = r.contratacao_id;
+join public.contratacoes c on c.id = r.contratacao_id
+where c.encerramento_em > now() - interval '6 days';
 
--- ── [M1-c] Permissões. Esperado: false, true, false, false, true.
+-- ── [M1-c] Permissões. Esperado: false, true, false, false, true, true.
 select has_function_privilege('anon', 'public.gravar_resumo_itens(text, text, jsonb)', 'execute') as anon_grava,
        has_function_privilege('service_role', 'public.gravar_resumo_itens(text, text, jsonb)', 'execute') as servico_grava,
        has_function_privilege('anon', 'public.buscar_editais(text, text[], text, int, numeric, int[], int, int)', 'execute') as anon_busca,
        has_function_privilege('anon', 'public.abertas(text, text[], numeric)', 'execute') as anon_abertas,
-       has_function_privilege('service_role', 'public.buscar_editais(text, text[], text, int, numeric, int[], int, int)', 'execute') as servico_busca;
+       has_function_privilege('service_role', 'public.buscar_editais(text, text[], text, int, numeric, int[], int, int)', 'execute') as servico_busca,
+       has_function_privilege('service_role', 'public.abertas(text, text[], numeric)', 'execute') as servico_abertas;
 
 -- ── [M2] Depois da 0006. Esperado: tabela_itens nula; fora_da_retencao = 0.
 select to_regclass('public.itens') as tabela_itens,

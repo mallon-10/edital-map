@@ -19,7 +19,27 @@ describe('migração 0005 (palavras dos itens)', () => {
       'revoke execute on function public.buscar_editais(text, text[], text, int, numeric, int[], int, int) from public, anon, authenticated;',
     );
     expect(sql).toContain('revoke execute on function public.abertas(text, text[], numeric) from public, anon, authenticated;');
-    expect(sql).toContain('grant execute on function public.abertas(text, text[], numeric) to service_role;');
     expect(sql).toContain('revoke execute on function public.resumo_itens(text) from public, anon, authenticated;');
+    for (const funcao of [
+      'gravar_resumo_itens(text, text, jsonb)',
+      'buscar_editais(text, text[], text, int, numeric, int[], int, int)',
+      'abertas(text, text[], numeric)',
+      'resumo_itens(text)',
+    ]) {
+      expect(sql).toContain(`grant execute on function public.${funcao} to service_role;`);
+    }
+  });
+  it('preenche só a janela de retenção, calculando antes de travar contratacoes', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql.match(/c\.encerramento_em > now\(\) - interval '7 days'/g)?.length).toBe(3);
+    const travaContratacoes = sql.indexOf('alter table public.contratacoes');
+    expect(sql.indexOf('create temp table palavras_0005 on commit drop')).toBeGreaterThan(-1);
+    expect(sql.indexOf('create temp table palavras_0005 on commit drop')).toBeLessThan(travaContratacoes);
+    expect(sql.indexOf('create temp table resumos_0005 on commit drop')).toBeGreaterThan(-1);
+    expect(sql.indexOf('create temp table resumos_0005 on commit drop')).toBeLessThan(travaContratacoes);
+    expect(sql).toContain("itens_palavras = coalesce(p.v, ''::tsvector)");
+  });
+  it('resumo_itens não quebra com criterios fora de formato', () => {
+    expect(sql).toContain("case when jsonb_typeof(x.r -> 'criterios') = 'array'");
   });
 });

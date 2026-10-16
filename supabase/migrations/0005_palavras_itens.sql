@@ -4,22 +4,24 @@
 -- A busca "achou nos itens" usa as palavras; o trecho do item que bateu deixa de existir.
 -- A tabela itens continua até a 0006 (conferência antes de apagar).
 -- Ordem: esta migração → merge no main (worker novo) → vercel deploy --prod → npm run worker:reler-itens.
+-- Aplicar com npm run db:aplicar (uma transação só: as tabelas temporárias somem no commit).
 
 set local statement_timeout = 0;
+set local lock_timeout = '10s';
 
-alter table public.contratacoes
-  add column itens_palavras tsvector,
-  add column itens_resumo jsonb;
-
--- Preenche o que já existe a partir da tabela itens. As palavras são a união dos lexemas de itens.busca
+-- Preenchimento calculado antes de travar contratacoes (a trava exclusiva cobre só alter, update e índice).
+-- Só a janela de retenção (encerramento nos últimos 7 dias ou depois): o resto sai na 0006, e regravar
+-- linhas que vão ser apagadas só incharia o banco. As palavras são a união dos lexemas de itens.busca
 -- (já sem acento e em português): o mesmo conjunto que a busca encontrava item a item.
-with palavras as (
+create temp table palavras_0005 on commit drop as
   select i.contratacao_id, array_to_tsvector(array_agg(distinct u.lexeme)) as v
   from public.itens i
+  join public.contratacoes c on c.id = i.contratacao_id
   cross join lateral unnest(i.busca) as u(lexeme, positions, weights)
-  group by i.contratacao_id
-),
-resumos as (
+  where c.encerramento_em > now() - interval '7 days'
+  group by i.contratacao_id;
+
+create temp table resumos_0005 on commit drop as
   select i.contratacao_id,
          jsonb_build_object(
            'total', count(*),
@@ -34,14 +36,26 @@ resumos as (
              '[]'::jsonb)
          ) as r
   from public.itens i
-  group by i.contratacao_id
-)
+  join public.contratacoes c on c.id = i.contratacao_id
+  where c.encerramento_em > now() - interval '7 days'
+  group by i.contratacao_id;
+
+analyze palavras_0005;
+analyze resumos_0005;
+
+alter table public.contratacoes
+  add column itens_palavras tsvector,
+  add column itens_resumo jsonb;
+
+-- Compra com itens e sem nenhum lexema ganha tsvector vazio (não nulo), como o worker grava.
+-- now() é a hora do início da transação: a mesma janela dos dois cálculos acima.
 update public.contratacoes c
-   set itens_palavras = p.v,
+   set itens_palavras = coalesce(p.v, ''::tsvector),
        itens_resumo = s.r
-  from resumos s
-  left join palavras p on p.contratacao_id = s.contratacao_id
- where c.id = s.contratacao_id;
+  from resumos_0005 s
+  left join palavras_0005 p on p.contratacao_id = s.contratacao_id
+ where c.id = s.contratacao_id
+   and c.encerramento_em > now() - interval '7 days';
 
 create index contratacoes_itens_palavras_idx on public.contratacoes using gin (itens_palavras);
 
@@ -105,14 +119,19 @@ language sql stable as $$
          coalesce((x.r ->> 'com_beneficio')::bigint, 0),
          coalesce((x.r ->> 'exclusivos')::bigint, 0),
          coalesce((x.r ->> 'cota')::bigint, 0),
-         array(select jsonb_array_elements_text(coalesce(x.r -> 'criterios', '[]'::jsonb)))
+         case when jsonb_typeof(x.r -> 'criterios') = 'array'
+              then array(select jsonb_array_elements_text(x.r -> 'criterios'))
+              else '{}'::text[] end
   from (select (select c.itens_resumo from public.contratacoes c where c.id = p_contratacao) as r) x
 $$;
 
+-- Só o servidor (service_role) executa. Os grants explícitos não dependem dos privilégios padrão de quem
+-- criou cada função (abertas vem da 0001 e nunca teve revoke; resumo_itens já vinha sem acesso público da 0004).
 revoke execute on function public.gravar_resumo_itens(text, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.buscar_editais(text, text[], text, int, numeric, int[], int, int) from public, anon, authenticated;
--- abertas (da 0001) nunca teve revoke; o grant explícito garante que o servidor (abertas_unicas) continua chamando.
 revoke execute on function public.abertas(text, text[], numeric) from public, anon, authenticated;
-grant execute on function public.abertas(text, text[], numeric) to service_role;
--- resumo_itens já vinha sem acesso público (0004); create or replace mantém, o revoke só deixa explícito.
 revoke execute on function public.resumo_itens(text) from public, anon, authenticated;
+grant execute on function public.gravar_resumo_itens(text, text, jsonb) to service_role;
+grant execute on function public.buscar_editais(text, text[], text, int, numeric, int[], int, int) to service_role;
+grant execute on function public.abertas(text, text[], numeric) to service_role;
+grant execute on function public.resumo_itens(text) to service_role;
