@@ -44,3 +44,24 @@ export function coresDosEstados(porUf: Record<string, number>, cobertas: readonl
   const pares = cobertas.flatMap((uf) => [uf, CORES_FAIXA[faixaDaUf(porUf[uf] ?? 0)]]);
   return ['match', ['get', 'uf'], ...pares, COR_SEM_COBERTURA];
 }
+
+/** Contorno branco comum entre os estados. */
+const CONTORNO_COR = '#ffffff';
+const CONTORNO_LARGURA = 1;
+/** Estado coberto sem resultado na busca: tom mais claro da faixa 0 com contorno azul mais grosso. */
+const CONTORNO_VAZIO_COR = CORES_FAIXA[2];
+const CONTORNO_VAZIO_LARGURA = 1.5;
+
+/**
+ * Contorno dos estados: branco comum, e azul mais grosso nos cobertos sem nenhum edital na busca atual,
+ * para o estado vazio não sumir no fundo branco. `match` do MapLibre exige ao menos um rótulo:
+ * sem estado vazio devolve os valores simples.
+ */
+export function contornosDosEstados(porUf: Record<string, number>, cobertas: readonly string[]): { cor: unknown; largura: unknown } {
+  const vazias = cobertas.filter((uf) => (porUf[uf] ?? 0) === 0);
+  if (vazias.length === 0) return { cor: CONTORNO_COR, largura: CONTORNO_LARGURA };
+  return {
+    cor: ['match', ['get', 'uf'], vazias, CONTORNO_VAZIO_COR, CONTORNO_COR],
+    largura: ['match', ['get', 'uf'], vazias, CONTORNO_VAZIO_LARGURA, CONTORNO_LARGURA],
+  };
+}

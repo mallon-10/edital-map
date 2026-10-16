@@ -6,16 +6,16 @@ import type { ExpressionSpecification, GeoJSONSource, Map as MapaLibre, Marker }
 import { UFS_COBERTAS } from '@/lib/filtros';
 import { moedaCurta, numero } from '@/lib/formato';
 import { paraGeoJSON, type PropsPonto } from '@/lib/geo';
-import { coresDosEstados } from '@/lib/painel';
+import { contornosDosEstados, coresDosEstados } from '@/lib/painel';
 import type { Cidade, PontoMapa } from '@/lib/tipos';
 import { ALTURA_GAVETA_RECOLHIDA } from './GavetaCelular';
 
 // Abre mostrando o Brasil inteiro.
 const BRASIL: [[number, number], [number, number]] = [[-74.2, -33.9], [-34.6, 5.4]];
-// Raio pela raiz do valor estimado (R$ 1 mi ≈ 7 px; R$ 100 mi ≈ 12 px; R$ 2,5 bi ≈ 22 px).
-const RAIO: ExpressionSpecification = ['interpolate', ['linear'], ['sqrt', ['get', 'valor']], 0, 5, 1000, 7, 10000, 12, 50000, 22];
+// Raio pela raiz do valor estimado (R$ 1 mi ≈ 8 px; R$ 100 mi ≈ 14 px; R$ 2,5 bi ≈ 26 px; R$ 10 bi ≈ 32 px).
+const RAIO: ExpressionSpecification = ['interpolate', ['linear'], ['sqrt', ['get', 'valor']], 0, 5, 1000, 8, 10000, 14, 50000, 26, 100000, 32];
 const PINO =
-  '<svg viewBox="0 0 22 28" width="26" height="33" aria-hidden="true"><path d="M11 0C4.9 0 0 4.9 0 11c0 8.3 11 17 11 17s11-8.7 11-17C22 4.9 17.1 0 11 0z" fill="#ff5a1f" stroke="#0c2340" stroke-width="1.5"/><circle cx="11" cy="11" r="3.5" fill="#f4f1e8"/></svg>';
+  '<svg viewBox="0 0 22 28" width="26" height="33" overflow="visible" aria-hidden="true"><path d="M11 0C4.9 0 0 4.9 0 11c0 8.3 11 17 11 17s11-8.7 11-17C22 4.9 17.1 0 11 0z" fill="#ff5a1f" stroke="#0c2340" stroke-width="1.5"/><circle cx="11" cy="11" r="3.5" fill="#f4f1e8"/></svg>';
 
 type Props = {
   pontos: PontoMapa[];
@@ -59,7 +59,11 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
 
   useEffect(() => {
     porUfAtual.current = porUf;
-    if (pronto) mapa.current?.setPaintProperty('estados', 'fill-color', coresDosEstados(porUf, UFS_COBERTAS) as unknown as ExpressionSpecification);
+    if (!pronto || !mapa.current) return;
+    const contorno = contornosDosEstados(porUf, UFS_COBERTAS);
+    mapa.current.setPaintProperty('estados', 'fill-color', coresDosEstados(porUf, UFS_COBERTAS) as unknown as ExpressionSpecification);
+    mapa.current.setPaintProperty('estados-contorno', 'line-color', contorno.cor as ExpressionSpecification | string);
+    mapa.current.setPaintProperty('estados-contorno', 'line-width', contorno.largura as ExpressionSpecification | number);
   }, [porUf, pronto]);
 
   useEffect(() => {
@@ -121,7 +125,11 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
           id: 'estados', type: 'fill', source: 'estados',
           paint: { 'fill-color': coresDosEstados(porUfAtual.current, UFS_COBERTAS) as unknown as ExpressionSpecification },
         });
-        m.addLayer({ id: 'estados-contorno', type: 'line', source: 'estados', paint: { 'line-color': '#ffffff', 'line-width': 1 } });
+        const contorno = contornosDosEstados(porUfAtual.current, UFS_COBERTAS);
+        m.addLayer({
+          id: 'estados-contorno', type: 'line', source: 'estados',
+          paint: { 'line-color': contorno.cor as ExpressionSpecification | string, 'line-width': contorno.largura as ExpressionSpecification | number },
+        });
         m.addSource('editais', {
           type: 'geojson', data: paraGeoJSON(pontosAtuais.current),
           cluster: true, clusterRadius: 40, clusterMaxZoom: 8,
@@ -138,21 +146,35 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
         setPronto(true);
       });
 
-      m.on('click', 'grupos', async (e) => {
-        const f = e.features?.[0];
+      // Dica estável: guarda o último texto e, se não mudou, só acompanha o cursor (sem refazer o DOM).
+      let textoDica = '';
+      const fecharDica = () => {
+        popup.remove();
+        textoDica = '';
+      };
+
+      // Um clique só, para o que estiver por cima: cidade e grupo podem se sobrepor.
+      m.on('click', async (e) => {
+        if (!m.getLayer('cidades')) return;
+        const [f] = m.queryRenderedFeatures(e.point, { layers: ['cidades', 'grupos'] });
         if (!f) return;
-        const zoom = await (m.getSource('editais') as GeoJSONSource).getClusterExpansionZoom(Number(f.properties?.cluster_id));
-        m.easeTo({ center: (f.geometry as Point).coordinates as [number, number], zoom });
-      });
-      m.on('click', 'cidades', (e) => {
-        const p = e.features?.[0]?.properties as PropsPonto | undefined;
-        if (p) escolher.current({ ibge: String(p.ibge), nome: p.nome, uf: p.uf });
+        if (f.layer.id === 'grupos') {
+          const zoom = await (m.getSource('editais') as GeoJSONSource).getClusterExpansionZoom(Number(f.properties?.cluster_id));
+          m.easeTo({ center: (f.geometry as Point).coordinates as [number, number], zoom });
+          return;
+        }
+        const p = f.properties as PropsPonto;
+        escolher.current({ ibge: String(p.ibge), nome: p.nome, uf: p.uf });
+        // No toque não há mouseout: sem isso a dica ficaria na tela.
+        fecharDica();
       });
       // Uma dica só, para o que estiver por cima: cidade, grupo ou estado.
       m.on('mousemove', (e) => {
+        // Antes do 'load' as camadas ainda não existem.
+        if (!m.getLayer('cidades')) return;
         const [f] = m.queryRenderedFeatures(e.point, { layers: ['cidades', 'grupos', 'estados'] });
         if (!f) {
-          popup.remove();
+          fecharDica();
           m.getCanvas().style.cursor = '';
           return;
         }
@@ -166,9 +188,15 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
           linhas = (UFS_COBERTAS as readonly string[]).includes(uf) ? [uf, editais(porUfAtual.current[uf] ?? 0)] : [uf, 'Em breve'];
         }
         m.getCanvas().style.cursor = f.layer.id === 'estados' ? '' : 'pointer';
+        const texto = linhas.join('|');
+        if (texto === textoDica) {
+          popup.setLngLat(e.lngLat);
+          return;
+        }
+        textoDica = texto;
         popup.setLngLat(e.lngLat).setDOMContent(conteudo(linhas)).addTo(m);
       });
-      m.on('mouseout', () => popup.remove());
+      m.on('mouseout', fecharDica);
     })();
     return () => {
       cancelado = true;

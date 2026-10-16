@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COR_SEM_COBERTURA, CORES_FAIXA, coresDosEstados, faixaDaUf, resumirPontos } from './painel';
+import { COR_SEM_COBERTURA, CORES_FAIXA, contornosDosEstados, coresDosEstados, faixaDaUf, resumirPontos } from './painel';
 import type { PontoMapa } from './tipos';
 
 const P = (codigo_ibge: string, nome: string, uf: string, qtd: number, valor_total: number | null): PontoMapa => ({
@@ -45,5 +45,24 @@ describe('cores dos estados', () => {
     expect(coresDosEstados({ PR: 352, SC: 5 }, ['SC', 'PR', 'RS'])).toEqual([
       'match', ['get', 'uf'], 'SC', CORES_FAIXA[1], 'PR', CORES_FAIXA[4], 'RS', CORES_FAIXA[0], COR_SEM_COBERTURA,
     ]);
+  });
+});
+
+describe('contornos dos estados', () => {
+  const COBERTAS = ['SC', 'PR', 'RS'];
+  it('nenhum estado coberto vazio: contorno branco comum', () => {
+    expect(contornosDosEstados({ SC: 5, PR: 352, RS: 1 }, COBERTAS)).toEqual({ cor: '#ffffff', largura: 1 });
+  });
+  it('um estado coberto vazio: contorno azul mais grosso só nele', () => {
+    expect(contornosDosEstados({ PR: 352, RS: 1 }, COBERTAS)).toEqual({
+      cor: ['match', ['get', 'uf'], ['SC'], '#9db0cc', '#ffffff'],
+      largura: ['match', ['get', 'uf'], ['SC'], 1.5, 1],
+    });
+  });
+  it('vários vazios: uma lista só de rótulos, na ordem das cobertas', () => {
+    expect(contornosDosEstados({ PR: 352 }, COBERTAS)).toEqual({
+      cor: ['match', ['get', 'uf'], ['SC', 'RS'], '#9db0cc', '#ffffff'],
+      largura: ['match', ['get', 'uf'], ['SC', 'RS'], 1.5, 1],
+    });
   });
 });
