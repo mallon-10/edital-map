@@ -79,7 +79,7 @@ Planos, Assinar Pro e o chip Pro abrem um aviso pequeno: "Os planos chegam em br
 
 - Espaços: `\r\n` e quebras de linha no meio de frase viram espaço; espaços repetidos colapsam; espaço antes de pontuação some.
 - Prefixo entre colchetes no início ("[Portal de Compras Públicas] -") sai.
-- **Maiúsculas**: se o texto tem mais de 70% das letras em maiúsculas, vira texto normal (primeira letra de cada frase maiúscula), preservando as siglas de uma lista fixa no código (no mínimo: ABNT, NBR, CRAS, CAPS, UBS, SUS, ME, EPP, CNPJ, CPF, ART, RRT, EPI, LED, PVC, GLP, ISO, INMETRO, ANVISA, CATMAT, CATSER, PCD, DML e as 27 siglas de UF), números com letras (NBR14992, 1/4, 50x70) e unidades em minúsculo (kg, ml, cm, mm, m²).
+- **Maiúsculas**: se o texto tem mais de 70% das letras em maiúsculas, vira texto normal (primeira letra de cada frase maiúscula), preservando as siglas de uma lista fixa no código (no mínimo: ABNT, NBR, CRAS, CAPS, UBS, SUS, ME, EPP, CNPJ, CPF, ART, RRT, EPI, LED, PVC, GLP, ISO, INMETRO, ANVISA, CATMAT, CATSER, PCD, DML e as siglas de UF, exceto SE e PE, que em maiúsculas costumam ser "se" e "pé"), números com letras (NBR14992, 1/4, 50x70) e unidades em minúsculo (kg, ml, cm, mm, m²).
 - **Título curto**: objeto limpo; se tiver até 160 caracteres, é ele inteiro; senão, corta no fim da primeira frase ou cláusula (". ", "; ", ": ") até 140 caracteres; sem frase curta, corta na palavra e põe "…".
 - **Item**: nome = trecho antes do primeiro "atributo:" (padrão CATMAT, ex.: "Película Auto-Adesiva material: …") ou a primeira frase; atributos = pares "chave: valor" separados por ", " ou "; " quando a chave tem de 1 a 4 palavras; "LOTE 08 -" no início vira etiqueta "Lote 8"; "CATMAT 123"/"CATSER 17760" vira etiqueta; resto vira "Obs.".
 - **Lotes da informação complementar**: "(L1):texto,(L2):texto" → lista; sem esse padrão, parágrafos limpos.
@@ -110,7 +110,7 @@ Outro domínio: o próprio domínio sem "www.". Sem link: "Sistema indicado no e
 ### 5.1 Migration `0004`
 
 - `itens`: novas colunas `beneficio_id int`, `beneficio_nome text`, `criterio_julgamento text` (nulas até a releitura).
-- `abertas_unicas`, `buscar_editais`, `mapa_editais` recriadas com os filtros `p_valor_min numeric` (valor estimado ≥) e `p_modalidades int[]` (vazio/nulo = todas); `buscar_editais` passa a devolver também `publicada_em`. Assinaturas antigas removidas; permissões como na `0003` (só o servidor executa).
+- `abertas_unicas`, `buscar_editais`, `mapa_editais` recriadas com os filtros `p_valor_min numeric` (valor estimado ≥) e `p_modalidades int[]` (vazio/nulo = todas); `buscar_editais` passa a devolver também `publicada_em`, `unidade_nome` e `srp` (para a etiqueta "Novo" e o cartão escuro). Assinaturas antigas removidas; permissões como na `0003` (só o servidor executa).
 - Nova `resumo_itens(p_contratacao text)`: total, materiais, serviços, exclusivos ME/EPP (`beneficio_id = 1`), cota reservada (`beneficio_id = 3`), itens com benefício informado, critérios distintos.
 - O `edital(slug)` do servidor passa a ler também `abertura_em` e `esfera`.
 
