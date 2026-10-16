@@ -2,13 +2,23 @@ import { numero } from '@/lib/formato';
 import type { MunicipioPainel } from '@/lib/painel';
 import type { Cidade } from '@/lib/tipos';
 
+type Props = {
+  municipios: MunicipioPainel[];
+  termo: string;
+  aoEscolher: (c: Cidade) => void;
+  /** Enquanto os pontos do mapa não chegaram, a lista vazia não quer dizer "sem editais". */
+  carregando?: boolean;
+};
+
 /** Barras dos municípios com mais editais na busca atual; clicar filtra a lista. */
-export function OndeMaisCompram({ municipios, termo, aoEscolher }: { municipios: MunicipioPainel[]; termo: string; aoEscolher: (c: Cidade) => void }) {
+export function OndeMaisCompram({ municipios, termo, aoEscolher, carregando = false }: Props) {
   const maximo = Math.max(1, ...municipios.map((m) => m.qtd));
   return (
     <section className="rounded-lg border border-line bg-raised p-4">
       <h2 className="text-[15px] font-bold">Onde mais compram</h2>
-      {municipios.length === 0 ? (
+      {carregando ? (
+        <p className="mt-2 text-sm text-ink-muted">Carregando…</p>
+      ) : municipios.length === 0 ? (
         <p className="mt-2 text-sm text-ink-muted">Sem editais para essa busca.</p>
       ) : (
         <ol className="mt-3 flex flex-col gap-2">

@@ -10,6 +10,8 @@ type Props = {
   resultado: ResultadoBusca;
   agora: Date;
   painel: Painel;
+  /** Falso enquanto os pontos do mapa não chegaram: o resumo (UFs, valor) ainda não é verdadeiro. */
+  painelPronto?: boolean;
   seteDias: boolean;
   selecionadoId: string | null;
   carregandoLista: boolean;
@@ -26,6 +28,7 @@ const ALTERNADOR = 'h-8 flex-1 rounded-sm text-[13px] font-semibold transition-c
 
 export function ColunaLista(p: Props) {
   const { total, editais } = p.resultado;
+  const painelPronto = p.painelPronto ?? true;
   const lista = useRef<HTMLDivElement>(null);
   // Toda busca nova (inclusive a que traz o mesmo primeiro edital) volta ao topo; "carregar mais" não mexe em `carregandoLista`.
   useEffect(() => {
@@ -43,7 +46,9 @@ export function ColunaLista(p: Props) {
           <span className="text-[15px] font-bold">{total === 1 ? 'edital aberto' : 'editais abertos'}</span>
         </p>
         <p className="mt-1 font-mono text-xs text-ink-muted">
-          {p.painel.ufs} {p.painel.ufs === 1 ? 'UF' : 'UFs'} · {valor ? `${valor} em valor estimado` : 'valor não informado'}
+          {painelPronto
+            ? `${p.painel.ufs} ${p.painel.ufs === 1 ? 'UF' : 'UFs'} · ${valor ? `${valor} em valor estimado` : 'valor não informado'}`
+            : 'Carregando o resumo…'}
         </p>
         <div className="mt-3 flex gap-1 rounded-md bg-sunken p-1" role="group" aria-label="Prazo">
           <button

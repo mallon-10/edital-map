@@ -56,6 +56,8 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [erroMapa, setErroMapa] = useState<string | null>(null);
   const [pontos, setPontos] = useState<PontoMapa[]>([]);
+  // Falso até o primeiro mapa chegar: antes disso o resumo (UFs, valor, municípios) ainda não existe.
+  const [pontosProntos, setPontosProntos] = useState(false);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(inicial.editais[0]?.id ?? null);
   const [resumoNoCelular, setResumoNoCelular] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
@@ -77,6 +79,8 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
       setSelecionadoId(novo.editais[0]?.id ?? null);
       setAgora(new Date());
       setErroLista(null);
+      // O cartão escuro do celular só vale para o toque que o abriu, não para as buscas seguintes.
+      setResumoNoCelular(false);
     } catch (e) {
       if (id !== pedidoLista.current) return;
       setErroLista(mensagem(e, ERRO_LISTA));
@@ -93,6 +97,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
       const novos = await obter<PontoMapa[]>(`/api/mapa?${paraParametros(f, { comCidade: false })}`, ERRO_MAPA);
       if (id !== pedidoMapa.current) return;
       setPontos(novos);
+      setPontosProntos(true);
       setErroMapa(null);
     } catch (e) {
       if (id !== pedidoMapa.current) return;
@@ -113,13 +118,17 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
       novo.seteDias !== filtros.seteDias ||
       [...novo.modalidades].sort().join() !== [...filtros.modalidades].sort().join();
     setFiltros(novo);
+    // Cidade nova (pelo mapa, pelo chip ou pelo painel): no celular a gaveta abre para mostrar a lista dela.
+    if (novo.cidade && novo.cidade.ibge !== filtros.cidade?.ibge) setGavetaAberta(true);
     registrar('busca', { q: novo.q.trim() || null, uf: novo.uf || null, dias: novo.seteDias ? 7 : null });
     void carregarLista(novo);
-    if (mudouMapa) void carregarMapa(novo);
+    // Repetir a busca depois de um erro do mapa tenta o mapa de novo.
+    if (mudouMapa || erroMapa !== null) void carregarMapa(novo);
   }
 
   // O Mapa guarda o callback numa ref atualizada a cada render: uma função comum basta.
   function escolherCidade(c: Cidade) {
+    // Também abre quando a cidade já era a escolhida (a gaveta pode ter sido fechada), o que `aplicar` não cobre.
     setGavetaAberta(true);
     aplicar({ ...filtros, cidade: c });
   }
@@ -159,7 +168,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
       <main className="flex min-h-0 flex-1 flex-col pt-3 lg:grid lg:grid-cols-[360px_minmax(0,1fr)_300px] lg:grid-rows-[minmax(0,1fr)] lg:gap-5 lg:px-6 lg:pb-6 lg:pt-4">
         <h1 className="sr-only">Editais abertos no mapa</h1>
         <GavetaCelular aberta={gavetaAberta} aoAlternar={() => setGavetaAberta((a) => !a)}>
-          {resumoNoCelular && selecionado ? (
+          {gavetaAberta && resumoNoCelular && selecionado ? (
             <div className="mb-3 shrink-0 lg:hidden">
               <CartaoSelecionado edital={selecionado} agora={agora} aoFechar={() => setResumoNoCelular(false)} />
             </div>
@@ -168,6 +177,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
             resultado={resultado}
             agora={agora}
             painel={painel}
+            painelPronto={pontosProntos}
             seteDias={filtros.seteDias}
             selecionadoId={selecionado?.id ?? null}
             carregandoLista={carregandoLista}
@@ -189,7 +199,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
         </section>
         <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
           {selecionado ? <CartaoSelecionado edital={selecionado} agora={agora} /> : null}
-          <OndeMaisCompram municipios={painel.topMunicipios} termo={filtros.q} aoEscolher={escolherCidade} />
+          <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
           <LegendaMapa />
         </aside>
       </main>
