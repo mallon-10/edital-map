@@ -9,6 +9,8 @@ export const MAX_PAGINAS_ITENS = 200;
 export const LOTE_BANCO = 500;
 export const LIMITE_CATCH_UP = 300;
 export const LIMITE_INVALIDOS = 0.05;
+/** Contratação encerrada há mais que isso (ou sem prazo) não é gravada e sai do banco no job diário de retenção. */
+export const RETENCAO_DIAS = 7;
 export const BASE_CONSULTA = 'https://pncp.gov.br/api/consulta';
 export const BASE_PNCP = 'https://pncp.gov.br/api/pncp';
 /** Chamadas por minuto à API de consulta do PNCP (medido: 20/min sem 429; 30/min já dá 429). */

@@ -1,11 +1,12 @@
-import type { Banco } from './banco';
-import { LIMITE_CATCH_UP } from './config';
+import type { Banco, EstadoSync } from './banco';
+import { LIMITE_CATCH_UP, UF_BRASIL } from './config';
 import { hojeBrasilia, somarDias } from './datas';
 import { palavrasDosItens, resumirItens } from './itens';
 import {
   chaveDaLinha,
   contratacaoParaLinha,
   estaAberta,
+  foraDaRetencao,
   itemParaLinha,
   type ChaveCompra,
   type LinhaContratacao,
@@ -100,10 +101,19 @@ export async function sincronizarItens(compras: ChaveCompra[], deps: Dependencia
 
 const EPOCA = '1970-01-01T00:00:00.000Z';
 
-export async function gravarPagina(linhas: LinhaContratacao[], deps: Dependencias): Promise<void> {
-  if (linhas.length === 0) return;
-  const conhecidas = await deps.banco.atualizacoesConhecidas(linhas.map((l) => l.id));
+export async function gravarPagina(recebidas: LinhaContratacao[], deps: Dependencias): Promise<void> {
+  if (recebidas.length === 0) return;
   const agora = deps.agora();
+  const conhecidas = await deps.banco.atualizacoesConhecidas(recebidas.map((l) => l.id));
+  const fora = recebidas.filter((l) => foraDaRetencao(l, agora));
+  if (fora.length > 0) {
+    deps.resumo.contarForaDaRetencao(fora.length);
+    // Já gravada e agora fora da retenção (prazo passou de 7 dias ou sumiu): sai do banco em vez de ficar velha.
+    const remover = fora.filter((l) => conhecidas.has(l.id)).map((l) => l.id);
+    if (remover.length > 0) await deps.banco.removerContratacoes(remover);
+  }
+  const linhas = recebidas.filter((l) => !foraDaRetencao(l, agora));
+  if (linhas.length === 0) return;
   const precisamItens = new Set(linhas.filter((l) => estaAberta(l, agora) && mudou(l, conhecidas)).map((l) => l.id));
   // Ordem de gravação: quem precisa de itens entra primeiro com o timestamp anterior (ou 1970, se for nova).
   // Se o processo cair antes de os itens gravarem, a próxima rodada ainda vê a compra como alterada
@@ -134,6 +144,22 @@ export function chaveEstado(uf: string, modalidade: number): string {
 }
 
 /**
+ * Data de partida de uma chave nacional nova: a mais antiga entre as chaves por UF da mesma modalidade
+ * (a última data boa de cada UF), para nenhuma janela se perder na troca para o país inteiro.
+ */
+export function dataHerdada(estados: EstadoSync[], modalidade: number): string | null {
+  const padrao = new RegExp(`^atualizacao:([A-Z]{2}):${modalidade}$`);
+  const datas = estados
+    .filter((e) => {
+      const m = padrao.exec(e.chave);
+      return m !== null && m[1] !== UF_BRASIL;
+    })
+    .map((e) => e.ultima_data)
+    .sort();
+  return datas[0] ?? null;
+}
+
+/**
  * Início da janela de atualização: a última data boa (sem estado, ontem), limitada a
  * 3 h antes de agora. Assim, até as 03h de Brasília a rodada ainda relê ontem (mudanças
  * que o índice do PNCP demora a mostrar); depois disso lê a partir da última data boa.
@@ -153,8 +179,13 @@ export async function sincronizarChave(uf: string, modalidade: number, deps: Dep
   let estadoLido = false;
   try {
     const estado = await deps.banco.lerEstado(chave);
+    const ultima = estado
+      ? estado.ultima_data
+      : uf === UF_BRASIL
+        ? dataHerdada(await deps.banco.estadosDaModalidade(modalidade), modalidade)
+        : null;
     estadoLido = true;
-    inicio = inicioDaJanela(estado?.ultima_data, deps.agora());
+    inicio = inicioDaJanela(ultima, deps.agora());
     await processarJanela('atualizacao', { uf, modalidade, dataInicial: inicio, dataFinal: hoje }, deps);
     await deps.banco.gravarEstado({
       chave,

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { chaveDaLinha, contratacaoParaLinha, estaAberta, itemParaLinha, linkDoPortal } from './mapear';
+import { chaveDaLinha, contratacaoParaLinha, estaAberta, foraDaRetencao, itemParaLinha, linkDoPortal } from './mapear';
 import { validarContratacao, validarItem, type ContratacaoPncp, type ItemPncp } from './pncp/esquemas';
 
 const ler = (nome: string) =>
@@ -117,5 +117,20 @@ describe('auxiliares', () => {
     const chave = chaveDaLinha(linha);
     expect(chave).toEqual({ id: linha.id, cnpj: '00394452000103', ano: 2026, sequencial: 21982 });
     expect(linkDoPortal(chave)).toBe('https://pncp.gov.br/app/editais/00394452000103/2026/21982');
+  });
+});
+
+describe('foraDaRetencao', () => {
+  const agora = new Date('2026-10-14T15:00:00Z');
+  it('sem prazo está fora', () => {
+    expect(foraDaRetencao({ encerramento_em: null }, agora)).toBe(true);
+  });
+  it('encerrada há mais de 7 dias está fora', () => {
+    expect(foraDaRetencao({ encerramento_em: '2026-10-07T14:59:59.000Z' }, agora)).toBe(true);
+  });
+  it('encerrada há 7 dias ou menos e aberta ficam', () => {
+    expect(foraDaRetencao({ encerramento_em: '2026-10-07T15:00:00.000Z' }, agora)).toBe(false);
+    expect(foraDaRetencao({ encerramento_em: '2026-10-13T12:00:00.000Z' }, agora)).toBe(false);
+    expect(foraDaRetencao({ encerramento_em: '2026-10-26T11:59:00.000Z' }, agora)).toBe(false);
   });
 });

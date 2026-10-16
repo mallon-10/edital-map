@@ -3,6 +3,7 @@ import { contratacaoParaLinha } from './mapear';
 import { validarContratacao } from './pncp/esquemas';
 import { Resumo } from './resumo';
 import {
+  dataHerdada,
   executarSync,
   gravarPagina,
   inicioDaJanela,
@@ -66,7 +67,7 @@ describe('gravarPagina', () => {
     await gravarPagina(
       [
         linha({ sequencial: 1 }), // aberta e nova
-        linha({ sequencial: 2, encerramento: '2026-10-01T10:00:00' }), // encerrada
+        linha({ sequencial: 2, encerramento: '2026-10-12T10:00:00' }), // encerrada há 2 dias (dentro da retenção)
         linha({ sequencial: 3, atualizacao: '2026-10-13T07:22:24' }), // aberta, sem mudança
         linha({ sequencial: 4, atualizacao: '2026-10-13T07:22:24' }), // aberta, alterada
       ],
@@ -121,6 +122,80 @@ describe('gravarPagina · ordem de gravação', () => {
     expect(banco.contratacoes.get(idDe(1))?.atualizada_pncp_em).toBe(l.atualizada_pncp_em);
     expect(banco.resumos.get(idDe(1))?.resumo.total).toBe(1);
     expect(deps.resumo.contratacoesGravadas).toBe(1);
+  });
+});
+
+describe('gravarPagina · retenção', () => {
+  it('não grava encerrada há mais de 7 dias nem sem prazo, e conta no resumo', async () => {
+    const banco = new BancoFalso();
+    const cliente = clienteFalso();
+    const deps = montarDeps(banco, cliente);
+    await gravarPagina(
+      [
+        linha({ sequencial: 1 }), // aberta
+        linha({ sequencial: 2, encerramento: '2026-10-10T10:00:00' }), // encerrada há 4 dias: fica
+        linha({ sequencial: 3, encerramento: '2026-10-01T10:00:00' }), // encerrada há 13 dias: fora
+        linha({ sequencial: 4, encerramento: null }), // sem prazo: fora
+      ],
+      deps,
+    );
+    expect([...banco.contratacoes.keys()].sort()).toEqual([idDe(1), idDe(2)]);
+    expect(deps.resumo.contratacoesGravadas).toBe(2);
+    expect(deps.resumo.foraDaRetencao).toBe(2);
+    expect(cliente.itensPedidos).toEqual([idDe(1)]);
+    expect(banco.removidas).toEqual([]);
+  });
+  it('contratação já gravada que sai da retenção é apagada', async () => {
+    const banco = new BancoFalso();
+    await banco.upsertContratacoes([linha({ sequencial: 5 })]);
+    const deps = montarDeps(banco, clienteFalso());
+    await gravarPagina([linha({ sequencial: 5, encerramento: null, atualizacao: '2026-10-14T08:00:00' })], deps);
+    expect(banco.contratacoes.has(idDe(5))).toBe(false);
+    expect(banco.removidas).toEqual([idDe(5)]);
+  });
+});
+
+describe('chave nacional (BR)', () => {
+  const estado = (chave: string, ultima_data: string) => ({ chave, ultima_data, ultima_execucao: null, status: 'ok', erro: null });
+  it('dataHerdada: a mais antiga das chaves por UF da modalidade, ignorando BR e outras modalidades', () => {
+    expect(
+      dataHerdada(
+        [
+          estado('atualizacao:SC:6', '2026-10-13'),
+          estado('atualizacao:PR:6', '2026-10-11'),
+          estado('atualizacao:BR:6', '2026-10-01'),
+          estado('atualizacao:PR:16', '2026-09-01'),
+          estado('atualizacao:RS:8', '2026-09-01'),
+        ],
+        6,
+      ),
+    ).toBe('2026-10-11');
+    expect(dataHerdada([], 6)).toBeNull();
+  });
+  it('chave BR nova começa da data herdada e consulta sem uf', async () => {
+    const banco = new BancoFalso();
+    await banco.gravarEstado(estado('atualizacao:SC:6', '2026-10-13'));
+    await banco.gravarEstado(estado('atualizacao:PR:6', '2026-10-11'));
+    await banco.gravarEstado(estado('atualizacao:PR:8', '2026-10-01'));
+    const cliente = clienteFalso();
+    expect(await sincronizarChave('BR', 6, montarDeps(banco, cliente))).toBe(true);
+    expect(cliente.chamadas).toEqual([
+      { endpoint: 'atualizacao', filtro: { uf: 'BR', modalidade: 6, dataInicial: '2026-10-11', dataFinal: '2026-10-14' } },
+    ]);
+    expect(banco.estados.get('atualizacao:BR:6')).toMatchObject({ ultima_data: '2026-10-14', status: 'ok' });
+  });
+  it('chave BR que já existe não olha as chaves por UF', async () => {
+    const banco = new BancoFalso();
+    await banco.gravarEstado(estado('atualizacao:BR:6', '2026-10-14'));
+    await banco.gravarEstado(estado('atualizacao:SC:6', '2026-10-01'));
+    const cliente = clienteFalso();
+    await sincronizarChave('BR', 6, montarDeps(banco, cliente));
+    expect(cliente.chamadas[0].filtro.dataInicial).toBe('2026-10-14');
+  });
+  it('sem nenhuma chave, começa ontem', async () => {
+    const cliente = clienteFalso();
+    await sincronizarChave('BR', 6, montarDeps(new BancoFalso(), cliente));
+    expect(cliente.chamadas[0].filtro.dataInicial).toBe('2026-10-13');
   });
 });
 

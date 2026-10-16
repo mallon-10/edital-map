@@ -30,6 +30,7 @@ describe('Resumo', () => {
     r.contarPagina();
     r.contarContratacoes(80);
     r.contarItens(3, 42);
+    r.contarForaDaRetencao(5);
     r.registrarErro('atualizacao:SC:6', 'HTTP 503');
     agora = 6_000;
     const t = r.texto({ chamadas: 10, novasTentativas: 1 });
@@ -37,6 +38,7 @@ describe('Resumo', () => {
     expect(t).toContain('| Tempo | 5 s |');
     expect(t).toContain('| Páginas lidas | 2 |');
     expect(t).toContain('| Itens lidos | 42 |');
+    expect(t).toContain('| Fora da retenção (não gravadas) | 5 |');
     expect(t).toContain('| Chamadas HTTP | 10 |');
     expect(t).toContain('- `atualizacao:SC:6`: HTTP 503');
   });

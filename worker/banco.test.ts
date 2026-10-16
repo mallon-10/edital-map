@@ -62,3 +62,25 @@ describe('abertasSemItens', () => {
     ]);
   });
 });
+
+describe('removerContratacoes e estadosDaModalidade', () => {
+  it('apaga as contratações pelo id', async () => {
+    const { sb, chamadas } = sbFalso();
+    await criarBanco(sb).removerContratacoes(['A', 'B']);
+    expect(chamadas).toEqual([['from', 'contratacoes'], ['delete'], ['in', 'id', ['A', 'B']]]);
+  });
+  it('sem ids não chama o banco', async () => {
+    const { sb, chamadas } = sbFalso();
+    await criarBanco(sb).removerContratacoes([]);
+    expect(chamadas).toEqual([]);
+  });
+  it('lê as chaves de atualização da modalidade', async () => {
+    const { sb, chamadas } = sbFalso();
+    await criarBanco(sb).estadosDaModalidade(6);
+    expect(chamadas).toEqual([
+      ['from', 'sync_estado'],
+      ['select', 'chave, ultima_data, ultima_execucao, status, erro'],
+      ['like', 'chave', 'atualizacao:%:6'],
+    ]);
+  });
+});

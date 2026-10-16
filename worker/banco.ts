@@ -15,6 +15,8 @@ export type LinhaMunicipio = { codigo_ibge: string; nome: string; uf: string; la
 
 export interface Banco {
   upsertContratacoes(linhas: LinhaContratacao[]): Promise<void>;
+  /** Apaga contratações (as que saíram da retenção depois de gravadas). */
+  removerContratacoes(ids: string[]): Promise<void>;
   /** Palavras de todas as descrições + resumo dos itens de uma compra (função SQL gravar_resumo_itens; o texto não é guardado). */
   gravarResumoItens(contratacaoId: string, palavras: string, resumo: ResumoItensBanco): Promise<void>;
   atualizacoesConhecidas(ids: string[]): Promise<Map<string, string>>;
@@ -23,6 +25,8 @@ export interface Banco {
   /** Compras abertas em ordem de id, a partir de `depoisDe` (exclusivo), até `limite`. */
   abertas(depoisDe: string | null, limite: number): Promise<ChaveCompra[]>;
   lerEstado(chave: string): Promise<EstadoSync | null>;
+  /** Estados das chaves de atualização de uma modalidade (por UF e BR), para a chave nacional herdar a data. */
+  estadosDaModalidade(modalidade: number): Promise<EstadoSync[]>;
   gravarEstado(estado: EstadoSync): Promise<void>;
 }
 
@@ -49,6 +53,13 @@ export function criarBanco(sb: SupabaseClient, agora: () => Date = () => new Dat
       for (const lote of emLotes(linhas, LOTE_BANCO)) {
         const { error } = await sb.from('contratacoes').upsert(lote, { onConflict: 'id' });
         falhar('gravar contratacoes', error);
+      }
+    },
+
+    async removerContratacoes(ids) {
+      for (const lote of emLotes(ids, 200)) {
+        const { error } = await sb.from('contratacoes').delete().in('id', lote);
+        falhar('remover contratacoes', error);
       }
     },
 
@@ -110,6 +121,15 @@ export function criarBanco(sb: SupabaseClient, agora: () => Date = () => new Dat
         .maybeSingle();
       falhar('ler sync_estado', error);
       return (data as EstadoSync | null) ?? null;
+    },
+
+    async estadosDaModalidade(modalidade) {
+      const { data, error } = await sb
+        .from('sync_estado')
+        .select('chave, ultima_data, ultima_execucao, status, erro')
+        .like('chave', `atualizacao:%:${modalidade}`);
+      falhar('ler sync_estado da modalidade', error);
+      return (data ?? []) as EstadoSync[];
     },
 
     async gravarEstado(estado) {

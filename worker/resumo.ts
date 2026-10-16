@@ -9,6 +9,7 @@ export class Resumo {
   contratacoesGravadas = 0;
   comprasComItens = 0;
   itensLidos = 0;
+  foraDaRetencao = 0;
   readonly invalidos: Array<{ id: string; motivo: string }> = [];
   readonly erros: Ocorrencia[] = [];
   readonly avisos: Ocorrencia[] = [];
@@ -35,6 +36,9 @@ export class Resumo {
   contarItens(compras: number, itens: number): void {
     this.comprasComItens += compras;
     this.itensLidos += itens;
+  }
+  contarForaDaRetencao(n: number): void {
+    this.foraDaRetencao += n;
   }
   registrarErro(chave: string, mensagem: string): void {
     this.erros.push({ chave, mensagem });
@@ -65,6 +69,7 @@ export class Resumo {
       `| Páginas lidas | ${this.paginas} |`,
       `| Contratações válidas | ${this.validos} |`,
       `| Contratações gravadas | ${this.contratacoesGravadas} |`,
+      `| Fora da retenção (não gravadas) | ${this.foraDaRetencao} |`,
       `| Compras com itens buscados | ${this.comprasComItens} |`,
       `| Itens lidos | ${this.itensLidos} |`,
       `| Registros inválidos | ${this.invalidos.length} (${pct}%) |`,

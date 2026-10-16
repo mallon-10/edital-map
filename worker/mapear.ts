@@ -1,4 +1,5 @@
 import { deBrasilia } from './datas';
+import { RETENCAO_DIAS } from './config';
 import type { ContratacaoPncp, ItemPncp } from './pncp/esquemas';
 
 export type LinhaContratacao = {
@@ -104,6 +105,11 @@ export function chaveDaLinha(l: Pick<LinhaContratacao, 'id' | 'cnpj' | 'ano' | '
 
 export function estaAberta(l: Pick<LinhaContratacao, 'encerramento_em'>, agora: Date): boolean {
   return l.encerramento_em !== null && Date.parse(l.encerramento_em) > agora.getTime();
+}
+
+/** Fora da retenção = sem prazo ou encerrada há mais de RETENCAO_DIAS (a mesma regra de aplicar_retencao na 0006). */
+export function foraDaRetencao(l: Pick<LinhaContratacao, 'encerramento_em'>, agora: Date): boolean {
+  return l.encerramento_em === null || Date.parse(l.encerramento_em) < agora.getTime() - RETENCAO_DIAS * 24 * 3600 * 1000;
 }
 
 export function linkDoPortal(c: Pick<ChaveCompra, 'cnpj' | 'ano' | 'sequencial'>): string {

@@ -43,9 +43,17 @@ export class BancoFalso implements Banco {
   /** Palavras + resumo dos itens por compra (o banco real chama gravar_resumo_itens). */
   resumos = new Map<string, ResumoGravado>();
   estados = new Map<string, EstadoSync>();
+  removidas: string[] = [];
 
   async upsertContratacoes(linhas: LinhaContratacao[]): Promise<void> {
     for (const l of linhas) this.contratacoes.set(l.id, l);
+  }
+  async removerContratacoes(ids: string[]): Promise<void> {
+    for (const id of ids) {
+      this.contratacoes.delete(id);
+      this.resumos.delete(id);
+      this.removidas.push(id);
+    }
   }
   async gravarResumoItens(contratacaoId: string, palavras: string, resumo: ResumoItensBanco): Promise<void> {
     this.resumos.set(contratacaoId, { palavras, resumo });
@@ -75,6 +83,9 @@ export class BancoFalso implements Banco {
   }
   async lerEstado(chave: string): Promise<EstadoSync | null> {
     return this.estados.get(chave) ?? null;
+  }
+  async estadosDaModalidade(modalidade: number): Promise<EstadoSync[]> {
+    return [...this.estados.values()].filter((e) => e.chave.startsWith('atualizacao:') && e.chave.endsWith(`:${modalidade}`));
   }
   async gravarEstado(estado: EstadoSync): Promise<void> {
     this.estados.set(estado.chave, estado);
