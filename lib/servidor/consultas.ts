@@ -1,7 +1,7 @@
 import 'server-only';
 import { criarCache } from '../cache';
 import { chaveFiltros } from '../filtros';
-import type { Edital, EditalResumo, FiltrosBusca, ItemEdital, PontoMapa, ResultadoBusca } from '../tipos';
+import type { Edital, EditalResumo, FiltrosBusca, ItemEdital, PontoMapa, ResultadoBusca, ResumoItens } from '../tipos';
 import { supabaseServidor } from './supabase';
 
 const cache = criarCache(5 * 60 * 1000);
@@ -14,7 +14,14 @@ const texto = (v: unknown): string | null => (v === null || v === undefined ? nu
 export function buscarEditais(f: FiltrosBusca): Promise<ResultadoBusca> {
   return cache(`busca:${chaveFiltros(f)}`, async () => {
     const { data, error } = await supabaseServidor().rpc('buscar_editais', {
-      q: f.q, p_ufs: f.uf ? [f.uf] : null, p_ibge: f.ibge, p_dias: f.dias, p_limite: POR_PAGINA, p_deslocamento: f.deslocamento,
+      q: f.q,
+      p_ufs: f.uf ? [f.uf] : null,
+      p_ibge: f.ibge,
+      p_dias: f.dias,
+      p_valor_min: f.valorMin,
+      p_modalidades: f.modalidades,
+      p_limite: POR_PAGINA,
+      p_deslocamento: f.deslocamento,
     });
     if (error) throw new Error(`buscar_editais: ${error.message}`);
     const linhas = (data ?? []) as Linha[];
@@ -25,12 +32,15 @@ export function buscarEditais(f: FiltrosBusca): Promise<ResultadoBusca> {
         slug: String(l.slug),
         objeto: String(l.objeto),
         orgao_nome: String(l.orgao_nome),
+        unidade_nome: texto(l.unidade_nome),
         municipio_nome: texto(l.municipio_nome),
         uf: String(l.uf),
         codigo_ibge: texto(l.codigo_ibge),
         valor_estimado: num(l.valor_estimado),
         encerramento_em: String(l.encerramento_em),
+        publicada_em: texto(l.publicada_em),
         modalidade_nome: texto(l.modalidade_nome),
+        srp: Boolean(l.srp),
         onde: l.onde === 'itens' ? 'itens' : 'objeto',
         item_trecho: texto(l.item_trecho),
       })),
@@ -44,7 +54,13 @@ export function pontosDoMapa(f: FiltrosBusca): Promise<PontoMapa[]> {
     const pontos: PontoMapa[] = [];
     for (let de = 0; ; de += 1000) {
       const { data, error } = await supabaseServidor()
-        .rpc('mapa_editais', { q: f.q, p_ufs: f.uf ? [f.uf] : null, p_dias: f.dias })
+        .rpc('mapa_editais', {
+          q: f.q,
+          p_ufs: f.uf ? [f.uf] : null,
+          p_dias: f.dias,
+          p_valor_min: f.valorMin,
+          p_modalidades: f.modalidades,
+        })
         .range(de, de + 999);
       if (error) throw new Error(`mapa_editais: ${error.message}`);
       const linhas = (data ?? []) as Linha[];
@@ -69,7 +85,9 @@ export function edital(slug: string): Promise<Edital | null> {
   return cache(`edital:${slug}`, async () => {
     const { data, error } = await supabaseServidor()
       .from('contratacoes')
-      .select('id, slug, cnpj, ano, sequencial, objeto, info_complementar, orgao_nome, unidade_nome, municipio_nome, uf, codigo_ibge, modalidade_nome, situacao_nome, srp, valor_estimado, publicada_em, encerramento_em, link_origem')
+      .select(
+        'id, slug, cnpj, ano, sequencial, objeto, info_complementar, orgao_nome, unidade_nome, esfera, municipio_nome, uf, codigo_ibge, modalidade_nome, situacao_nome, srp, valor_estimado, publicada_em, abertura_em, encerramento_em, link_origem',
+      )
       .eq('slug', slug)
       .maybeSingle();
     if (error) throw new Error(`edital: ${error.message}`);
@@ -86,7 +104,10 @@ export function itensDoEdital(id: string, limite: number): Promise<{ total: numb
       const ate = Math.min(de + 1000, limite) - 1;
       const { data, error, count } = await supabaseServidor()
         .from('itens')
-        .select('numero, descricao, quantidade, unidade, valor_unitario_estimado, valor_total_estimado, sigiloso', { count: 'exact' })
+        .select(
+          'numero, descricao, quantidade, unidade, valor_unitario_estimado, valor_total_estimado, sigiloso, material_ou_servico, beneficio_id, beneficio_nome, criterio_julgamento',
+          { count: 'exact' },
+        )
         .eq('contratacao_id', id)
         .order('numero')
         .range(de, ate);
@@ -102,12 +123,34 @@ export function itensDoEdital(id: string, limite: number): Promise<{ total: numb
           valor_unitario_estimado: num(l.valor_unitario_estimado),
           valor_total_estimado: num(l.valor_total_estimado),
           sigiloso: Boolean(l.sigiloso),
+          material_ou_servico: texto(l.material_ou_servico),
+          beneficio_id: num(l.beneficio_id),
+          beneficio_nome: texto(l.beneficio_nome),
+          criterio_julgamento: texto(l.criterio_julgamento),
         });
       }
       if (linhas.length < ate - de + 1) break;
       if (itens.length >= total) break;
     }
     return { total, itens };
+  });
+}
+
+/** Tipos, ME/EPP e critérios de todos os itens do edital (função SQL `resumo_itens`). */
+export function resumoItens(id: string): Promise<ResumoItens> {
+  return cache(`resumo-itens:${id}`, async () => {
+    const { data, error } = await supabaseServidor().rpc('resumo_itens', { p_contratacao: id }).single();
+    if (error) throw new Error(`resumo_itens: ${error.message}`);
+    const l = (data ?? {}) as Linha;
+    return {
+      total: Number(l.total ?? 0),
+      materiais: Number(l.materiais ?? 0),
+      servicos: Number(l.servicos ?? 0),
+      comBeneficio: Number(l.com_beneficio ?? 0),
+      exclusivos: Number(l.exclusivos ?? 0),
+      cota: Number(l.cota ?? 0),
+      criterios: Array.isArray(l.criterios) ? (l.criterios as unknown[]).map(String) : [],
+    };
   });
 }
 

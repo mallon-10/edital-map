@@ -6,6 +6,18 @@ export type FiltrosBusca = {
   ibge: string | null;
   dias: number | null;
   deslocamento: number;
+  valorMin: number | null;
+  modalidades: number[] | null;
+};
+
+/** Estado dos filtros na tela inicial (o navegador monta a URL da API com `paraParametros`). */
+export type FiltrosTela = {
+  q: string;
+  uf: string;
+  cidade: Cidade | null;
+  valorMin: number | null;
+  modalidades: number[];
+  seteDias: boolean;
 };
 
 export type EditalResumo = {
@@ -13,12 +25,15 @@ export type EditalResumo = {
   slug: string;
   objeto: string;
   orgao_nome: string;
+  unidade_nome: string | null;
   municipio_nome: string | null;
   uf: string;
   codigo_ibge: string | null;
   valor_estimado: number | null;
   encerramento_em: string;
+  publicada_em: string | null;
   modalidade_nome: string | null;
+  srp: boolean;
   onde: 'objeto' | 'itens';
   item_trecho: string | null;
 };
@@ -51,9 +66,11 @@ export type Edital = {
   codigo_ibge: string | null;
   modalidade_nome: string | null;
   situacao_nome: string | null;
+  esfera: string | null;
   srp: boolean;
   valor_estimado: number | null;
   publicada_em: string | null;
+  abertura_em: string | null;
   encerramento_em: string | null;
   link_origem: string | null;
 };
@@ -66,6 +83,10 @@ export type ItemEdital = {
   valor_unitario_estimado: number | null;
   valor_total_estimado: number | null;
   sigiloso: boolean;
+  material_ou_servico: string | null;
+  beneficio_id: number | null;
+  beneficio_nome: string | null;
+  criterio_julgamento: string | null;
 };
 
 export type ResumoItens = {

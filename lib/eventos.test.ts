@@ -30,6 +30,13 @@ describe('validarEvento', () => {
     expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'resumo_ia', edital: SLUG } }).ok).toBe(true);
     expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'outro', edital: SLUG } }).ok).toBe(false);
   });
+  it('quer_recurso de plano e filtros Pro não exige edital', () => {
+    expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'plano_pro' } })).toEqual({
+      ok: true, valor: { tipo: 'quer_recurso', detalhe: { recurso: 'plano_pro' } },
+    });
+    expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'filtros_pro' } }).ok).toBe(true);
+    expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'resumo_ia' } }).ok).toBe(false);
+  });
   it('recusa tipo desconhecido, pediu_alerta e corpo inválido', () => {
     expect(validarEvento({ tipo: 'pediu_alerta', detalhe: {} }).ok).toBe(false);
     expect(validarEvento({ tipo: 'xyz' }).ok).toBe(false);

@@ -1,8 +1,10 @@
 export const TIPOS_EVENTO = ['busca', 'abriu_edital', 'clicou_edital_oficial', 'quer_recurso'] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 
-export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia'] as const;
+export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia', 'plano_pro', 'filtros_pro'] as const;
 export type Recurso = (typeof RECURSOS)[number];
+/** Interesse em planos e filtros Pro: vem do cabeçalho e dos chips, sem edital. */
+const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro'];
 
 export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['Sul', ['PR', 'RS', 'SC']],
@@ -40,6 +42,7 @@ export function validarEvento(corpo: unknown): Resultado<{ tipo: TipoEvento; det
   }
   if (tipo === 'quer_recurso') {
     if (typeof d.recurso !== 'string' || !(RECURSOS as readonly string[]).includes(d.recurso)) return { ok: false, erro: 'recurso inválido' };
+    if (RECURSOS_SEM_EDITAL.includes(d.recurso)) return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso } } };
     if (!edital) return { ok: false, erro: 'edital inválido' };
     return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, edital } } };
   }
