@@ -15,7 +15,7 @@ function dados(extra: Partial<DadosRelatorio> = {}): DadosRelatorio {
     ],
     contagens: [{ dia: '2026-10-01', uf: 'SC', modalidade: 6, banco: 97, pncp: 97 }],
     buscas: [{ verificacao: 'Busca acha pelos itens', status: 'ok', detalhe: '' }],
-    idempotencia: { antes: { contratacoes: 10, itens: 50 }, depois: { contratacoes: 10, itens: 50 }, novas: 0, inexplicadas: [] },
+    idempotencia: { antes: { contratacoes: 10, comItens: 8 }, depois: { contratacoes: 10, comItens: 8 }, novas: 0, inexplicadas: [] },
     ...extra,
   };
 }
@@ -40,6 +40,9 @@ describe('veredito', () => {
 });
 
 describe('montarRelatorio', () => {
+  it('idempotência conta contratações e as que têm palavras e resumo dos itens', () => {
+    expect(montarRelatorio(dados())).toContain('Contratações 10 → 10; com palavras e resumo dos itens 8 → 8.');
+  });
   it('tem veredito, link do portal e a lista da conferência manual', () => {
     const t = montarRelatorio(dados());
     expect(t).toContain('# Conferência · 2026-10-20');

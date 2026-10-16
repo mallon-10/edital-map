@@ -5,8 +5,8 @@ import type { ResultadoCompra } from './comparar';
 export type LinhaContagem = { dia: string; uf: string; modalidade: number; banco: number; pncp: number };
 export type VerificacaoBusca = { verificacao: string; status: 'ok' | 'falhou' | 'inconclusivo'; detalhe: string };
 export type Idempotencia = {
-  antes: { contratacoes: number; itens: number };
-  depois: { contratacoes: number; itens: number };
+  antes: { contratacoes: number; comItens: number };
+  depois: { contratacoes: number; comItens: number };
   novas: number;
   inexplicadas: string[];
 };
@@ -60,7 +60,7 @@ export function montarRelatorio(d: DadosRelatorio): string {
   else {
     const i = d.idempotencia;
     linhas.push(
-      `Contratações ${i.antes.contratacoes} → ${i.depois.contratacoes}; itens ${i.antes.itens} → ${i.depois.itens}.`,
+      `Contratações ${i.antes.contratacoes} → ${i.depois.contratacoes}; com palavras e resumo dos itens ${i.antes.comItens} → ${i.depois.comItens}.`,
       `Compras novas na 2ª rodada: ${i.novas}; sem explicação: ${i.inexplicadas.length ? i.inexplicadas.join(', ') : 'nenhuma'}.`,
     );
   }

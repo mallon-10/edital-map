@@ -7,6 +7,7 @@ import { sortearAmostra, type Candidata } from './conferencia/amostra';
 import { compararCompra, type ResultadoCompra } from './conferencia/comparar';
 import { montarRelatorio, type Idempotencia, type LinhaContagem, type VerificacaoBusca } from './conferencia/relatorio';
 import { hojeBrasilia, inicioDoDia, somarDias } from './datas';
+import { totalDeItens } from './itens';
 import type { LinhaContratacao } from './mapear';
 import { criarCliente } from './pncp/cliente';
 import { Resumo } from './resumo';
@@ -34,14 +35,11 @@ function semAcento(s: string): string {
 }
 
 async function listarCandidatas(): Promise<Candidata[]> {
-  const comItem11 = await sb.from('itens').select('contratacao_id').eq('numero', 11).limit(1000);
-  if (comItem11.error) throw new Error(comItem11.error.message);
-  const muitos = new Set((comItem11.data ?? []).map((l) => l.contratacao_id as string));
   const candidatas: Candidata[] = [];
   for (let de = 0; ; de += 1000) {
     const { data, error } = await sb
       .from('contratacoes')
-      .select('id, cnpj, ano, sequencial, uf, modalidade_id, valor_estimado, link_origem')
+      .select('id, cnpj, ano, sequencial, uf, modalidade_id, valor_estimado, link_origem, itens_resumo')
       .gt('encerramento_em', agora.toISOString())
       .order('id')
       .range(de, de + 999);
@@ -56,7 +54,7 @@ async function listarCandidatas(): Promise<Candidata[]> {
         modalidade_id: l.modalidade_id,
         valor_estimado: l.valor_estimado === null ? null : Number(l.valor_estimado),
         link_origem: l.link_origem,
-        muitos_itens: muitos.has(l.id),
+        muitos_itens: totalDeItens(l.itens_resumo) > 10,
       });
     }
     if (!data || data.length < 1000) return candidatas;
@@ -74,13 +72,12 @@ async function conferirAmostra() {
     try {
       const linha = await sb.from('contratacoes').select('*').eq('id', candidata.id).single();
       if (linha.error) throw new Error(linha.error.message);
-      const itens = await sb.from('itens').select('numero', { count: 'exact', head: true }).eq('contratacao_id', candidata.id);
-      if (itens.error) throw new Error(itens.error.message);
+      // Os itens não ficam mais no banco: compara o total do resumo com a lista do PNCP.
       const [detalhe, itensPncp] = await Promise.all([cliente.detalheCompra(candidata), cliente.listarItens(candidata)]);
       resultado = compararCompra(
         linha.data as LinhaContratacao,
         detalhe,
-        itens.count ?? 0,
+        totalDeItens(linha.data.itens_resumo),
         itensPncp.length,
         execucoes.get(chaveEstado(candidata.uf, candidata.modalidade_id)),
       );
@@ -153,9 +150,9 @@ async function conferirBuscas(): Promise<VerificacaoBusca[]> {
 
 async function contarTabelas() {
   const c = await sb.from('contratacoes').select('id', { count: 'exact', head: true });
-  const i = await sb.from('itens').select('numero', { count: 'exact', head: true });
-  if (c.error || i.error) throw new Error((c.error ?? i.error)?.message);
-  return { contratacoes: c.count ?? 0, itens: i.count ?? 0 };
+  const r = await sb.from('contratacoes').select('id', { count: 'exact', head: true }).not('itens_resumo', 'is', null);
+  if (c.error || r.error) throw new Error((c.error ?? r.error)?.message);
+  return { contratacoes: c.count ?? 0, comItens: r.count ?? 0 };
 }
 
 async function conferirIdempotencia(): Promise<Idempotencia> {
