@@ -211,11 +211,6 @@ export function criarCliente(opcoes: OpcoesCliente = {}) {
     }
   }
 
-  async function totalRegistros(endpoint: 'publicacao' | 'atualizacao', filtro: FiltroContratacoes): Promise<number> {
-    const resp = await getJson<RespostaContratacoes>(urlContratacoes(endpoint, filtro, 1, 10));
-    return resp?.totalRegistros ?? 0;
-  }
-
   async function totalPropostas(filtro: FiltroPropostas): Promise<number> {
     const resp = await getJson<RespostaContratacoes>(urlPropostas(filtro, 1, 10));
     return resp?.totalRegistros ?? 0;
@@ -243,7 +238,6 @@ export function criarCliente(opcoes: OpcoesCliente = {}) {
     getJson,
     paginarContratacoes,
     paginarPropostas,
-    totalRegistros,
     totalPropostas,
     listarItens,
     detalheCompra,

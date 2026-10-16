@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sortearAmostra, type Candidata } from './amostra';
+import { sortearAmostra, ufsDaConferencia, type Candidata } from './amostra';
 
 function candidata(n: number, extra: Partial<Candidata> = {}): Candidata {
   return {
@@ -40,5 +40,18 @@ describe('sortearAmostra', () => {
   });
   it('com poucas candidatas, devolve todas', () => {
     expect(sortearAmostra([candidata(1), candidata(2)], 20)).toHaveLength(2);
+  });
+});
+
+describe('ufsDaConferencia', () => {
+  it('sem valor, sorteia 3 UFs diferentes do Brasil, em ordem', () => {
+    expect(ufsDaConferencia(undefined, () => 0)).toEqual(['AC', 'AL', 'AM']);
+  });
+  it('usa as UFs pedidas', () => {
+    expect(ufsDaConferencia(' sp,ba ')).toEqual(['SP', 'BA']);
+  });
+  it('recusa BR e UF inexistente', () => {
+    expect(() => ufsDaConferencia('BR')).toThrow('informe UFs');
+    expect(() => ufsDaConferencia('XX')).toThrow('UF inválida: XX');
   });
 });

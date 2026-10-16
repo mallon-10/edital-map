@@ -2,7 +2,8 @@ import { linkDoPortal } from '../mapear';
 import type { Sorteada } from './amostra';
 import type { ResultadoCompra } from './comparar';
 
-export type LinhaContagem = { dia: string; uf: string; modalidade: number; banco: number; pncp: number };
+/** Abertas no banco contra o totalRegistros do /proposta (teto aproximado) numa UF × modalidade. */
+export type LinhaAbertas = { uf: string; modalidade: number; banco: number; pncp: number };
 export type VerificacaoBusca = { verificacao: string; status: 'ok' | 'falhou' | 'inconclusivo'; detalhe: string };
 export type Idempotencia = {
   antes: { contratacoes: number; comItens: number };
@@ -13,17 +14,25 @@ export type Idempotencia = {
 export type DadosRelatorio = {
   dia: string;
   amostra: Array<{ candidata: Sorteada; resultado: ResultadoCompra }>;
-  contagens: LinhaContagem[];
+  abertas: LinhaAbertas[];
   buscas: VerificacaoBusca[];
   idempotencia: Idempotencia | null;
 };
+
+/**
+ * O /proposta inclui algumas encerradas e deixa de fora credenciamentos de prazo muito longo (medido na Fase 1):
+ * coerente = o banco tem ao menos 90% dele. Mais que ele é normal.
+ */
+export function abertasCoerentes(l: LinhaAbertas): boolean {
+  return l.banco >= Math.floor(0.9 * l.pncp);
+}
 
 export function veredito(d: DadosRelatorio): { passou: boolean; motivos: string[] } {
   const motivos: string[] = [];
   const ruins = d.amostra.filter((a) => a.resultado.status === 'divergente' || a.resultado.status === 'erro');
   if (ruins.length > 0) motivos.push(`${ruins.length} compra(s) da amostra com divergência ou erro`);
-  const contagensErradas = d.contagens.filter((c) => c.banco !== c.pncp);
-  if (contagensErradas.length > 0) motivos.push(`${contagensErradas.length} contagem(ns) por dia diferente(s) do PNCP`);
+  const baixas = d.abertas.filter((l) => !abertasCoerentes(l));
+  if (baixas.length > 0) motivos.push(`${baixas.length} UF × modalidade com abertas abaixo de 90% do /proposta`);
   for (const b of d.buscas) if (b.status !== 'ok') motivos.push(`Busca: ${b.verificacao} (${b.status})`);
   if (!d.idempotencia) motivos.push('Idempotência não verificada (rode com --idempotencia)');
   else if (d.idempotencia.inexplicadas.length > 0) {
@@ -45,11 +54,10 @@ export function montarRelatorio(d: DadosRelatorio): string {
     linhas.push(`| ${candidata.id} | ${candidata.motivo} | ${resultado.status}${obs} | ${difs || '—'} | [abrir](${linkDoPortal(candidata)}) |`);
   }
 
-  const erradas = d.contagens.filter((c) => c.banco !== c.pncp);
-  linhas.push('', '## Contagem por dia', '', `${d.contagens.length - erradas.length} de ${d.contagens.length} combinações iguais ao PNCP.`);
-  if (erradas.length > 0) {
-    linhas.push('', '| Dia | UF | Modalidade | Banco | PNCP |', '|---|---|---|---|---|');
-    for (const c of erradas) linhas.push(`| ${c.dia} | ${c.uf} | ${c.modalidade} | ${c.banco} | ${c.pncp} |`);
+  linhas.push('', '## Abertas por UF (amostra)', '', '| UF | Modalidade | Banco | PNCP (/proposta, teto) | % |', '|---|---|---|---|---|');
+  for (const l of d.abertas) {
+    const pct = l.pncp === 0 ? '—' : `${Math.round((100 * l.banco) / l.pncp)}%`;
+    linhas.push(`| ${l.uf} | ${l.modalidade} | ${l.banco} | ${l.pncp} | ${pct} |`);
   }
 
   linhas.push('', '## Busca', '');

@@ -2,26 +2,27 @@ import './ambiente';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { criarBanco, criarSupabase } from './banco';
-import { lerModalidades, lerSupabase, lerUfs } from './config';
-import { sortearAmostra, type Candidata } from './conferencia/amostra';
+import { lerModalidades, lerPropostaAte, lerSupabase, lerUfs, UF_BRASIL } from './config';
+import { sortearAmostra, ufsDaConferencia, type Candidata } from './conferencia/amostra';
 import { compararCompra, type ResultadoCompra } from './conferencia/comparar';
-import { montarRelatorio, type Idempotencia, type LinhaContagem, type VerificacaoBusca } from './conferencia/relatorio';
-import { hojeBrasilia, inicioDoDia, somarDias } from './datas';
+import { montarRelatorio, type Idempotencia, type LinhaAbertas, type VerificacaoBusca } from './conferencia/relatorio';
+import { hojeBrasilia } from './datas';
 import { totalDeItens } from './itens';
 import type { LinhaContratacao } from './mapear';
 import { criarCliente } from './pncp/cliente';
 import { Resumo } from './resumo';
 import { chaveEstado, executarSync, mensagemDe } from './sincronizar';
 
+// Uso: UFS=BR npm run worker:conferir -- --amostra 20 [--ufs-abertas SP,BA,AM] [--proposta-ate aaaa-mm-dd] [--idempotencia]
 const { values } = parseArgs({
   options: {
     amostra: { type: 'string', default: '20' },
-    'dias-contagem': { type: 'string', default: '3' },
+    'ufs-abertas': { type: 'string' },
+    'proposta-ate': { type: 'string' },
     idempotencia: { type: 'boolean', default: false },
   },
 });
 const tamanho = Number(values.amostra);
-const diasContagem = Number(values['dias-contagem']);
 const ufs = lerUfs(process.env.UFS);
 const modalidades = lerModalidades(process.env.MODALIDADES);
 const { url, chave } = lerSupabase();
@@ -29,6 +30,8 @@ const sb = criarSupabase(url, chave);
 const cliente = criarCliente();
 const agora = new Date();
 const hoje = hojeBrasilia(agora);
+const ufsAbertas = ufsDaConferencia(values['ufs-abertas']);
+const propostaAte = lerPropostaAte(values['proposta-ate'], hoje);
 
 function semAcento(s: string): string {
   return s.normalize('NFD').replace(/\p{Diacritic}/gu, '');
@@ -79,7 +82,7 @@ async function conferirAmostra() {
         detalhe,
         totalDeItens(linha.data.itens_resumo),
         itensPncp.length,
-        execucoes.get(chaveEstado(candidata.uf, candidata.modalidade_id)),
+        execucoes.get(chaveEstado(ufs[0] === UF_BRASIL ? UF_BRASIL : candidata.uf, candidata.modalidade_id)),
       );
     } catch (erro) {
       resultado = { id: candidata.id, status: 'erro', diferencas: [], observacao: mensagemDe(erro) };
@@ -89,28 +92,20 @@ async function conferirAmostra() {
   return resultados;
 }
 
-function sortearDias(n: number): string[] {
-  const dias = new Set<string>();
-  while (dias.size < n) dias.add(somarDias(hoje, -(1 + Math.floor(Math.random() * 89))));
-  return [...dias].sort();
-}
-
-async function contarDias(): Promise<LinhaContagem[]> {
-  const linhas: LinhaContagem[] = [];
-  for (const dia of sortearDias(diasContagem)) {
-    for (const uf of ufs) {
-      for (const modalidade of modalidades) {
-        const { count, error } = await sb
-          .from('contratacoes')
-          .select('id', { count: 'exact', head: true })
-          .eq('uf', uf)
-          .eq('modalidade_id', modalidade)
-          .gte('publicada_em', inicioDoDia(dia))
-          .lt('publicada_em', inicioDoDia(somarDias(dia, 1)));
-        if (error) throw new Error(error.message);
-        const pncp = await cliente.totalRegistros('publicacao', { uf, modalidade, dataInicial: dia, dataFinal: dia });
-        linhas.push({ dia, uf, modalidade, banco: count ?? 0, pncp });
-      }
+/** Abertas no banco por UF × modalidade contra o totalRegistros do /proposta (teto aproximado do PNCP). */
+async function contarAbertas(): Promise<LinhaAbertas[]> {
+  const linhas: LinhaAbertas[] = [];
+  for (const uf of ufsAbertas) {
+    for (const modalidade of modalidades) {
+      const { count, error } = await sb
+        .from('contratacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('uf', uf)
+        .eq('modalidade_id', modalidade)
+        .gt('encerramento_em', agora.toISOString());
+      if (error) throw new Error(error.message);
+      const pncp = await cliente.totalPropostas({ uf, modalidade, dataFinal: propostaAte });
+      linhas.push({ uf, modalidade, banco: count ?? 0, pncp });
     }
   }
   return linhas;
@@ -181,7 +176,7 @@ async function conferirIdempotencia(): Promise<Idempotencia> {
 const relatorio = montarRelatorio({
   dia: hoje,
   amostra: await conferirAmostra(),
-  contagens: await contarDias(),
+  abertas: await contarAbertas(),
   buscas: await conferirBuscas(),
   idempotencia: values.idempotencia ? await conferirIdempotencia() : null,
 });
