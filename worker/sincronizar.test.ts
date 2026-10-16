@@ -100,7 +100,7 @@ describe('gravarPagina · ordem de gravação', () => {
     await gravarPagina([nova], deps);
     expect(cliente.itensPedidos).toEqual([idDe(4), idDe(4)]);
     expect(banco.contratacoes.get(idDe(4))?.atualizada_pncp_em).toBe(nova.atualizada_pncp_em);
-    expect(banco.itensDe(idDe(4))).toHaveLength(1);
+    expect(banco.resumos.get(idDe(4))?.resumo.total).toBe(1);
     expect(deps.resumo.contratacoesGravadas).toBe(2);
   });
   it('compra nova cujos itens falham fica com o timestamp provisório de 1970', async () => {
@@ -119,37 +119,47 @@ describe('gravarPagina · ordem de gravação', () => {
     const deps = montarDeps(banco, clienteFalso());
     await gravarPagina([l], deps);
     expect(banco.contratacoes.get(idDe(1))?.atualizada_pncp_em).toBe(l.atualizada_pncp_em);
-    expect(banco.itensDe(idDe(1))).toHaveLength(1);
+    expect(banco.resumos.get(idDe(1))?.resumo.total).toBe(1);
     expect(deps.resumo.contratacoesGravadas).toBe(1);
   });
 });
 
 describe('sincronizarItens', () => {
-  it('grava itens e remove os que sumiram', async () => {
+  const COMPRA = { id: 'C1', cnpj: '1', ano: 2026, sequencial: 1 };
+  it('grava uma vez as palavras e o resumo dos itens, sem guardar linhas de itens', async () => {
     const banco = new BancoFalso();
-    const deps = montarDeps(banco, clienteFalso({ itens: () => [itemBruto(1), itemBruto(2)] }));
-    await banco.upsertItens([{ ...(await itemLinha(9)) }]);
-    await sincronizarItens([{ id: 'C1', cnpj: '1', ano: 2026, sequencial: 1 }], deps);
-    expect(banco.itensDe('C1').map((i) => i.numero).sort()).toEqual([1, 2]);
-    expect(banco.remocoes).toEqual([{ contratacaoId: 'C1', numeros: [1, 2] }]);
-    expect(deps.resumo.itensGravados).toBe(2);
+    const deps = montarDeps(
+      banco,
+      clienteFalso({
+        itens: () => [
+          itemBruto(1),
+          itemBruto(2, { descricao: 'Luva nitrílica tamanho M', tipoBeneficio: 1, criterioJulgamentoNome: 'Menor preço' }),
+        ],
+      }),
+    );
+    const gravadas = await sincronizarItens([COMPRA], deps);
+    expect(gravadas.has('C1')).toBe(true);
+    expect(banco.resumos.get('C1')).toEqual({
+      palavras: 'Corda material: polietileno, tipo: trançada, diâmetro: 40, aplicação: uso geral Luva nitrílica tamanho M',
+      resumo: { total: 2, materiais: 2, servicos: 0, com_beneficio: 1, exclusivos: 1, cota: 0, criterios: ['Menor preço'] },
+    });
+    expect(deps.resumo.itensLidos).toBe(2);
   });
-  it('com item inválido, grava os válidos e não remove nada', async () => {
+  it('com item inválido, grava a partir dos válidos e avisa', async () => {
     const banco = new BancoFalso();
     const deps = montarDeps(banco, clienteFalso({ itens: () => [itemBruto(1), { numeroItem: 2 }] }));
-    await sincronizarItens([{ id: 'C1', cnpj: '1', ano: 2026, sequencial: 1 }], deps);
-    expect(banco.itensDe('C1')).toHaveLength(1);
-    expect(banco.remocoes).toEqual([]);
+    await sincronizarItens([COMPRA], deps);
+    expect(banco.resumos.get('C1')?.resumo.total).toBe(1);
     expect(deps.resumo.avisos[0].chave).toBe('item:C1#2');
   });
-  it('lista vazia não remove os itens antigos, gera aviso e conta como sucesso', async () => {
+  it('lista vazia mantém palavras e resumo antigos, gera aviso e conta como sucesso', async () => {
     const banco = new BancoFalso();
+    const antigo = { palavras: 'antigo', resumo: { total: 9, materiais: 9, servicos: 0, com_beneficio: 0, exclusivos: 0, cota: 0, criterios: [] } };
+    banco.resumos.set('C1', antigo);
     const deps = montarDeps(banco, clienteFalso({ itens: () => [] }));
-    await banco.upsertItens([{ ...(await itemLinha(9)) }]);
-    const gravadas = await sincronizarItens([{ id: 'C1', cnpj: '1', ano: 2026, sequencial: 1 }], deps);
-    expect(banco.itensDe('C1').map((i) => i.numero)).toEqual([9]);
-    expect(banco.remocoes).toEqual([]);
-    expect(deps.resumo.avisos).toEqual([{ chave: 'itens:C1', mensagem: 'lista de itens vazia; itens antigos mantidos' }]);
+    const gravadas = await sincronizarItens([COMPRA], deps);
+    expect(banco.resumos.get('C1')).toEqual(antigo);
+    expect(deps.resumo.avisos).toEqual([{ chave: 'itens:C1', mensagem: 'lista de itens vazia; palavras e resumo antigos mantidos' }]);
     expect(gravadas.has('C1')).toBe(true);
   });
   it('falha ao listar itens vira aviso, sem derrubar a rodada', async () => {
@@ -162,29 +172,12 @@ describe('sincronizarItens', () => {
         },
       }),
     );
-    await sincronizarItens([{ id: 'C1', cnpj: '1', ano: 2026, sequencial: 1 }], deps);
+    await sincronizarItens([COMPRA], deps);
     expect(deps.resumo.avisos).toEqual([{ chave: 'itens:C1', mensagem: 'HTTP 503' }]);
     expect(deps.resumo.erros).toEqual([]);
+    expect(banco.resumos.has('C1')).toBe(false);
   });
 });
-
-async function itemLinha(numero: number) {
-  return {
-    contratacao_id: 'C1',
-    numero,
-    descricao: 'antigo',
-    quantidade: 1,
-    unidade: 'un',
-    valor_unitario_estimado: 1,
-    valor_total_estimado: 1,
-    material_ou_servico: 'M',
-    sigiloso: false,
-    tem_resultado: false,
-    beneficio_id: null,
-    beneficio_nome: null,
-    criterio_julgamento: null,
-  };
-}
 
 describe('janela e chave', () => {
   const MEIO_DIA = new Date('2026-10-14T15:00:00Z'); // 12h em Brasília

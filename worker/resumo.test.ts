@@ -36,7 +36,7 @@ describe('Resumo', () => {
     expect(t).toContain('## Sincronização PNCP');
     expect(t).toContain('| Tempo | 5 s |');
     expect(t).toContain('| Páginas lidas | 2 |');
-    expect(t).toContain('| Itens gravados | 42 |');
+    expect(t).toContain('| Itens lidos | 42 |');
     expect(t).toContain('| Chamadas HTTP | 10 |');
     expect(t).toContain('- `atualizacao:SC:6`: HTTP 503');
   });

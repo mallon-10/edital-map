@@ -3,7 +3,7 @@ import { sincronizarItens, type Dependencias } from './sincronizar';
 export type ResultadoReleitura = { compras: number; comItens: number; falhas: number };
 
 /**
- * Relê os itens de todas as compras abertas (uso único, depois de mudar o que se guarda de cada item).
+ * Relê os itens de todas as compras abertas e regrava palavras + resumo (útil quando a regra do resumo muda).
  * Páginas de compras por id; cada lote vai para `sincronizarItens`, que respeita o paralelismo do cliente.
  */
 export async function relerItensAbertos(

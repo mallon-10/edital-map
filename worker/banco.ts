@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { LOTE_BANCO } from './config';
-import type { ChaveCompra, LinhaContratacao, LinhaItem } from './mapear';
+import type { ResumoItensBanco } from './itens';
+import type { ChaveCompra, LinhaContratacao } from './mapear';
 
 export type EstadoSync = {
   chave: string;
@@ -14,9 +15,10 @@ export type LinhaMunicipio = { codigo_ibge: string; nome: string; uf: string; la
 
 export interface Banco {
   upsertContratacoes(linhas: LinhaContratacao[]): Promise<void>;
-  upsertItens(linhas: LinhaItem[]): Promise<void>;
-  removerItensAlem(contratacaoId: string, numeros: number[]): Promise<void>;
+  /** Palavras de todas as descrições + resumo dos itens de uma compra (função SQL gravar_resumo_itens; o texto não é guardado). */
+  gravarResumoItens(contratacaoId: string, palavras: string, resumo: ResumoItensBanco): Promise<void>;
   atualizacoesConhecidas(ids: string[]): Promise<Map<string, string>>;
+  /** Abertas ainda sem resumo dos itens, prazo mais próximo primeiro (catch-up). */
   abertasSemItens(limite: number): Promise<ChaveCompra[]>;
   /** Compras abertas em ordem de id, a partir de `depoisDe` (exclusivo), até `limite`. */
   abertas(depoisDe: string | null, limite: number): Promise<ChaveCompra[]>;
@@ -50,18 +52,9 @@ export function criarBanco(sb: SupabaseClient, agora: () => Date = () => new Dat
       }
     },
 
-    async upsertItens(linhas) {
-      for (const lote of emLotes(linhas, LOTE_BANCO)) {
-        const { error } = await sb.from('itens').upsert(lote, { onConflict: 'contratacao_id,numero' });
-        falhar('gravar itens', error);
-      }
-    },
-
-    async removerItensAlem(contratacaoId, numeros) {
-      let consulta = sb.from('itens').delete().eq('contratacao_id', contratacaoId);
-      if (numeros.length > 0) consulta = consulta.not('numero', 'in', `(${numeros.join(',')})`);
-      const { error } = await consulta;
-      falhar('remover itens', error);
+    async gravarResumoItens(contratacaoId, palavras, resumo) {
+      const { error } = await sb.rpc('gravar_resumo_itens', { p_id: contratacaoId, p_palavras: palavras, p_resumo: resumo });
+      falhar('gravar resumo dos itens', error);
     },
 
     async atualizacoesConhecidas(ids) {
@@ -75,12 +68,11 @@ export function criarBanco(sb: SupabaseClient, agora: () => Date = () => new Dat
     },
 
     async abertasSemItens(limite) {
-      // Anti-join do PostgREST: embute itens e filtra quem não tem nenhum.
       const { data, error } = await sb
         .from('contratacoes')
-        .select('id, cnpj, ano, sequencial, itens(contratacao_id)')
+        .select('id, cnpj, ano, sequencial')
         .gt('encerramento_em', agora().toISOString())
-        .is('itens', null)
+        .is('itens_resumo', null)
         .order('encerramento_em', { ascending: true })
         .limit(limite);
       falhar('listar abertas sem itens', error);

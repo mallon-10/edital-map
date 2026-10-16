@@ -8,7 +8,7 @@ export class Resumo {
   validos = 0;
   contratacoesGravadas = 0;
   comprasComItens = 0;
-  itensGravados = 0;
+  itensLidos = 0;
   readonly invalidos: Array<{ id: string; motivo: string }> = [];
   readonly erros: Ocorrencia[] = [];
   readonly avisos: Ocorrencia[] = [];
@@ -34,7 +34,7 @@ export class Resumo {
   }
   contarItens(compras: number, itens: number): void {
     this.comprasComItens += compras;
-    this.itensGravados += itens;
+    this.itensLidos += itens;
   }
   registrarErro(chave: string, mensagem: string): void {
     this.erros.push({ chave, mensagem });
@@ -66,7 +66,7 @@ export class Resumo {
       `| Contratações válidas | ${this.validos} |`,
       `| Contratações gravadas | ${this.contratacoesGravadas} |`,
       `| Compras com itens buscados | ${this.comprasComItens} |`,
-      `| Itens gravados | ${this.itensGravados} |`,
+      `| Itens lidos | ${this.itensLidos} |`,
       `| Registros inválidos | ${this.invalidos.length} (${pct}%) |`,
     ];
     if (http) {

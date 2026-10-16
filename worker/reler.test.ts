@@ -20,7 +20,7 @@ describe('relerItensAbertos', () => {
     const r = await relerItensAbertos(montarDeps(banco, cliente), { pagina: 2, lote: 2 });
     expect(r).toEqual({ compras: 5, comItens: 5, falhas: 0 });
     expect([...cliente.itensPedidos].sort()).toEqual([idDe(1), idDe(2), idDe(3), idDe(4), idDe(5)]);
-    expect(banco.itensDe(idDe(3))[0]).toMatchObject({ beneficio_id: 1, criterio_julgamento: 'Menor preço' });
+    expect(banco.resumos.get(idDe(3))?.resumo).toMatchObject({ exclusivos: 1, criterios: ['Menor preço'] });
   });
 
   it('conta como falha a compra cujos itens não vieram', async () => {

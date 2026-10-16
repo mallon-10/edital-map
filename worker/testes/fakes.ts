@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { Banco, EstadoSync } from '../banco';
-import type { ChaveCompra, LinhaContratacao, LinhaItem } from '../mapear';
+import type { ResumoItensBanco } from '../itens';
+import type { ChaveCompra, LinhaContratacao } from '../mapear';
 import type { FiltroContratacoes, PaginaContratacoes } from '../pncp/cliente';
 import { Resumo } from '../resumo';
 import type { Dependencias } from '../sincronizar';
@@ -35,23 +36,19 @@ export function itemBruto(numero: number, extra: Record<string, unknown> = {}): 
   return { ...ITEM, numeroItem: numero, ...extra };
 }
 
+export type ResumoGravado = { palavras: string; resumo: ResumoItensBanco };
+
 export class BancoFalso implements Banco {
   contratacoes = new Map<string, LinhaContratacao>();
-  itens = new Map<string, LinhaItem>();
+  /** Palavras + resumo dos itens por compra (o banco real chama gravar_resumo_itens). */
+  resumos = new Map<string, ResumoGravado>();
   estados = new Map<string, EstadoSync>();
-  remocoes: Array<{ contratacaoId: string; numeros: number[] }> = [];
 
   async upsertContratacoes(linhas: LinhaContratacao[]): Promise<void> {
     for (const l of linhas) this.contratacoes.set(l.id, l);
   }
-  async upsertItens(linhas: LinhaItem[]): Promise<void> {
-    for (const l of linhas) this.itens.set(`${l.contratacao_id}#${l.numero}`, l);
-  }
-  async removerItensAlem(contratacaoId: string, numeros: number[]): Promise<void> {
-    this.remocoes.push({ contratacaoId, numeros });
-    for (const [k, v] of this.itens) {
-      if (v.contratacao_id === contratacaoId && !numeros.includes(v.numero)) this.itens.delete(k);
-    }
+  async gravarResumoItens(contratacaoId: string, palavras: string, resumo: ResumoItensBanco): Promise<void> {
+    this.resumos.set(contratacaoId, { palavras, resumo });
   }
   async atualizacoesConhecidas(ids: string[]): Promise<Map<string, string>> {
     const mapa = new Map<string, string>();
@@ -64,7 +61,7 @@ export class BancoFalso implements Banco {
   async abertasSemItens(limite: number): Promise<ChaveCompra[]> {
     return [...this.contratacoes.values()]
       .filter((c) => c.encerramento_em !== null && Date.parse(c.encerramento_em) > AGORA.getTime())
-      .filter((c) => !this.itensDe(c.id).length)
+      .filter((c) => !this.resumos.has(c.id))
       .slice(0, limite)
       .map((c) => ({ id: c.id, cnpj: c.cnpj, ano: c.ano, sequencial: c.sequencial }));
   }
@@ -81,9 +78,6 @@ export class BancoFalso implements Banco {
   }
   async gravarEstado(estado: EstadoSync): Promise<void> {
     this.estados.set(estado.chave, estado);
-  }
-  itensDe(id: string): LinhaItem[] {
-    return [...this.itens.values()].filter((i) => i.contratacao_id === id);
   }
 }
 

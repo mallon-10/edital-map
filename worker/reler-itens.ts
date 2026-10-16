@@ -7,7 +7,7 @@ import { Resumo } from './resumo';
 
 const { url, chave } = lerSupabase();
 const cliente = criarCliente();
-const resumo = new Resumo('Releitura dos itens das compras abertas');
+const resumo = new Resumo('Releitura dos itens das compras abertas (palavras e resumo)');
 const inicio = Date.now();
 const r = await relerItensAbertos({
   cliente,

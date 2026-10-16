@@ -1,6 +1,7 @@
 import type { Banco } from './banco';
 import { LIMITE_CATCH_UP } from './config';
 import { hojeBrasilia, somarDias } from './datas';
+import { palavrasDosItens, resumirItens } from './itens';
 import {
   chaveDaLinha,
   contratacaoParaLinha,
@@ -64,7 +65,10 @@ export function mudou(linha: LinhaContratacao, conhecidas: Map<string, string>):
   return anterior === undefined || Date.parse(linha.atualizada_pncp_em) > Date.parse(anterior);
 }
 
-/** Devolve os ids das compras cujos itens foram gravados com sucesso. */
+/**
+ * Lê os itens de cada compra no PNCP e grava, numa chamada só, as palavras de todas as descrições e o resumo
+ * (o texto dos itens não fica no banco). Devolve os ids das compras concluídas.
+ */
 export async function sincronizarItens(compras: ChaveCompra[], deps: Dependencias): Promise<Set<string>> {
   const gravadas = new Set<string>();
   await Promise.all(
@@ -72,25 +76,19 @@ export async function sincronizarItens(compras: ChaveCompra[], deps: Dependencia
       try {
         const brutos = await deps.cliente.listarItens(compra);
         const porNumero = new Map<number, LinhaItem>();
-        let invalidos = 0;
         for (const bruto of brutos) {
           const v = validarItem(bruto, compra.id);
           if (v.ok) porNumero.set(v.valor.numeroItem, itemParaLinha(v.valor, compra.id));
-          else {
-            invalidos++;
-            deps.resumo.registrarAviso(`item:${v.id}`, v.motivo);
-          }
+          else deps.resumo.registrarAviso(`item:${v.id}`, v.motivo);
         }
-        const linhas = [...porNumero.values()];
-        await deps.banco.upsertItens(linhas);
-        if (linhas.length === 0) {
+        const itens = [...porNumero.values()];
+        if (itens.length === 0) {
           // Lista vazia pode ser resposta transitória do PNCP: não apagar o que já temos.
-          deps.resumo.registrarAviso(`itens:${compra.id}`, 'lista de itens vazia; itens antigos mantidos');
-        } else if (invalidos === 0) {
-          // Só remove itens antigos quando a lista veio inteira e válida.
-          await deps.banco.removerItensAlem(compra.id, linhas.map((l) => l.numero));
+          deps.resumo.registrarAviso(`itens:${compra.id}`, 'lista de itens vazia; palavras e resumo antigos mantidos');
+        } else {
+          await deps.banco.gravarResumoItens(compra.id, palavrasDosItens(itens.map((i) => i.descricao)), resumirItens(itens));
         }
-        deps.resumo.contarItens(1, linhas.length);
+        deps.resumo.contarItens(1, itens.length);
         gravadas.add(compra.id);
       } catch (erro) {
         deps.resumo.registrarAviso(`itens:${compra.id}`, mensagemDe(erro));
