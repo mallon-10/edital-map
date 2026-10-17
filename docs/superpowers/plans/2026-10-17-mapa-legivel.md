@@ -17,7 +17,7 @@
 - Cores só do design system: `pin` #ff5a1f, `ink` #0c2340, `ink-muted` #3e5373, `on-pin` #0c2340, `raised` #ffffff, foco `rio`.
 - Estilo do fundo: `https://tiles.openfreemap.org/styles/positron`; fonte dos nomes: `Noto Sans Bold` (servidor de fontes do estilo).
 - Agrupamento: `clusterRadius: 60`, `clusterMaxZoom: 8`.
-- Divisas: linha `#0c2340`, opacidade 0,55, largura `interpolate linear zoom 3 → 0.8, 7 → 1.6`.
+- Divisas: linha `#0c2340`, opacidade 0,8, largura `interpolate linear zoom 3 → 0.8, 7 → 1.6`.
 - Tempo máximo para o estilo responder antes da reserva: 8 s.
 - maplibre-gl 6 é só ESM: continuar com `await import('maplibre-gl')` e `setWorkerUrl` como hoje em `components/Mapa.tsx`.
 - Fim de cada mensagem de commit: linha em branco + `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
