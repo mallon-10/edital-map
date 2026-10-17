@@ -25,7 +25,7 @@ vi.mock('./supabase', () => ({
   }),
 }));
 
-const { buscarEditais, itensDoEdital, pontosDoMapa, relacionados, resumoItens } = await import('./consultas');
+const { buscarEditais, itensDoEdital, orgaosAbertos, pontosDoMapa, relacionados, resumoItens } = await import('./consultas');
 
 const compra = (id: string) => ({ id, cnpj: '00394452000103', ano: 2026, sequencial: 21982 });
 const SEM_FILTRO: FiltrosBusca = {
@@ -195,5 +195,24 @@ describe('relacionados (0007)', () => {
 
   it('sem parecidos, lista vazia', async () => {
     expect(await relacionados('origem-3')).toEqual([]);
+  });
+});
+
+describe('orgaosAbertos (0007)', () => {
+  beforeEach(() => {
+    chamadas.length = 0;
+    respostaRpc = [];
+  });
+
+  it('chama orgaos_abertos com o termo e até 20, com nome limpo e quantidade numérica', async () => {
+    respostaRpc = [{ cnpj: '83102244000102', nome: 'MUNICIPIO DE JOINVILLE', uf: 'SC', qtd: '42' }];
+    expect(await orgaosAbertos('Joinville')).toEqual([{ cnpj: '83102244000102', nome: 'Municipio de Joinville', uf: 'SC', qtd: 42 }]);
+    expect(chamadas).toEqual([{ nome: 'orgaos_abertos', args: { q: 'Joinville', p_limite: 20 } }]);
+  });
+
+  it('o cache ignora acento e maiúsculas do termo', async () => {
+    await orgaosAbertos('São José');
+    await orgaosAbertos('sao jose');
+    expect(chamadas).toHaveLength(1);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chaveFiltros, lerFiltros, normalizarTela, paraParametros, recursosUsados, UFS_ORDENADAS } from './filtros';
+import { chaveFiltros, lerFiltros, lerTermoOrgao, normalizarTela, paraParametros, recursosUsados, UFS_ORDENADAS } from './filtros';
 import type { FiltrosTela } from './tipos';
 
 const ler = (s: string) => lerFiltros(new URLSearchParams(s));
@@ -129,5 +129,23 @@ describe('UFS_ORDENADAS', () => {
     expect(UFS_ORDENADAS[0]).toBe('AC');
     expect(UFS_ORDENADAS[26]).toBe('TO');
     expect([...UFS_ORDENADAS].sort()).toEqual(UFS_ORDENADAS);
+  });
+});
+
+describe('lerTermoOrgao', () => {
+  it('3 letras ou mais, com espaços colapsados', () => {
+    expect(lerTermoOrgao('  prefeitura   de  ')).toBe('prefeitura de');
+    expect(lerTermoOrgao('itá')).toBe('itá');
+  });
+  it('menos de 3 letras ou vazio é recusado (números não contam)', () => {
+    expect(lerTermoOrgao('ab')).toBeNull();
+    expect(lerTermoOrgao('a 1 2 3')).toBeNull();
+    expect(lerTermoOrgao('')).toBeNull();
+    expect(lerTermoOrgao(null)).toBeNull();
+  });
+  it('tira os curingas do ilike e corta em 60 caracteres', () => {
+    expect(lerTermoOrgao('saúde%_\\')).toBe('saúde');
+    expect(lerTermoOrgao('%%%')).toBeNull();
+    expect(lerTermoOrgao('x'.repeat(100))).toHaveLength(60);
   });
 });

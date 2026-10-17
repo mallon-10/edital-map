@@ -2,13 +2,15 @@ import 'server-only';
 import type { ChaveCompra } from '@/worker/mapear';
 import { criarCache } from '../cache';
 import { chaveFiltros } from '../filtros';
-import type { Edital, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, PontoMapa, ResultadoBusca, ResumoItens } from '../tipos';
+import { nomeProprio } from '../texto';
+import type { Edital, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens } from '../tipos';
 import { itensDoPncp } from './itensPncp';
 import { supabaseServidor } from './supabase';
 
 const cache = criarCache(5 * 60 * 1000);
 export const POR_PAGINA = 50;
 export const LIMITE_RELACIONADOS = 6;
+export const LIMITE_ORGAOS = 20;
 type Linha = Record<string, unknown>;
 
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
@@ -176,6 +178,18 @@ export function relacionados(id: string): Promise<EditalRelacionado[]> {
         modalidade_nome: texto(l.modalidade_nome),
         srp: Boolean(l.srp),
       }),
+    );
+  });
+}
+
+/** Órgãos com editais abertos cujo nome contém o termo (já limpo por `lerTermoOrgao`), mais editais primeiro. */
+export function orgaosAbertos(q: string): Promise<OrgaoAberto[]> {
+  const chave = q.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+  return cache(`orgaos:${chave}`, async () => {
+    const { data, error } = await supabaseServidor().rpc('orgaos_abertos', { q, p_limite: LIMITE_ORGAOS });
+    if (error) throw new Error(`orgaos_abertos: ${error.message}`);
+    return ((data ?? []) as Linha[]).map(
+      (l): OrgaoAberto => ({ cnpj: String(l.cnpj), nome: nomeProprio(String(l.nome)), uf: String(l.uf), qtd: Number(l.qtd) }),
     );
   });
 }

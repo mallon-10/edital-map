@@ -79,3 +79,9 @@ export function recursosUsados(antes: FiltrosTela, depois: FiltrosTela): Recurso
   if (depois.cidade && depois.raio && (depois.raio !== antes.raio || depois.cidade.ibge !== antes.cidade?.ibge)) usados.push('filtro_raio');
   return usados;
 }
+
+/** Termo da busca de órgão: sem os curingas do ilike (% _ \), espaços colapsados, até 60 caracteres; null com menos de 3 letras. */
+export function lerTermoOrgao(q: string | null): string | null {
+  const t = (q ?? '').replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60).trim();
+  return (t.match(/\p{L}/gu) ?? []).length >= 3 ? t : null;
+}

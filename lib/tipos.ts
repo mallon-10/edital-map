@@ -116,3 +116,6 @@ export type EditalRelacionado = Pick<
   EditalResumo,
   'id' | 'slug' | 'objeto' | 'orgao_nome' | 'municipio_nome' | 'uf' | 'valor_estimado' | 'encerramento_em' | 'publicada_em' | 'modalidade_nome' | 'srp'
 >;
+
+/** Órgão com editais abertos, na busca do chip Órgão. */
+export type OrgaoAberto = Orgao & { uf: string; qtd: number };
