@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { BotaoEmBreve } from '@/components/BotaoEmBreve';
-import { MODALIDADES, UFS_ORDENADAS, VALORES_MINIMOS } from '@/lib/filtros';
+import { EtiquetaPro } from '@/components/EtiquetaPro';
+import { MODALIDADES, RAIOS_KM, UFS_ORDENADAS, ufIgnoradaPeloRaio, VALORES_MINIMOS } from '@/lib/filtros';
 import { haQuanto, numero } from '@/lib/formato';
 import type { Cidade, FiltrosTela, PontoMapa } from '@/lib/tipos';
-import { Cadeado, Seta } from './Icones';
+import { Seta } from './Icones';
+import { PainelOrgao } from './PainelOrgao';
 import { Popover } from './Popover';
 import { chip } from './estilos';
 
@@ -34,7 +35,9 @@ function normalizar(s: string): string {
 
 /**
  * Chip que é uma pílula inteira clicável: o texto é só visual e o select nativo (transparente) cobre a pílula toda.
- * O foco aparece no contorno da pílula; a lista de opções é a do sistema.
+ * O foco aparece no contorno da pílula; a lista de opções é a do sistema. `desabilitado` apaga a pílula e trava o select;
+ * `pro` acrescenta a etiqueta "· Pro"; `aviso` aparece depois do valor. Desabilitado, o texto ("escolha um município") e o
+ * aviso entram no nome acessível, porque o valor do select travado não diz por que ele está travado.
  */
 function ChipSelect({
   rotulo,
@@ -42,6 +45,9 @@ function ChipSelect({
   ativo,
   valor,
   aoMudar,
+  desabilitado = false,
+  pro = false,
+  aviso,
   children,
 }: {
   rotulo: string;
@@ -49,19 +55,28 @@ function ChipSelect({
   ativo: boolean;
   valor: string;
   aoMudar: (v: string) => void;
+  desabilitado?: boolean;
+  pro?: boolean;
+  aviso?: string;
   children: ReactNode;
 }) {
   return (
-    <label className={`${chip(ativo)} relative pr-8 focus-within:outline focus-within:outline-2 focus-within:outline-rio`}>
+    <label
+      title={aviso}
+      className={`${chip(ativo)} relative pr-8 focus-within:outline focus-within:outline-2 focus-within:outline-rio ${desabilitado ? 'cursor-not-allowed opacity-60' : ''}`}
+    >
       <span className="pointer-events-none max-w-[14rem] truncate">
         {rotulo}: {textoValor}
+        {aviso ? ` · ${aviso}` : ''}
       </span>
+      {pro ? <EtiquetaPro className="pointer-events-none" /> : null}
       <Seta className="pointer-events-none absolute right-3 size-3.5" />
       <select
-        aria-label={rotulo}
+        aria-label={[rotulo, desabilitado ? textoValor : null, aviso].filter(Boolean).join(', ')}
         value={valor}
+        disabled={desabilitado}
         onChange={(e) => aoMudar(e.target.value)}
-        className="absolute inset-0 h-full w-full cursor-pointer opacity-0 [&>option]:bg-raised [&>option]:text-ink"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed [&>option]:bg-raised [&>option]:text-ink"
       >
         {children}
       </select>
@@ -126,13 +141,16 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar }: Props) 
   );
   const qtdModalidades = filtros.modalidades.length;
   const cidade = filtros.cidade;
+  // Com raio a busca cruza a divisa de estado: a UF escolhida fica guardada, mas não filtra (o chip avisa).
+  const ufIgnorada = ufIgnoradaPeloRaio(filtros);
   return (
     <div className="flex items-center gap-3">
       <div className="-mx-4 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-4 py-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:py-0">
         <ChipSelect
           rotulo="UF"
           textoValor={filtros.uf || 'todas'}
-          ativo={Boolean(filtros.uf)}
+          ativo={Boolean(filtros.uf) && !ufIgnorada}
+          aviso={ufIgnorada ? 'não vale com raio' : undefined}
           valor={filtros.uf}
           aoMudar={(uf) => aoMudar({ ...filtros, uf, cidade: null })}
         >
@@ -197,10 +215,42 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar }: Props) 
             })}
           </fieldset>
         </Popover>
-        <BotaoEmBreve recurso="filtros_pro" className={chip(false, 'pro')}>
-          <Cadeado className="size-3.5" />
-          Raio, órgão e recorrência · Pro
-        </BotaoEmBreve>
+        <Popover
+          nome="Órgão"
+          ativo={Boolean(filtros.orgao)}
+          rotulo={
+            <>
+              <span className="max-w-[14rem] truncate">{filtros.orgao ? `Órgão: ${filtros.orgao.nome}` : 'Órgão'}</span>
+              <EtiquetaPro />
+            </>
+          }
+        >
+          {(fechar) => (
+            <PainelOrgao
+              orgao={filtros.orgao}
+              aoEscolher={(o) => {
+                aoMudar({ ...filtros, orgao: o });
+                fechar();
+              }}
+            />
+          )}
+        </Popover>
+        <ChipSelect
+          rotulo="Raio"
+          textoValor={!cidade ? 'escolha um município' : filtros.raio ? `${filtros.raio} km` : 'só o município'}
+          ativo={Boolean(cidade && filtros.raio)}
+          valor={cidade && filtros.raio ? String(filtros.raio) : ''}
+          desabilitado={!cidade}
+          pro
+          aoMudar={(v) => aoMudar({ ...filtros, raio: v ? Number(v) : null })}
+        >
+          <option value="">só o município</option>
+          {RAIOS_KM.map((km) => (
+            <option key={km} value={km}>
+              {km} km
+            </option>
+          ))}
+        </ChipSelect>
       </div>
       <p className="hidden shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted xl:block">
         Fonte: PNCP{atualizadoEm ? ` · atualizado ${haQuanto(atualizadoEm, agora)}` : ''}

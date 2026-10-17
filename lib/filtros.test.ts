@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chaveFiltros, lerFiltros, lerTermoOrgao, normalizarTela, paraParametros, recursosUsados, UFS_ORDENADAS } from './filtros';
+import { chaveFiltros, lerFiltros, lerTermoOrgao, normalizarTela, paraParametros, recursosUsados, ufIgnoradaPeloRaio, UFS_ORDENADAS } from './filtros';
 import type { FiltrosTela } from './tipos';
 
 const ler = (s: string) => lerFiltros(new URLSearchParams(s));
@@ -91,6 +91,13 @@ describe('paraParametros', () => {
     expect(paraParametros(tela, { comCidade: false }).has('uf')).toBe(false);
     expect(paraParametros({ ...tela, raio: null }).get('uf')).toBe('SC');
   });
+  it('ufIgnoradaPeloRaio acompanha o que paraParametros faz com a UF', () => {
+    const tela: FiltrosTela = { ...TELA_VAZIA, uf: 'SC', cidade: JOINVILLE, raio: 100 };
+    expect(ufIgnoradaPeloRaio(tela)).toBe(true);
+    expect(ufIgnoradaPeloRaio({ ...tela, raio: null })).toBe(false);
+    expect(ufIgnoradaPeloRaio({ ...tela, uf: '' })).toBe(false);
+    expect(ufIgnoradaPeloRaio({ ...tela, cidade: null })).toBe(false);
+  });
   it('ida e volta com órgão e raio', () => {
     expect(lerFiltros(paraParametros({ ...TELA_VAZIA, cidade: JOINVILLE, orgao: ORGAO, raio: 200 }))).toEqual({
       ...BASE, ibge: '4209102', orgao: '83102244000102', raio: 200,
@@ -105,6 +112,14 @@ describe('normalizarTela', () => {
   it('com município o raio fica (e o objeto é o mesmo)', () => {
     const tela = { ...TELA_VAZIA, cidade: JOINVILLE, raio: 100 };
     expect(normalizarTela(tela)).toBe(tela);
+  });
+  it('município de outra UF (escolhido no mapa com raio, que cruza a divisa): a UF passa a ser a dele', () => {
+    const rioNegro = { ibge: '4122305', nome: 'Rio Negro', uf: 'PR' };
+    const tela = { ...TELA_VAZIA, uf: 'SC', cidade: rioNegro, raio: 100 };
+    expect(normalizarTela(tela)).toEqual({ ...tela, uf: 'PR' });
+    // Sem UF escolhida, nada muda.
+    const semUf = { ...TELA_VAZIA, cidade: rioNegro };
+    expect(normalizarTela(semUf)).toBe(semUf);
   });
 });
 

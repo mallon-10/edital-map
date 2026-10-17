@@ -21,6 +21,8 @@ type Props = {
   recolhida: boolean;
   /** Município escolhido no mapa: no celular a linha de chips fica atrás da gaveta, então o filtro aparece e sai daqui. */
   cidade: Cidade | null;
+  /** Raio em km a partir da cidade (aparece na pílula do celular). */
+  raio: number | null;
   aoTirarCidade: () => void;
   aoSelecionar: (e: EditalResumo) => void;
   aoMudarPrazo: (seteDias: boolean) => void;
@@ -54,6 +56,7 @@ export function ColunaLista(p: Props) {
             <span className="inline-flex min-w-0 items-center gap-1 rounded-sm bg-ink pl-2 text-xs font-semibold text-surface lg:hidden">
               <span className="truncate">
                 {p.cidade.nome}/{p.cidade.uf}
+                {p.raio ? ` + ${p.raio} km` : ''}
               </span>
               <button type="button" onClick={p.aoTirarCidade} aria-label="Tirar filtro de cidade" className="size-6 shrink-0 text-base leading-none">
                 ×

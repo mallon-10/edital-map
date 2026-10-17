@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { registrar } from '@/lib/cliente/registrar';
-import { paraParametros } from '@/lib/filtros';
+import { normalizarTela, paraParametros, recursosUsados } from '@/lib/filtros';
 import { resumirPontos } from '@/lib/painel';
 import type { Cidade, EditalResumo, FiltrosTela, PontoMapa, ResultadoBusca } from '@/lib/tipos';
 import { GavetaCelular } from './GavetaCelular';
@@ -109,18 +109,17 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
     void carregarMapa(VAZIO);
   }, [carregarMapa]);
 
-  /** Aplica filtros novos: a lista sempre; o mapa só quando muda algo além da cidade. Toda mudança conta como busca. */
-  function aplicar(novo: FiltrosTela) {
-    const mudouMapa =
-      novo.q !== filtros.q ||
-      novo.uf !== filtros.uf ||
-      novo.valorMin !== filtros.valorMin ||
-      novo.seteDias !== filtros.seteDias ||
-      [...novo.modalidades].sort().join() !== [...filtros.modalidades].sort().join();
+  /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança conta como busca. */
+  function aplicar(pedido: FiltrosTela) {
+    // Sem município não há raio (trocar a UF ou tirar a cidade tira o raio também).
+    const novo = normalizarTela(pedido);
+    // O mapa recebe tudo menos a cidade sozinha; com raio, recebe a cidade e o raio.
+    const mudouMapa = paraParametros(novo, { comCidade: false }).toString() !== paraParametros(filtros, { comCidade: false }).toString();
     setFiltros(novo);
     // Cidade nova (pelo mapa, pelo chip ou pelo painel): no celular a gaveta abre para mostrar a lista dela.
     if (novo.cidade && novo.cidade.ibge !== filtros.cidade?.ibge) setGavetaAberta(true);
     registrar('busca', { q: novo.q.trim() || null, uf: novo.uf || null, dias: novo.seteDias ? 7 : null });
+    for (const recurso of recursosUsados(filtros, novo)) registrar('usou_recurso', { recurso });
     void carregarLista(novo);
     // Repetir a busca depois de um erro do mapa tenta o mapa de novo.
     if (mudouMapa || erroMapa !== null) void carregarMapa(novo);
@@ -185,6 +184,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
             erro={erroLista}
             recolhida={!gavetaAberta}
             cidade={filtros.cidade}
+            raio={filtros.raio}
             aoTirarCidade={() => aplicar({ ...filtros, cidade: null })}
             aoSelecionar={selecionar}
             aoMudarPrazo={(seteDias) => aplicar({ ...filtros, seteDias })}

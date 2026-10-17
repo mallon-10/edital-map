@@ -52,7 +52,7 @@ export function paraParametros(f: FiltrosTela, opcoes: { comCidade?: boolean; de
   const p = new URLSearchParams();
   if (f.q.trim()) p.set('q', f.q.trim());
   // Com raio a UF não vai: o raio atravessa a divisa de estado.
-  if (f.uf && !(f.cidade && f.raio)) p.set('uf', f.uf);
+  if (f.uf && !ufIgnoradaPeloRaio(f)) p.set('uf', f.uf);
   if (f.seteDias) p.set('dias', '7');
   if (f.valorMin) p.set('valor', String(f.valorMin));
   if (f.modalidades.length) p.set('modalidades', [...f.modalidades].sort((a, b) => a - b).join(','));
@@ -64,9 +64,19 @@ export function paraParametros(f: FiltrosTela, opcoes: { comCidade?: boolean; de
   return p;
 }
 
-/** Sem município não há raio: tirar a cidade (ou trocar a UF, que tira a cidade) tira o raio. */
+/** UF escolhida que não vale agora porque há raio (o raio atravessa a divisa); o chip de UF avisa. */
+export function ufIgnoradaPeloRaio(f: FiltrosTela): boolean {
+  return Boolean(f.uf && f.cidade && f.raio);
+}
+
+/**
+ * Sem município não há raio: tirar a cidade (ou trocar a UF, que tira a cidade) tira o raio.
+ * Município de outra UF (com raio o mapa cruza a divisa e deixa escolher um vizinho de outro estado): a UF passa a ser a dele,
+ * para a tela não ficar com "UF: SC" e "Rio Negro/PR" (lista vazia quando o raio sai).
+ */
 export function normalizarTela(f: FiltrosTela): FiltrosTela {
-  return f.cidade || f.raio === null ? f : { ...f, raio: null };
+  if (!f.cidade) return f.raio === null ? f : { ...f, raio: null };
+  return f.uf && f.uf !== f.cidade.uf ? { ...f, uf: f.cidade.uf } : f;
 }
 
 /** Recursos Pro de filtro que o evento usou_recurso registra. */
