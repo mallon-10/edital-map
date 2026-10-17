@@ -8,6 +8,7 @@ Fase atual: **3 · Brasil todo** (etapa da Fase 3 antes de Planos e Alertas). Si
 - Portão: docs/fase-2-portao.sql
 - Iteração visual: spec docs/superpowers/specs/2026-10-15-fase-2-visual-design.md, plano docs/superpowers/plans/2026-10-15-fase-2-visual.md (mockup em docs/superpowers/specs/assets/).
 - Brasil todo: spec docs/superpowers/specs/2026-10-16-fase-3-brasil-todo-design.md, plano docs/superpowers/plans/2026-10-16-fase-3-brasil-todo.md, conferências docs/fase-3-conferencia.sql, métricas docs/fase-3-metricas.md.
+- Mapa legível: spec docs/superpowers/specs/2026-10-17-mapa-legivel-design.md, plano docs/superpowers/plans/2026-10-17-mapa-legivel.md.
 - Planos (desenhado, implementação adiada até o domínio): docs/superpowers/specs/2026-10-16-fase-3-planos-design.md.
 - Recursos Pro (abertos por enquanto, cadeado quando os Planos ligarem): spec docs/superpowers/specs/2026-10-17-fase-3-recursos-pro-design.md, plano docs/superpowers/plans/2026-10-17-fase-3-recursos-pro.md, conferências docs/fase-3-recursos-pro.sql. Relacionados (`relacionados`, 0008), filtro por órgão (`/api/orgaos`, `orgaos_abertos`), raio em km (`municipios_no_raio`; com raio a UF não vale), exportar CSV (`/api/exportar`, até 2.000, 20/hora por IP, teto de 4 MB).
 
@@ -20,7 +21,7 @@ Referências:
 - Worker Node 24 + TypeScript (tsx) em worker/, agendado no GitHub Actions (.github/workflows/sync.yml, a cada 3 h, UFS=BR) e disparado também pelo pg_cron (sync-pncp).
 - Supabase (Postgres), projeto edital-map em sa-east-1, plano grátis (teto 500 MB). Schema em supabase/migrations/; mudança só com nova migration.
 - Supabase: ref omtwaflypzlebjoeubvp, região sa-east-1.
-- Site: Next.js 16 (App Router) + React 19 + Tailwind 4 + maplibre-gl 6 (sem mapa de fundo), na Vercel (região gru1).
+- Site: Next.js 16 (App Router) + React 19 + Tailwind 4 + maplibre-gl 6 com fundo OpenFreeMap positron (reserva sem fundo se ele não responder), na Vercel (região gru1).
 - Fases seguintes: Stripe (planos), Resend (alertas e login por e-mail).
 
 ## Regras

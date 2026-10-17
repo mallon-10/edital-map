@@ -12,7 +12,6 @@ import { BuscaPrincipal } from './inicio/BuscaPrincipal';
 import { CartaoSelecionado } from './inicio/CartaoSelecionado';
 import { Chips } from './inicio/Chips';
 import { ColunaLista } from './inicio/ColunaLista';
-import { LegendaMapa } from './inicio/LegendaMapa';
 import { OndeMaisCompram } from './inicio/OndeMaisCompram';
 
 const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
@@ -207,6 +206,10 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
         </GavetaCelular>
         <section aria-label="Mapa" className="relative min-h-0 flex-1 overflow-hidden bg-raised lg:rounded-lg lg:border lg:border-line">
           <Mapa pontos={pontos} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} raio={raioMapa} />
+          {/* No celular a gaveta cobre este canto: a observação fica só no computador. */}
+          <p className="pointer-events-none absolute bottom-2 left-2 z-10 hidden rounded-sm bg-raised/85 px-2 py-1 text-xs text-ink-muted lg:block">
+            O ponto é a sede do órgão, não o local de entrega.
+          </p>
           {erroMapa ? (
             <p role="alert" className="absolute left-3 top-3 z-10 max-w-[calc(100%-4.5rem)] rounded-sm bg-pin-soft px-3 py-2 text-xs text-pin-strong">
               {erroMapa}
@@ -216,7 +219,6 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
         <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
           {selecionado ? <CartaoSelecionado edital={selecionado} agora={agora} /> : null}
           <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
-          <LegendaMapa porUf={painel.porUf} />
         </aside>
       </main>
     </div>
