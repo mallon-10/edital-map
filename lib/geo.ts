@@ -46,7 +46,7 @@ export function circulo(lng: number, lat: number, km: number, passos = 64): Feat
 }
 
 /** Caixa [[oeste, sul], [leste, norte]] do círculo, para enquadrar o mapa. */
-export function limitesDoCirculo(c: Feature<Polygon>): [[number, number], [number, number]] {
+export function limitesDoCirculo(c: Feature<Polygon>): Limites {
   const anel = c.geometry.coordinates[0];
   const lngs = anel.map((p) => p[0]);
   const lats = anel.map((p) => p[1]);
@@ -59,4 +59,23 @@ export function limitesDoCirculo(c: Feature<Polygon>): [[number, number], [numbe
 /** GeoJSON da área do raio: vazio sem raio. */
 export function areaDoRaio(r: Raio | null): FeatureCollection<Polygon> {
   return { type: 'FeatureCollection', features: r ? [circulo(r.lng, r.lat, r.km)] : [] };
+}
+
+/** Caixa [[oeste, sul], [leste, norte]]. */
+export type Limites = [[number, number], [number, number]];
+
+/** O Brasil inteiro: enquadramento inicial do mapa e a volta quando não há município nem raio. */
+export const BRASIL: Limites = [[-74.2, -33.9], [-34.6, 5.4]];
+
+/** Município escolhido sem raio: o mapa mostra a cidade e os vizinhos (círculo invisível deste tamanho em volta da sede). */
+export const RAIO_MUNICIPIO_KM = 25;
+
+/**
+ * Para onde o mapa vai: o raio vence (é a área da busca); sem ele, a sede do município ([lng, lat]) com RAIO_MUNICIPIO_KM;
+ * sem os dois, null (o Brasil inteiro).
+ */
+export function enquadramento(raio: Raio | null, sede: [number, number] | null): Limites | null {
+  if (raio) return limitesDoCirculo(circulo(raio.lng, raio.lat, raio.km));
+  if (sede) return limitesDoCirculo(circulo(sede[0], sede[1], RAIO_MUNICIPIO_KM));
+  return null;
 }

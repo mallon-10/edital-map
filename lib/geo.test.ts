@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { areaDoRaio, circulo, distanciaKm, limitesDoCirculo, paraGeoJSON } from './geo';
+import { areaDoRaio, BRASIL, circulo, distanciaKm, enquadramento, limitesDoCirculo, paraGeoJSON, RAIO_MUNICIPIO_KM } from './geo';
 
 describe('paraGeoJSON', () => {
   it('converte pontos em features com [lng, lat]', () => {
@@ -60,5 +60,33 @@ describe('areaDoRaio', () => {
   it('vazia sem raio; um polígono com raio', () => {
     expect(areaDoRaio(null)).toEqual({ type: 'FeatureCollection', features: [] });
     expect(areaDoRaio({ lng: JOINVILLE[0], lat: JOINVILLE[1], km: 50 }).features).toHaveLength(1);
+  });
+});
+
+describe('enquadramento (para onde o mapa vai)', () => {
+  it('com raio, enquadra o círculo do raio (mesmo com a sede do município)', () => {
+    const raio = { lng: JOINVILLE[0], lat: JOINVILLE[1], km: 100 };
+    expect(enquadramento(raio, JOINVILLE)).toEqual(limitesDoCirculo(circulo(JOINVILLE[0], JOINVILLE[1], 100)));
+    expect(enquadramento(raio, null)).toEqual(limitesDoCirculo(circulo(JOINVILLE[0], JOINVILLE[1], 100)));
+  });
+  it('só o município: um círculo de RAIO_MUNICIPIO_KM em volta da sede (a cidade e os vizinhos)', () => {
+    expect(RAIO_MUNICIPIO_KM).toBeGreaterThanOrEqual(15);
+    expect(RAIO_MUNICIPIO_KM).toBeLessThanOrEqual(40);
+    const [[oeste, sul], [leste, norte]] = enquadramento(null, JOINVILLE)!;
+    expect(norte - sul).toBeCloseTo((2 * RAIO_MUNICIPIO_KM) / 111.195, 3);
+    expect(oeste).toBeLessThan(JOINVILLE[0]);
+    expect(leste).toBeGreaterThan(JOINVILLE[0]);
+    expect(sul).toBeLessThan(JOINVILLE[1]);
+    expect(norte).toBeGreaterThan(JOINVILLE[1]);
+  });
+  it('sem raio nem município: null (o mapa volta ao Brasil inteiro)', () => {
+    expect(enquadramento(null, null)).toBeNull();
+  });
+  it('a caixa do Brasil cobre o país (oeste < leste, sul < norte)', () => {
+    const [[oeste, sul], [leste, norte]] = BRASIL;
+    expect(oeste).toBeLessThan(leste);
+    expect(sul).toBeLessThan(norte);
+    expect(oeste).toBeLessThan(JOINVILLE[0]);
+    expect(leste).toBeGreaterThan(JOINVILLE[0]);
   });
 });

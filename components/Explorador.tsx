@@ -115,7 +115,9 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
 
   const painel = useMemo(() => resumirPontos(pontos), [pontos]);
   const selecionado = resultado.editais.find((e) => e.id === selecionadoId) ?? resultado.editais[0] ?? null;
-  const centro = filtros.cidade && filtros.raio ? centros[filtros.cidade.ibge] : undefined;
+  // Sede do município filtrado (com ou sem raio): o mapa vai até ela; com raio, ela é o centro do círculo.
+  const centro = filtros.cidade ? centros[filtros.cidade.ibge] : undefined;
+  const sedeMapa = centro ?? null;
   const raioMapa = useMemo<Raio | null>(
     () => (centro && filtros.raio ? { lng: centro[0], lat: centro[1], km: filtros.raio } : null),
     [centro, filtros.raio],
@@ -411,7 +413,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
         </section>
         {/* Celular: primeiro na página, com 58svh (pinça e um dedo mexem no mapa; fora dele, arrastar rola a página). */}
         <section aria-label="Mapa" className="relative order-first h-[58svh] min-h-0 shrink-0 overflow-hidden bg-raised lg:order-none lg:h-auto lg:rounded-lg lg:border lg:border-line">
-          <Mapa pontos={pontos} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} raio={raioMapa} />
+          <Mapa pontos={pontos} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} raio={raioMapa} sede={sedeMapa} />
           {/* No celular a observação fica embaixo do mapa, no começo da lista. */}
           <p className="pointer-events-none absolute bottom-2 left-2 z-10 hidden rounded-sm bg-raised/85 px-2 py-1 text-xs text-ink-muted lg:block">
             O ponto é a sede do órgão, não o local de entrega.
