@@ -16,7 +16,7 @@ const FAIXA: Record<TomSelo, string> = {
 
 /** Cor das bolinhas: cheia = ainda disponível, vazia (só o contorno) = já usada hoje. */
 const PONTO: Record<TomSelo, string> = {
-  normal: 'text-pin',
+  normal: 'text-pin-strong',
   atencao: 'text-ouro-strong',
   esgotado: 'text-ink',
 };
@@ -41,7 +41,7 @@ function Bolinhas({ usados, maximo, tom }: { usados: number; maximo: number; tom
       {bolinhas(usados, maximo).map((cheia, i) => (
         <span
           key={i}
-          className={`size-2.5 rounded-full border-2 border-current lg:size-3 ${cheia ? 'bg-current' : 'bg-transparent opacity-70'}`}
+          className={`size-2.5 rounded-full border-2 border-current lg:size-3 ${cheia ? 'bg-current' : 'bg-transparent'}`}
         />
       ))}
     </span>
@@ -115,11 +115,11 @@ export function FaixaPlano({ inicial }: { inicial?: UsoHoje | null }) {
         aria-label="Ver planos"
         className="flex min-h-11 items-center gap-2.5 pl-[calc(12px+env(safe-area-inset-left))] pr-[calc(4px+env(safe-area-inset-right))] text-[13px] lg:hidden"
       >
-        {zerados < 2 ? <span className="font-bold">Grátis hoje:</span> : null}
+        {zerados < 2 ? <span className="whitespace-nowrap font-bold max-[359px]:hidden">Grátis hoje:</span> : null}
         {CONTADOR.map(({ tipo, Icone }) => {
           const usados = usadosDe(uso, tipo);
           return (
-            <span key={tipo} className="inline-flex items-center gap-1.5">
+            <span key={tipo} className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <Icone className="size-4" />
               {usados >= LIMITE_GRATIS[tipo] ? (
                 <span className="font-semibold">{textoFaixa(tipo, usados)}</span>
