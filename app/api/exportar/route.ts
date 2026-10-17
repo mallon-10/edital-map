@@ -15,11 +15,11 @@ export async function GET(request: Request) {
         { status: 429 },
       );
     }
-    const editais = await exportarEditais(filtros);
+    const { editais, total } = await exportarEditais(filtros);
     const agora = new Date();
     // A medição (que também conta o limite) não pode impedir o download.
     await gravarEvento(ctx, 'usou_recurso', { recurso: 'exportou', total: editais.length }).catch((erro: unknown) => console.error(erro));
-    return new Response(gerarCsv(editais), {
+    return new Response(gerarCsv(editais, undefined, total), {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="${nomeArquivo(agora)}"`,

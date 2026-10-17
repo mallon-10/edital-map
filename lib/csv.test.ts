@@ -112,3 +112,22 @@ describe('gerarCsv com teto de bytes', () => {
     expect(tamanho(csv)).toBeLessThanOrEqual(teto);
   });
 });
+
+describe('gerarCsv com total da busca maior que o exportado', () => {
+  it('sem total, ou total igual, não acrescenta nota', () => {
+    expect(gerarCsv([EDITAL], MAX_BYTES_CSV, 1)).toBe(gerarCsv([EDITAL]));
+  });
+  it('total maior que as linhas: última linha avisa N de T, com número brasileiro', () => {
+    const linhas = gerarCsv([EDITAL, EDITAL], MAX_BYTES_CSV, 12345).trimEnd().split('\r\n');
+    expect(linhas).toHaveLength(4);
+    expect(linhas[3]).toBe('"Arquivo com 2 de 12.345 editais (limite de 2.000 por exportação); refine a busca para exportar o resto."');
+  });
+  it('corte por tamanho junto com total maior: uma nota só, a do corte', () => {
+    const tamanho = (s: string) => Buffer.byteLength(s, 'utf8');
+    const um = tamanho(gerarCsv([EDITAL]));
+    const teto = um + Math.floor((um - tamanho(gerarCsv([]))) * 1.5) + 200;
+    const csv = gerarCsv([EDITAL, EDITAL, EDITAL, EDITAL, EDITAL], teto, 9000);
+    expect(csv.match(/Arquivo (cortado|com) /g)).toEqual(['Arquivo cortado ']);
+    expect(tamanho(csv)).toBeLessThanOrEqual(teto);
+  });
+});

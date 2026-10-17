@@ -50,7 +50,7 @@ export function BotaoExportar({ parametros, total, aoErro }: Props) {
       onClick={exportar}
       disabled={total === 0 || baixando}
       aria-busy={baixando}
-      aria-label="Exportar planilha (CSV)"
+      aria-label={baixando ? 'Exportando planilha…' : 'Exportar planilha (CSV)'}
       title={`Baixa uma planilha (CSV) com até ${numero(MAX_EXPORTACAO)} editais desta busca`}
       className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-sm border border-line-strong bg-raised px-2.5 text-[13px] font-semibold hover:bg-sunken disabled:opacity-50"
     >

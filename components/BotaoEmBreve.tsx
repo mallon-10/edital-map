@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useId, useRef, type ReactNode } from 'react';
 import { registrar } from '@/lib/cliente/registrar';
 
-type Props = { recurso: 'plano_pro' | 'filtros_pro'; className?: string; rotulo?: string; children: ReactNode };
+type Props = { recurso: 'plano_pro'; className?: string; rotulo?: string; children: ReactNode };
 
 /** Botão de recurso da Fase 3: registra o interesse e abre um aviso "em breve" com atalho para criar alerta. */
 export function BotaoEmBreve({ recurso, className, rotulo, children }: Props) {

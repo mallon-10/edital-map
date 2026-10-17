@@ -24,7 +24,7 @@ function argumentosBusca(f: FiltrosBusca) {
   return {
     q: f.q,
     // Com raio a UF não filtra: o raio atravessa a divisa de estado.
-    p_ufs: f.uf && !f.raio ? [f.uf] : null,
+          p_ufs: f.uf && !f.raio ? [f.uf] : null,
     p_ibge: f.ibge,
     p_dias: f.dias,
     p_valor_min: f.valorMin,
@@ -80,7 +80,7 @@ export function pontosDoMapa(f: FiltrosBusca): Promise<PontoMapa[]> {
         .rpc('mapa_editais', {
           q: f.q,
           // Com raio a UF não filtra: o raio atravessa a divisa de estado.
-    p_ufs: f.uf && !f.raio ? [f.uf] : null,
+          p_ufs: f.uf && !f.raio ? [f.uf] : null,
           p_dias: f.dias,
           p_valor_min: f.valorMin,
           p_modalidades: f.modalidades,
@@ -201,8 +201,9 @@ export function orgaosAbertos(q: string): Promise<OrgaoAberto[]> {
  * Linhas da planilha: a mesma busca da lista, desde o começo, até MAX_EXPORTACAO.
  * Páginas de 1.000 (o teto do PostgREST por resposta). Sem cache: cada exportação conta no limite por IP.
  */
-export async function exportarEditais(f: FiltrosBusca): Promise<EditalExportado[]> {
+export async function exportarEditais(f: FiltrosBusca): Promise<{ editais: EditalExportado[]; total: number }> {
   const editais: EditalExportado[] = [];
+  let total = 0;
   for (let de = 0; de < MAX_EXPORTACAO; de += 1000) {
     const { data, error } = await supabaseServidor().rpc('buscar_editais', {
       ...argumentosBusca(f),
@@ -211,8 +212,9 @@ export async function exportarEditais(f: FiltrosBusca): Promise<EditalExportado[
     });
     if (error) throw new Error(`exportar: ${error.message}`);
     const linhas = (data ?? []) as Linha[];
+    if (de === 0) total = Number(linhas[0]?.total ?? 0);
     for (const l of linhas) editais.push({ ...paraResumo(l), link_origem: texto(l.link_origem) });
     if (linhas.length < 1000) break;
   }
-  return editais;
+  return { editais, total };
 }
