@@ -1,6 +1,9 @@
-// Gera public/geo/estados.json (contorno das 27 UFs) a partir da malha do IBGE (qualidade mínima).
+// Gera public/geo/estados.json (contorno das 27 UFs) e public/geo/estados-rotulos.json (ponto do nome de cada UF)
+// a partir da malha do IBGE (qualidade mínima).
 // O IBGE não envia o certificado intermediário (Sectigo); --use-system-ca usa o repositório de certificados do SO. A verificação continua ligada.
+import type { MultiPolygon, Polygon } from 'geojson';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { AJUSTES_ROTULO, centroDoEstado, NOMES_UF } from '../lib/estados';
 import { UF_POR_CODIGO } from '../worker/municipios';
 
 const URL_MALHA =
@@ -26,3 +29,15 @@ const json = JSON.stringify({ type: 'FeatureCollection', features });
 await mkdir('public/geo', { recursive: true });
 await writeFile('public/geo/estados.json', json);
 console.log(`public/geo/estados.json: ${features.length} UFs, ${Math.round(json.length / 1024)} KB`);
+
+const rotulos = {
+  type: 'FeatureCollection',
+  features: features.map((f) => {
+    const uf = f.properties.uf;
+    const [lng, lat] = AJUSTES_ROTULO[uf] ?? centroDoEstado(f.geometry as Polygon | MultiPolygon);
+    return { type: 'Feature', properties: { uf, nome: NOMES_UF[uf] }, geometry: { type: 'Point', coordinates: arredondar([lng, lat]) } };
+  }),
+};
+const jsonRotulos = JSON.stringify(rotulos);
+await writeFile('public/geo/estados-rotulos.json', jsonRotulos);
+console.log(`public/geo/estados-rotulos.json: ${rotulos.features.length} nomes, ${Math.round(jsonRotulos.length / 1024)} KB`);
