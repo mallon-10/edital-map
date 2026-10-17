@@ -20,6 +20,16 @@ export function publicarUso(novo: AtualizacaoUso): void {
   for (const ouvir of ouvintes) ouvir();
 }
 
+/**
+ * Uso que o servidor mandou com a página. Só vale se a loja ainda está vazia; com a loja já preenchida
+ * (Voltar traz a página velha do cache do roteador) a loja é mais nova e o selo deve rebuscar. Devolve true se precisa rebuscar.
+ */
+export function publicarInicial(inicial: UsoHoje): boolean {
+  if (atual !== null) return true;
+  publicarUso(inicial);
+  return false;
+}
+
 export function usoAtual(): UsoHoje | null {
   return atual;
 }

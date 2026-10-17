@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mesclarUso, publicarUso, usoAtual } from './uso';
+import { mesclarUso, publicarInicial, publicarUso, usoAtual } from './uso';
 
 describe('uso do dia no navegador (selo)', () => {
   it('uso completo substitui; parcial só vale sobre um uso já conhecido', () => {
@@ -15,5 +15,12 @@ describe('uso do dia no navegador (selo)', () => {
     publicarUso({ interno: false, buscas: 0, editais: 1 });
     publicarUso({ buscas: 2 });
     expect(usoAtual()).toEqual({ interno: false, buscas: 2, editais: 1 });
+  });
+  it('uso inicial do servidor não sobrescreve um valor mais novo da loja', () => {
+    const novo = { interno: false, buscas: 2, editais: 1 };
+    publicarUso(novo);
+    // página restaurada do cache do roteador (Voltar) traz um uso velho: a loja vence e o selo precisa rebuscar
+    expect(publicarInicial({ interno: false, buscas: 0, editais: 0 })).toBe(true);
+    expect(usoAtual()).toEqual(novo);
   });
 });

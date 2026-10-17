@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { publicarUso, usoAtual, useUso } from '@/lib/cliente/uso';
+import { publicarInicial, publicarUso, usoAtual, useUso } from '@/lib/cliente/uso';
 import { textoSelo, textoSeloCompacto, tomSelo, type TomSelo, type UsoHoje } from '@/lib/limites';
 
 const ESTILO: Record<TomSelo, string> = {
@@ -17,11 +17,8 @@ const ESTILO: Record<TomSelo, string> = {
 export function SeloPlano({ inicial }: { inicial?: UsoHoje | null }) {
   const daLoja = useUso();
   useEffect(() => {
-    if (inicial) {
-      publicarUso(inicial);
-      return;
-    }
-    if (usoAtual()) return;
+    const precisaBuscar = inicial ? publicarInicial(inicial) : usoAtual() === null;
+    if (!precisaBuscar) return;
     let cancelado = false;
     fetch('/api/uso', { cache: 'no-store' })
       .then((r) => (r.ok ? (r.json() as Promise<UsoHoje>) : null))

@@ -182,8 +182,10 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
       setErroLista(null);
     } catch (e) {
       if (id !== pedidoLista.current) return;
-      if (e instanceof LimiteAtingido) setLimite(e.limite);
-      else setErroLista(mensagem(e, ERRO_LISTA));
+      if (e instanceof LimiteAtingido) {
+        setLimite(e.limite);
+        publicarUso({ buscas: e.limite.usados });
+      } else setErroLista(mensagem(e, ERRO_LISTA));
     } finally {
       if (id === pedidoLista.current) setCarregandoMais(false);
     }
