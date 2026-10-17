@@ -35,7 +35,15 @@ describe('/api/lista-espera', () => {
     const r = await enviar({ email: 'Joao@Empresa.com.br', plano: 'pro' });
     expect(r.status).toBe(201);
     expect(m.dentroDoLimite).toHaveBeenCalledWith('lista_espera', 'hash-do-ip', LIMITES.listaEsperaPorHora);
-    expect(m.gravarListaEspera).toHaveBeenCalledWith(m.ctx, { email: 'joao@empresa.com.br', plano: 'pro' });
+    expect(m.gravarListaEspera).toHaveBeenCalledWith(m.ctx, { email: 'joao@empresa.com.br', plano: 'pro', periodo: 'mensal' });
+  });
+  it('período anual vai para a gravação; período estranho: 400', async () => {
+    expect((await enviar({ email: 'a@b.co', plano: 'basic', periodo: 'anual' })).status).toBe(201);
+    expect(m.gravarListaEspera).toHaveBeenCalledWith(m.ctx, { email: 'a@b.co', plano: 'basic', periodo: 'anual' });
+    m.gravarListaEspera.mockClear();
+    const r = await enviar({ email: 'a@b.co', plano: 'basic', periodo: 'semestral' });
+    expect(r.status).toBe(400);
+    expect(m.gravarListaEspera).not.toHaveBeenCalled();
   });
   it('e-mail ruim: 400 com a mensagem, sem gravar', async () => {
     const r = await enviar({ email: 'x', plano: 'basic' });

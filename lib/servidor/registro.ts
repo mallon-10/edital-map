@@ -86,6 +86,6 @@ export async function gravarPedido(ctx: Contexto, pedido: PedidoAlerta): Promise
 export async function gravarListaEspera(ctx: Contexto, pedido: PedidoListaEspera): Promise<void> {
   const { error } = await supabaseServidor()
     .from('lista_espera')
-    .insert({ email: pedido.email, plano: pedido.plano, visitante: ctx.visitante, interno: ctx.interno, ip_hash: ctx.ipHash });
+    .insert({ email: pedido.email, plano: pedido.plano, periodo: pedido.periodo, visitante: ctx.visitante, interno: ctx.interno, ip_hash: ctx.ipHash });
   if (error) throw new Error(`gravar lista de espera: ${error.message}`);
 }

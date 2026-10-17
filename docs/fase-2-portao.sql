@@ -6,7 +6,7 @@
 -- Recursos Pro (desde a 0007): uso_por_recurso = visitantes e vezes por recurso (relacionados_clique, filtro_orgao, filtro_raio, exportou).
 -- Limites do grátis (desde a 0009; antes dela este arquivo falha porque lista_espera não existe):
 -- limite_atingido_por_tipo = visitantes que bateram no limite do dia (busca, edital);
--- lista_espera_por_plano = e-mails distintos na lista de espera de /planos (basic, pro).
+-- lista_espera_por_plano = e-mails distintos na lista de espera de /planos, por plano e período (desde a 0010: basic/pro x mensal/anual).
 with internos as (
   select visitante from public.eventos where interno
   union
@@ -36,8 +36,8 @@ select
      from public.eventos
      where tipo = 'limite_atingido' and not interno and visitante not in (select visitante from internos)
      group by 1) l) as limite_atingido_por_tipo,
-  (select coalesce(json_object_agg(plano, emails), '{}'::json) from (
-     select plano, count(distinct lower(email)) as emails
+  (select coalesce(json_object_agg(plano || ' ' || periodo, emails), '{}'::json) from (
+     select plano, periodo, count(distinct lower(email)) as emails
      from public.lista_espera
      where not interno and (visitante is null or visitante not in (select visitante from internos))
-     group by 1) e) as lista_espera_por_plano;
+     group by 1, 2) e) as lista_espera_por_plano;

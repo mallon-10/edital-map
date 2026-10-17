@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LIMITE_GRATIS } from './limites';
-import { LINHAS_PLANOS, PLANOS } from './planos';
+import { formatarReais, LINHAS_PLANOS, PLANOS, precoDoPlano } from './planos';
 
 const linha = (recurso: string) => {
   const l = LINHAS_PLANOS.find((x) => x.recurso === recurso);
@@ -9,12 +9,28 @@ const linha = (recurso: string) => {
 };
 
 describe('tabela de planos', () => {
-  it('preços da spec de Planos', () => {
-    expect(PLANOS.map((p) => [p.id, p.nome, p.preco])).toEqual([
+  it('preços mensais da spec de Planos', () => {
+    expect(PLANOS.map((p) => [p.id, p.nome, precoDoPlano(p.centavosMes, 'mensal').principal])).toEqual([
       ['gratis', 'Grátis', 'R$ 0'],
       ['basic', 'Basic', 'R$ 49,90/mês'],
       ['pro', 'Pro', 'R$ 89,90/mês'],
     ]);
+  });
+  it('anual = 10 mensalidades, com o equivalente por mês arredondado', () => {
+    expect(precoDoPlano(4990, 'anual')).toEqual({ principal: 'R$ 499,00/ano', equivalente: 'R$ 41,58/mês · 2 meses grátis' });
+    expect(precoDoPlano(8990, 'anual')).toEqual({ principal: 'R$ 899,00/ano', equivalente: 'R$ 74,92/mês · 2 meses grátis' });
+    expect(precoDoPlano(0, 'anual')).toEqual({ principal: 'R$ 0', equivalente: null });
+  });
+  it('formata reais em pt-BR', () => {
+    expect(formatarReais(5)).toBe('R$ 0,05');
+    expect(formatarReais(123456)).toBe('R$ 1.234,56');
+  });
+  it('no Pro nada tem teto numérico (tudo ilimitado ou incluído)', () => {
+    for (const l of LINHAS_PLANOS) {
+      const v = l.pro.valor;
+      if (typeof v === 'string') expect(v).toMatch(/^Ilimitad/);
+    }
+    expect(linha('Alertas por e-mail às 7h (busca salva)').pro).toEqual({ valor: 'Ilimitados', emBreve: true });
   });
   it('limites do Grátis iguais aos que bloqueiam; Basic 15; Pro ilimitado', () => {
     expect(linha('Buscas por dia').gratis.valor).toBe(String(LIMITE_GRATIS.busca));

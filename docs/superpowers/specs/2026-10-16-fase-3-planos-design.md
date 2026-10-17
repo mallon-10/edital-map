@@ -14,7 +14,7 @@ Fica para o futuro (fora da Fase 3): ver participantes e lances. Durante a dispu
 
 ## 2. Planos
 
-| | Grátis | Basic · R$ 49,90/mês | Pro · R$ 89,90/mês |
+| | Grátis | Basic · R$ 49,90/mês ou R$ 499,00/ano | Pro · R$ 89,90/mês ou R$ 899,00/ano |
 |---|---|---|---|
 | Buscas por dia | 3 | 15 | ilimitadas |
 | Editais abertos por dia | 3 | 15 | ilimitados |
@@ -22,13 +22,14 @@ Fica para o futuro (fora da Fase 3): ver participantes e lances. Durante a dispu
 | Filtros atuais (UF, município, valor, modalidade, prazo) | ✓ | ✓ | ✓ |
 | Editais salvos | — | até 10 | ilimitados |
 | Vencimentos (e-mail 3 dias e 1 dia antes do prazo de um salvo) — etapa 2 | — | ✓ | ✓ |
-| Alertas (e-mail às 7h, busca salva) — etapa 2 | — | 1 busca | até 10 buscas |
+| Alertas (e-mail às 7h, busca salva) — etapa 2 | — | 1 busca | ilimitados |
 | Relacionados (editais parecidos abertos) — depois | 3 primeiros | ✓ | ✓ |
 | Filtros Pro (raio, órgão, recorrência) — depois | — | — | ✓ |
 | Exportar lista para planilha — depois | — | — | ✓ |
 | Futuro (preço de referência, quem venceu, resumo com IA, lances) | — | — | ✓ |
 
-- Só mensal no início. Anual com desconto pode entrar depois.
+- Mensal ou anual. Anual = 10 mensalidades (2 meses grátis): Basic R$ 499,00/ano (R$ 41,58/mês), Pro R$ 899,00/ano (R$ 74,92/mês). A página de Planos tem o alternador Mensal | Anual (padrão Mensal) e a lista de espera guarda o período (migração 0010).
+- O Pro tem tudo ilimitado (buscas, editais, salvos, alertas).
 - O que não estiver pronto aparece como "em breve" na página de Planos.
 
 ## 3. Limites e avisos

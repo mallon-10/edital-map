@@ -139,7 +139,7 @@ describe('ufsIniciaisAlerta', () => {
 describe('lista de espera dos planos', () => {
   it('aceita basic e pro com e-mail válido (minúsculo, sem espaços)', () => {
     expect(validarListaEspera({ email: '  Joao@Empresa.com.br ', plano: 'basic' })).toEqual({
-      ok: true, valor: { email: 'joao@empresa.com.br', plano: 'basic' },
+      ok: true, valor: { email: 'joao@empresa.com.br', plano: 'basic', periodo: 'mensal' },
     });
     expect(validarListaEspera({ email: 'a@b.co', plano: 'pro' }).ok).toBe(true);
   });
@@ -147,6 +147,13 @@ describe('lista de espera dos planos', () => {
     expect(validarListaEspera({ email: 'a@b.co', plano: 'premium' })).toEqual({ ok: false, erro: 'Escolha o plano.' });
     expect(validarListaEspera({ email: 'sem-arroba', plano: 'pro' })).toEqual({ ok: false, erro: 'Confira o e-mail.' });
     expect(validarListaEspera(null)).toEqual({ ok: false, erro: 'Formulário inválido.' });
+  });
+  it('período: mensal por padrão, anual aceito, outro valor recusado', () => {
+    expect(validarListaEspera({ email: 'a@b.co', plano: 'pro', periodo: 'anual' })).toEqual({
+      ok: true, valor: { email: 'a@b.co', plano: 'pro', periodo: 'anual' },
+    });
+    expect(validarListaEspera({ email: 'a@b.co', plano: 'pro', periodo: 'semestral' })).toEqual({ ok: false, erro: 'Formulário inválido.' });
+    expect(validarListaEspera({ email: 'a@b.co', plano: 'pro', periodo: 5 }).ok).toBe(false);
   });
   it('robô (campo escondido preenchido) é recusado em silêncio', () => {
     expect(validarListaEspera({ email: 'a@b.co', plano: 'pro', site: 'http://spam' })).toEqual({ ok: false, erro: 'robô', silencioso: true });

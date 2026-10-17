@@ -103,7 +103,8 @@ export function validarPedidoAlerta(corpo: unknown): Resultado<PedidoAlerta> {
 /** Planos pagos da lista de espera de /planos. */
 export const PLANOS_PAGOS = ['basic', 'pro'] as const;
 export type PlanoPago = (typeof PLANOS_PAGOS)[number];
-export type PedidoListaEspera = { email: string; plano: PlanoPago };
+export type PeriodoPlano = 'mensal' | 'anual';
+export type PedidoListaEspera = { email: string; plano: PlanoPago; periodo: PeriodoPlano };
 
 export function validarListaEspera(corpo: unknown): Resultado<PedidoListaEspera> {
   if (!objeto(corpo)) return { ok: false, erro: 'Formulário inválido.' };
@@ -112,5 +113,7 @@ export function validarListaEspera(corpo: unknown): Resultado<PedidoListaEspera>
   if (typeof plano !== 'string' || !(PLANOS_PAGOS as readonly string[]).includes(plano)) return { ok: false, erro: 'Escolha o plano.' };
   const email = typeof corpo.email === 'string' ? corpo.email.trim().toLowerCase() : '';
   if (email.length > 254 || !EMAIL.test(email)) return { ok: false, erro: 'Confira o e-mail.' };
-  return { ok: true, valor: { email, plano: plano as PlanoPago } };
+  const periodo = corpo.periodo ?? 'mensal';
+  if (periodo !== 'mensal' && periodo !== 'anual') return { ok: false, erro: 'Formulário inválido.' };
+  return { ok: true, valor: { email, plano: plano as PlanoPago, periodo } };
 }

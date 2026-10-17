@@ -3,13 +3,14 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { registrar } from '@/lib/cliente/registrar';
 import type { PlanoPago } from '@/lib/eventos';
+import type { Periodo } from '@/lib/planos';
 
 type Estado = { tipo: 'editando' } | { tipo: 'enviando' } | { tipo: 'erro'; mensagem: string } | { tipo: 'pronto'; email: string };
 
 const NOME: Record<PlanoPago, string> = { basic: 'Basic', pro: 'Pro' };
 
 /** "Quero o Basic" / "Quero o Pro": registra o interesse (quer_recurso) e abre o formulário da lista de espera. */
-export function BotaoQueroPlano({ plano, destaque = false }: { plano: PlanoPago; destaque?: boolean }) {
+export function BotaoQueroPlano({ plano, periodo = 'mensal', destaque = false }: { plano: PlanoPago; periodo?: Periodo; destaque?: boolean }) {
   const dialogo = useRef<HTMLDialogElement>(null);
   const titulo = useId();
   const campo = useId();
@@ -24,7 +25,7 @@ export function BotaoQueroPlano({ plano, destaque = false }: { plano: PlanoPago;
       const r = await fetch('/api/lista-espera', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, plano, site }),
+        body: JSON.stringify({ email, plano, periodo, site }),
       });
       const j = (await r.json().catch(() => ({}))) as { erro?: string };
       if (!r.ok) {
@@ -56,7 +57,7 @@ export function BotaoQueroPlano({ plano, destaque = false }: { plano: PlanoPago;
         aria-labelledby={titulo}
         className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[440px] overflow-y-auto rounded-lg border border-line bg-raised p-6 text-left text-ink shadow-[0_8px_32px_rgba(12,35,64,.18)] backdrop:bg-ink/40"
       >
-        <h2 id={titulo} className="text-lg font-bold">Plano {NOME[plano]}</h2>
+        <h2 id={titulo} className="text-lg font-bold">Plano {NOME[plano]}{periodo === 'anual' ? ' anual' : ''}</h2>
         {estado.tipo === 'pronto' ? (
           <div role="status" className="mt-2 flex flex-col gap-4">
             <p className="text-[15px]">

@@ -86,3 +86,11 @@ select detalhe ->> 'recurso' as recurso, interno, count(*) from public.eventos
 where tipo = 'quer_recurso' and detalhe ->> 'recurso' in ('plano_basic', 'plano_pro') and criado_em > now() - interval '1 day'
 group by 1, 2;
 select plano, interno, count(*) from public.lista_espera group by 1, 2;
+
+-- ── [L8] Período da lista de espera (desde a 0010). Esperado: o 1º INSERT dá INSERT 0 1; o 2º ('semestral') falha com "lista_espera_periodo_check".
+begin;
+insert into public.lista_espera (email, plano, periodo, interno) values ('conferencia@exemplo.com', 'basic', 'anual', true);
+rollback;
+begin;
+insert into public.lista_espera (email, plano, periodo, interno) values ('conferencia@exemplo.com', 'basic', 'semestral', true);
+rollback;

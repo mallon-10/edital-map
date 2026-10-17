@@ -254,3 +254,14 @@ describe('portão (limites do grátis)', () => {
     expect(portao).toContain('as lista_espera_por_plano;');
   });
 });
+
+describe('migração 0010 (período da lista de espera)', () => {
+  const sql = ler('supabase/migrations/0010_lista_espera_periodo.sql');
+  it('uma transação curta, só a coluna periodo (mensal por padrão, mensal ou anual)', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql).toContain('alter table public.lista_espera');
+    expect(sql).toContain("add column periodo text not null default 'mensal'");
+    expect(sql).toContain("constraint lista_espera_periodo_check check (periodo in ('mensal', 'anual'))");
+    expect(sql).not.toMatch(/create |drop |grant |policy/i);
+  });
+});

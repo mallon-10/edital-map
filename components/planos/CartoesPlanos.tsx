@@ -1,5 +1,6 @@
 import { BotaoQueroPlano } from '@/components/planos/BotaoQueroPlano';
-import { LINHAS_PLANOS, PLANOS, type Celula } from '@/lib/planos';
+import { LINHAS_PLANOS, PLANOS, type Celula, type Periodo } from '@/lib/planos';
+import { PrecoDoPlano } from './PrecoDoPlano';
 
 const EM_BREVE = 'whitespace-nowrap rounded-xs bg-ouro-soft px-1.5 py-0.5 text-[11px] font-semibold text-ouro-strong';
 
@@ -25,7 +26,7 @@ function Valor({ c }: { c: Celula }) {
 }
 
 /** Os planos em cartões empilhados (celular); a tabela fica para telas largas. */
-export function CartoesPlanos() {
+export function CartoesPlanos({ periodo = 'mensal' }: { periodo?: Periodo }) {
   return (
     <ul className="flex list-none flex-col gap-4 p-0 md:hidden" data-testid="cartoes-planos">
       {PLANOS.map((p) => (
@@ -34,12 +35,12 @@ export function CartoesPlanos() {
           className={`min-w-0 rounded-lg border bg-raised p-4 ${p.id === 'pro' ? 'border-pin bg-pin-soft/40' : 'border-line'}`}
         >
           <h2 className="text-[17px] font-bold">{p.nome}</h2>
-          <p className="mt-1 font-mono text-[13px] font-medium text-ink-muted">{p.preco}</p>
+          <p className="mt-1"><PrecoDoPlano centavosMes={p.centavosMes} periodo={periodo} /></p>
           <div className="mt-3">
             {p.id === 'gratis' ? (
               <span className="text-[12px] text-ink-muted">Seu plano hoje</span>
             ) : (
-              <BotaoQueroPlano plano={p.id} destaque={p.id === 'pro'} />
+              <BotaoQueroPlano plano={p.id} periodo={periodo} destaque={p.id === 'pro'} />
             )}
           </div>
           <dl className="mt-3 flex flex-col text-[14px]">
