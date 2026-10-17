@@ -140,7 +140,7 @@ describe('migração 0008 (relacionados mais leve)', () => {
     expect(sql).toContain("set local lock_timeout = '10s';");
     expect(sql).toContain('as materialized');
     expect(sql).toContain('limit 8');
-    expect(sql).toContain("'^[a-z0-9]{4,}$'");
+    expect(sql).toContain("'^[a-z0-9]{3,}$'");
   });
   it('candidatas só pelo objeto; os itens só pesam na relevância', () => {
     expect(sql).toContain('a.busca @@ o.tq');

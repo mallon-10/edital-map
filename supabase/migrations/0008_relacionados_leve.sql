@@ -2,7 +2,7 @@
 -- e trazia editais sem relação por causa das palavras dos itens e de palavras genéricas como "outros").
 -- Mesma assinatura e mesmas colunas da 0007; muda só o corpo:
 --   1. A busca da origem é montada uma vez (CTE materializada), não de novo para cada candidata.
---   2. No máximo 8 palavras do objeto (peso A, na ordem do texto, 4+ caracteres, sem número puro, sem genéricas).
+--   2. No máximo 8 palavras do objeto (peso A, na ordem do texto, 3+ caracteres, sem número puro, sem genéricas).
 --   3. Candidatas só pelo objeto (palavra:A, índice GIN de busca); as palavras dos itens só pesam na relevância.
 --   4. Ordena pela relevância, fica com as 60 primeiras e só então tira as cópias da origem e as duplicadas
 --      (objeto_normalizado roda em no máximo 60 linhas).
@@ -32,7 +32,7 @@ language sql stable as $$
            (select array_agg(p.lexeme order by p.pos)
               from (select u.lexeme, u.positions[1] as pos
                       from unnest(ts_filter(c.busca, '{a}')) u, genericas g
-                     where u.lexeme ~ '^[a-z0-9]{4,}$'
+                     where u.lexeme ~ '^[a-z0-9]{3,}$'
                        and u.lexeme !~ '^[0-9]+$'
                        and u.lexeme <> all (g.lexemas)
                      order by u.positions[1], u.lexeme
