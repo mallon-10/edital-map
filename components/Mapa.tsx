@@ -121,6 +121,8 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio }: Props) {
           cluster: true, clusterRadius: 60, clusterMaxZoom: 8,
           clusterProperties: { qtd: ['+', ['get', 'qtd']], valor: ['+', ['get', 'valor']], destaque: ['max', ['get', 'destaque']] },
         });
+        // Sem camada que leia a fonte o MapLibre não monta os tiles e querySourceFeatures volta vazio (caso da reserva).
+        m.addLayer({ id: 'editais-base', type: 'circle', source: 'editais', paint: { 'circle-radius': 0, 'circle-opacity': 0 } });
         if (comFontes) {
           m.addSource('nomes-estados', { type: 'geojson', data: '/geo/estados-rotulos.json' });
           m.addLayer(CAMADA_NOMES_ESTADOS);
@@ -139,8 +141,12 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio }: Props) {
         dica.remove();
         const p = item.props;
         if (p.cluster === true) {
-          const zoom = await (m.getSource('editais') as GeoJSONSource).getClusterExpansionZoom(Number(p.cluster_id));
-          m.easeTo({ center: item.marcador.getLngLat(), zoom });
+          try {
+            const zoom = await (m.getSource('editais') as GeoJSONSource).getClusterExpansionZoom(Number(p.cluster_id));
+            m.easeTo({ center: item.marcador.getLngLat(), zoom });
+          } catch {
+            // Grupo que sumiu entre o clique e a resposta: nada a fazer.
+          }
           return;
         }
         escolher.current({ ibge: String(p.ibge), nome: String(p.nome), uf: String(p.uf) });
@@ -170,8 +176,12 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio }: Props) {
           // A mesma cidade ou grupo aparece em mais de um tile.
           if (vistas.has(p.chave)) continue;
           vistas.add(p.chave);
-          const item = pilulas.get(p.chave) ?? criar(p.chave, (f.geometry as Point).coordinates as [number, number], props);
+          const coords = (f.geometry as Point).coordinates as [number, number];
+          const item = pilulas.get(p.chave) ?? criar(p.chave, coords, props);
           pilulas.set(p.chave, item);
+          // O cluster_id é reaproveitado depois de setData: a mesma chave pode apontar para outro lugar.
+          const atual = item.marcador.getLngLat();
+          if (atual.lng !== coords[0] || atual.lat !== coords[1]) item.marcador.setLngLat(coords);
           item.props = props;
           item.texto.textContent = p.texto;
           item.botao.setAttribute('aria-label', p.rotulo);
@@ -182,6 +192,8 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio }: Props) {
         for (const [chave, item] of pilulas) {
           if (vistas.has(chave)) continue;
           item.marcador.remove();
+          // Sem pílula, o mouseleave não vem: a dica ficaria presa.
+          dica.remove();
           pilulas.delete(chave);
         }
       };

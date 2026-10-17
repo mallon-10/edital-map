@@ -12,7 +12,7 @@ export const NOME_PT: ExpressionSpecification = ['coalesce', ['get', 'name:pt'],
 
 const PINTURA_DIVISAS: LineLayerSpecification['paint'] = {
   'line-color': '#0c2340',
-  'line-opacity': 0.55,
+  'line-opacity': 0.8,
   'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.8, 7, 1.6],
 };
 

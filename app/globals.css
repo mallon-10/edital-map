@@ -49,6 +49,11 @@ body {
   pointer-events: none;
 }
 
+/* A dica fica por cima das pílulas (z-index 1 e 2), mas abaixo da gaveta e do alerta. */
+.maplibregl-popup {
+  z-index: 3;
+}
+
 /* Pílula do mapa: o botão tem 32 px de altura (área de toque); a pílula visível é o span, com a pontinha no ponto. */
 .pilula-mapa {
   display: flex;
