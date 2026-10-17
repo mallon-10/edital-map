@@ -8,7 +8,14 @@ export type FiltrosBusca = {
   deslocamento: number;
   valorMin: number | null;
   modalidades: number[] | null;
+  /** CNPJ do órgão comprador (contratacoes.cnpj). */
+  orgao: string | null;
+  /** Raio em km a partir da sede do município `ibge` (50, 100 ou 200); só existe com `ibge`. */
+  raio: number | null;
 };
+
+/** Órgão escolhido no filtro (o nome é só para o chip). */
+export type Orgao = { cnpj: string; nome: string };
 
 /** Estado dos filtros na tela inicial (o navegador monta a URL da API com `paraParametros`). */
 export type FiltrosTela = {
@@ -18,6 +25,9 @@ export type FiltrosTela = {
   valorMin: number | null;
   modalidades: number[];
   seteDias: boolean;
+  orgao: Orgao | null;
+  /** Raio em km a partir da cidade; sem cidade é sempre null (`normalizarTela`). */
+  raio: number | null;
 };
 
 export type EditalResumo = {

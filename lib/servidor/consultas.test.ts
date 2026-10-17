@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { lerFiltros, paraParametros } from '../filtros';
+import type { FiltrosBusca, FiltrosTela } from '../tipos';
 
 vi.mock('server-only', () => ({}));
 
 // Chamadas de rpc registradas: o contrato TS↔SQL é o nome da função e as chaves dos argumentos.
 const chamadas: Array<{ nome: string; args: Record<string, unknown> }> = [];
+/** Dados devolvidos pela rpc; uma função recebe os argumentos (páginas da exportação). */
 let respostaRpc: unknown = [];
 
 vi.mock('./supabase', () => ({
@@ -11,7 +14,8 @@ vi.mock('./supabase', () => ({
     // Serve os três jeitos de consumir uma rpc: direto (await), `.range()` (mapa) e `.single()` (resumo).
     rpc: (nome: string, args: Record<string, unknown>) => {
       chamadas.push({ nome, args });
-      const resposta = Promise.resolve({ data: respostaRpc, error: null });
+      const dados = typeof respostaRpc === 'function' ? (respostaRpc as (a: Record<string, unknown>) => unknown)(args) : respostaRpc;
+      const resposta = Promise.resolve({ data: dados, error: null });
       return {
         range: () => resposta,
         single: () => resposta,
@@ -24,6 +28,10 @@ vi.mock('./supabase', () => ({
 const { buscarEditais, itensDoEdital, pontosDoMapa, resumoItens } = await import('./consultas');
 
 const compra = (id: string) => ({ id, cnpj: '00394452000103', ano: 2026, sequencial: 21982 });
+const SEM_FILTRO: FiltrosBusca = {
+  q: null, uf: null, ibge: null, dias: null, deslocamento: 0, valorMin: null, modalidades: null, orgao: null, raio: null,
+};
+const chaves = (args: Record<string, unknown>) => Object.keys(args).sort();
 
 describe('itensDoEdital (PNCP na hora)', () => {
   afterEach(() => {
@@ -57,39 +65,68 @@ describe('itensDoEdital (PNCP na hora)', () => {
   });
 });
 
-describe('contrato com as funções SQL (0005)', () => {
+describe('contrato com as funções SQL (0007)', () => {
   beforeEach(() => {
     chamadas.length = 0;
     respostaRpc = [];
   });
 
-  const chaves = (args: Record<string, unknown>) => Object.keys(args).sort();
+  const ARGS_BUSCA = ['q', 'p_ufs', 'p_ibge', 'p_dias', 'p_valor_min', 'p_modalidades', 'p_limite', 'p_deslocamento', 'p_orgao', 'p_raio_km'].sort();
+  const ARGS_MAPA = ['q', 'p_ufs', 'p_dias', 'p_valor_min', 'p_modalidades', 'p_orgao', 'p_ibge', 'p_raio_km'].sort();
 
-  it('buscarEditais chama buscar_editais com os argumentos da 0005', async () => {
-    await buscarEditais({ q: 'luva', uf: 'SC', ibge: '4209102', dias: 7, deslocamento: 50, valorMin: 1000, modalidades: [6, 8] });
+  it('buscarEditais chama buscar_editais com os argumentos da 0007', async () => {
+    await buscarEditais({
+      q: 'luva', uf: 'SC', ibge: '4209102', dias: 7, deslocamento: 50, valorMin: 1000, modalidades: [6, 8], orgao: '83102244000102', raio: 100,
+    });
     expect(chamadas).toHaveLength(1);
     expect(chamadas[0].nome).toBe('buscar_editais');
-    expect(chaves(chamadas[0].args)).toEqual(
-      ['q', 'p_ufs', 'p_ibge', 'p_dias', 'p_valor_min', 'p_modalidades', 'p_limite', 'p_deslocamento'].sort(),
-    );
-    expect(chamadas[0].args).toMatchObject({ q: 'luva', p_ufs: ['SC'], p_valor_min: 1000, p_modalidades: [6, 8], p_limite: 50, p_deslocamento: 50 });
+    expect(chaves(chamadas[0].args)).toEqual(ARGS_BUSCA);
+    expect(chamadas[0].args).toMatchObject({
+      q: 'luva', p_ufs: null, p_ibge: '4209102', p_valor_min: 1000, p_modalidades: [6, 8], p_limite: 50, p_deslocamento: 50,
+      p_orgao: '83102244000102', p_raio_km: 100,
+    });
   });
 
   it('buscarEditais manda todas as chaves também sem filtros', async () => {
-    await buscarEditais({ q: null, uf: null, ibge: null, dias: null, deslocamento: 0, valorMin: null, modalidades: null });
+    await buscarEditais(SEM_FILTRO);
     expect(chamadas[0].nome).toBe('buscar_editais');
-    expect(chaves(chamadas[0].args)).toEqual(
-      ['q', 'p_ufs', 'p_ibge', 'p_dias', 'p_valor_min', 'p_modalidades', 'p_limite', 'p_deslocamento'].sort(),
-    );
-    expect(chamadas[0].args).toMatchObject({ q: null, p_ufs: null, p_valor_min: null, p_modalidades: null });
+    expect(chaves(chamadas[0].args)).toEqual(ARGS_BUSCA);
+    expect(chamadas[0].args).toMatchObject({ q: null, p_ufs: null, p_valor_min: null, p_modalidades: null, p_orgao: null, p_raio_km: null });
   });
 
-  it('pontosDoMapa chama mapa_editais com os argumentos da 0004', async () => {
-    await pontosDoMapa({ q: 'bota', uf: 'PR', ibge: null, dias: 7, deslocamento: 0, valorMin: 5000, modalidades: [4] });
+  it('pontosDoMapa chama mapa_editais com os argumentos da 0007; a cidade sozinha não vai ao mapa', async () => {
+    await pontosDoMapa({ ...SEM_FILTRO, q: 'bota', uf: 'PR', ibge: '4106902', dias: 7, valorMin: 5000, modalidades: [4], orgao: '76417005000186' });
     expect(chamadas).toHaveLength(1);
     expect(chamadas[0].nome).toBe('mapa_editais');
-    expect(chaves(chamadas[0].args)).toEqual(['q', 'p_ufs', 'p_dias', 'p_valor_min', 'p_modalidades'].sort());
-    expect(chamadas[0].args).toMatchObject({ q: 'bota', p_ufs: ['PR'], p_valor_min: 5000, p_modalidades: [4] });
+    expect(chaves(chamadas[0].args)).toEqual(ARGS_MAPA);
+    expect(chamadas[0].args).toMatchObject({
+      q: 'bota', p_ufs: ['PR'], p_valor_min: 5000, p_modalidades: [4], p_orgao: '76417005000186', p_ibge: null, p_raio_km: null,
+    });
+  });
+
+  it('com raio, lista e mapa mandam p_ufs nulo (o raio atravessa a divisa)', async () => {
+    await buscarEditais({ ...SEM_FILTRO, uf: 'SC', ibge: '4209102', raio: 100 });
+    await pontosDoMapa({ ...SEM_FILTRO, uf: 'SC', ibge: '4209102', raio: 100 });
+    expect(chamadas[0].args).toMatchObject({ p_ufs: null });
+    expect(chamadas[1].args).toMatchObject({ p_ufs: null });
+  });
+
+  it('pontosDoMapa com raio manda a cidade e o raio', async () => {
+    await pontosDoMapa({ ...SEM_FILTRO, ibge: '4209102', raio: 100 });
+    expect(chamadas[0].args).toMatchObject({ p_ibge: '4209102', p_raio_km: 100 });
+  });
+
+  it('ida e volta: tela → parâmetros da URL → lerFiltros → rpc', async () => {
+    const tela: FiltrosTela = {
+      q: 'luva', uf: '', cidade: { ibge: '4209102', nome: 'Joinville', uf: 'SC' }, valorMin: null, modalidades: [], seteDias: false,
+      orgao: { cnpj: '83102244000102', nome: 'Município de Joinville' }, raio: 100,
+    };
+    await buscarEditais(lerFiltros(paraParametros(tela)));
+    await pontosDoMapa(lerFiltros(paraParametros(tela, { comCidade: false })));
+    expect(chamadas.map((c) => c.nome)).toEqual(['buscar_editais', 'mapa_editais']);
+    for (const c of chamadas) {
+      expect(c.args).toMatchObject({ q: 'luva', p_ibge: '4209102', p_orgao: '83102244000102', p_raio_km: 100 });
+    }
   });
 
   it('resumoItens chama resumo_itens e mapeia as colunas para ResumoItens', async () => {
@@ -102,16 +139,16 @@ describe('contrato com as funções SQL (0005)', () => {
     expect(r).toEqual({ total: 12, materiais: 10, servicos: 2, comBeneficio: 9, exclusivos: 6, cota: 3, criterios: ['Menor preço'] });
   });
 
-  it('buscarEditais mapeia as colunas da 0005, sem item_trecho', async () => {
+  it('buscarEditais mapeia as colunas da 0007 (link_origem fica de fora do card)', async () => {
     respostaRpc = [
       {
         id: 'C1', slug: '00394452000103-2026-1', objeto: 'Luvas', orgao_nome: 'Município de Joinville', unidade_nome: null,
         municipio_nome: 'Joinville', uf: 'SC', codigo_ibge: '4209102', valor_estimado: '1000.50',
         encerramento_em: '2026-10-20T13:00:00+00:00', publicada_em: null, modalidade_nome: 'Pregão - Eletrônico', srp: false,
-        onde: 'itens', total: 1,
+        link_origem: 'https://compras.joinville.sc.gov.br/1', onde: 'itens', total: 1,
       },
     ];
-    const r = await buscarEditais({ q: 'nitrilica', uf: null, ibge: null, dias: null, deslocamento: 0, valorMin: null, modalidades: null });
+    const r = await buscarEditais({ ...SEM_FILTRO, q: 'nitrilica' });
     expect(r).toEqual({
       total: 1,
       editais: [

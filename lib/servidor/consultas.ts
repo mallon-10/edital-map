@@ -13,54 +13,74 @@ type Linha = Record<string, unknown>;
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 const texto = (v: unknown): string | null => (v === null || v === undefined ? null : String(v));
 
+/** Argumentos de buscar_editais (0007), sem a página. */
+function argumentosBusca(f: FiltrosBusca) {
+  return {
+    q: f.q,
+    // Com raio a UF não filtra: o raio atravessa a divisa de estado.
+    p_ufs: f.uf && !f.raio ? [f.uf] : null,
+    p_ibge: f.ibge,
+    p_dias: f.dias,
+    p_valor_min: f.valorMin,
+    p_modalidades: f.modalidades,
+    p_orgao: f.orgao,
+    p_raio_km: f.raio,
+  };
+}
+
+/** Uma linha de buscar_editais → card da lista. */
+function paraResumo(l: Linha): EditalResumo {
+  return {
+    id: String(l.id),
+    slug: String(l.slug),
+    objeto: String(l.objeto),
+    orgao_nome: String(l.orgao_nome),
+    unidade_nome: texto(l.unidade_nome),
+    municipio_nome: texto(l.municipio_nome),
+    uf: String(l.uf),
+    codigo_ibge: texto(l.codigo_ibge),
+    valor_estimado: num(l.valor_estimado),
+    encerramento_em: String(l.encerramento_em),
+    publicada_em: texto(l.publicada_em),
+    modalidade_nome: texto(l.modalidade_nome),
+    srp: Boolean(l.srp),
+    onde: l.onde === 'itens' ? 'itens' : 'objeto',
+  };
+}
+
 export function buscarEditais(f: FiltrosBusca): Promise<ResultadoBusca> {
   return cache(`busca:${chaveFiltros(f)}`, async () => {
     const { data, error } = await supabaseServidor().rpc('buscar_editais', {
-      q: f.q,
-      p_ufs: f.uf ? [f.uf] : null,
-      p_ibge: f.ibge,
-      p_dias: f.dias,
-      p_valor_min: f.valorMin,
-      p_modalidades: f.modalidades,
+      ...argumentosBusca(f),
       p_limite: POR_PAGINA,
       p_deslocamento: f.deslocamento,
     });
     if (error) throw new Error(`buscar_editais: ${error.message}`);
     const linhas = (data ?? []) as Linha[];
-    return {
-      total: Number(linhas[0]?.total ?? 0),
-      editais: linhas.map((l): EditalResumo => ({
-        id: String(l.id),
-        slug: String(l.slug),
-        objeto: String(l.objeto),
-        orgao_nome: String(l.orgao_nome),
-        unidade_nome: texto(l.unidade_nome),
-        municipio_nome: texto(l.municipio_nome),
-        uf: String(l.uf),
-        codigo_ibge: texto(l.codigo_ibge),
-        valor_estimado: num(l.valor_estimado),
-        encerramento_em: String(l.encerramento_em),
-        publicada_em: texto(l.publicada_em),
-        modalidade_nome: texto(l.modalidade_nome),
-        srp: Boolean(l.srp),
-        onde: l.onde === 'itens' ? 'itens' : 'objeto',
-      })),
-    };
+    return { total: Number(linhas[0]?.total ?? 0), editais: linhas.map(paraResumo) };
   });
 }
 
-/** O PostgREST devolve no máximo 1.000 linhas por resposta: lê em páginas até o fim. */
+/**
+ * O PostgREST devolve no máximo 1.000 linhas por resposta: lê em páginas até o fim.
+ * O mapa não filtra pela cidade sozinha (mostra todas, para escolher outra); com raio, só os municípios dentro dele.
+ */
 export function pontosDoMapa(f: FiltrosBusca): Promise<PontoMapa[]> {
-  return cache(`mapa:${chaveFiltros({ ...f, ibge: null, deslocamento: 0 })}`, async () => {
+  const ibge = f.raio ? f.ibge : null;
+  return cache(`mapa:${chaveFiltros({ ...f, ibge, deslocamento: 0 })}`, async () => {
     const pontos: PontoMapa[] = [];
     for (let de = 0; ; de += 1000) {
       const { data, error } = await supabaseServidor()
         .rpc('mapa_editais', {
           q: f.q,
-          p_ufs: f.uf ? [f.uf] : null,
+          // Com raio a UF não filtra: o raio atravessa a divisa de estado.
+    p_ufs: f.uf && !f.raio ? [f.uf] : null,
           p_dias: f.dias,
           p_valor_min: f.valorMin,
           p_modalidades: f.modalidades,
+          p_orgao: f.orgao,
+          p_ibge: ibge,
+          p_raio_km: f.raio,
         })
         .range(de, de + 999);
       if (error) throw new Error(`mapa_editais: ${error.message}`);

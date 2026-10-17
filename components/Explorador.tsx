@@ -14,7 +14,7 @@ import { ColunaLista } from './inicio/ColunaLista';
 import { LegendaMapa } from './inicio/LegendaMapa';
 import { OndeMaisCompram } from './inicio/OndeMaisCompram';
 
-const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false };
+const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
 const ERRO_LISTA = 'Não foi possível buscar agora. Confira a conexão e tente de novo.';
 const ERRO_MAPA = 'Não foi possível carregar o mapa agora.';
 const TEMPO_LIMITE_MS = 20_000;

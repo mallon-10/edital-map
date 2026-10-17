@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { chaveFiltros, lerFiltros, paraParametros, UFS_ORDENADAS } from './filtros';
+import { chaveFiltros, lerFiltros, normalizarTela, paraParametros, recursosUsados, UFS_ORDENADAS } from './filtros';
 import type { FiltrosTela } from './tipos';
 
 const ler = (s: string) => lerFiltros(new URLSearchParams(s));
-const BASE = { q: null, uf: null, ibge: null, dias: null, deslocamento: 0, valorMin: null, modalidades: null };
+const BASE = { q: null, uf: null, ibge: null, dias: null, deslocamento: 0, valorMin: null, modalidades: null, orgao: null, raio: null };
+const JOINVILLE = { ibge: '4209102', nome: 'Joinville', uf: 'SC' };
+const ORGAO = { cnpj: '83102244000102', nome: 'Município de Joinville' };
+const TELA_VAZIA: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
 
 describe('lerFiltros', () => {
   it('sem parâmetros', () => {
@@ -11,7 +14,7 @@ describe('lerFiltros', () => {
   });
   it('aceita os valores válidos', () => {
     expect(ler('q=%20EPI%20e%20uniformes%20&uf=sc&ibge=4205407&dias=7&deslocamento=50&valor=50000&modalidades=8,6,6')).toEqual({
-      q: 'EPI e uniformes', uf: 'SC', ibge: '4205407', dias: 7, deslocamento: 50, valorMin: 50000, modalidades: [6, 8],
+      q: 'EPI e uniformes', uf: 'SC', ibge: '4205407', dias: 7, deslocamento: 50, valorMin: 50000, modalidades: [6, 8], orgao: null, raio: null,
     });
   });
   it('descarta UF que não existe, IBGE malformado e dias diferentes de 7', () => {
@@ -30,6 +33,17 @@ describe('lerFiltros', () => {
     expect(ler('deslocamento=20050').deslocamento).toBe(0);
     expect(ler('deslocamento=1.5').deslocamento).toBe(0);
   });
+  it('órgão: CNPJ de 14 caracteres (numérico ou alfanumérico), em maiúsculas', () => {
+    expect(ler('orgao=83102244000102').orgao).toBe('83102244000102');
+    expect(ler('orgao=12abc34501de35').orgao).toBe('12ABC34501DE35');
+    expect(ler('orgao=8310224400010').orgao).toBeNull();
+    expect(ler('orgao=83.102.244/0001-02').orgao).toBeNull();
+  });
+  it('raio: só 50, 100 ou 200 e só com município', () => {
+    expect(ler('ibge=4209102&raio=100').raio).toBe(100);
+    expect(ler('ibge=4209102&raio=75').raio).toBeNull();
+    expect(ler('raio=100').raio).toBeNull();
+  });
 });
 
 describe('chaveFiltros', () => {
@@ -40,12 +54,15 @@ describe('chaveFiltros', () => {
     expect(chaveFiltros(ler('q=epi'))).not.toBe(chaveFiltros(ler('q=epi&uf=PR')));
     expect(chaveFiltros(ler('q=epi'))).not.toBe(chaveFiltros(ler('q=epi&valor=50000')));
     expect(chaveFiltros(ler('q=epi'))).not.toBe(chaveFiltros(ler('q=epi&modalidades=6')));
+    expect(chaveFiltros(ler('q=epi'))).not.toBe(chaveFiltros(ler('q=epi&orgao=83102244000102')));
+    expect(chaveFiltros(ler('ibge=4209102'))).not.toBe(chaveFiltros(ler('ibge=4209102&raio=50')));
   });
 });
 
 describe('paraParametros', () => {
   const TELA: FiltrosTela = {
     q: ' EPI ', uf: 'SC', cidade: { ibge: '4205407', nome: 'Florianópolis', uf: 'SC' }, valorMin: 50000, modalidades: [8, 6], seteDias: true,
+    orgao: null, raio: null,
   };
   it('monta os parâmetros que a API entende', () => {
     expect(paraParametros(TELA, { deslocamento: 50 }).toString()).toBe(
@@ -54,12 +71,55 @@ describe('paraParametros', () => {
   });
   it('sem cidade para o mapa e vazio quando não há filtro', () => {
     expect(paraParametros(TELA, { comCidade: false }).has('ibge')).toBe(false);
-    expect(paraParametros({ q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false }).toString()).toBe('');
+    expect(paraParametros(TELA_VAZIA).toString()).toBe('');
   });
   it('ida e volta com lerFiltros', () => {
     expect(lerFiltros(paraParametros(TELA))).toEqual({
-      q: 'EPI', uf: 'SC', ibge: '4205407', dias: 7, deslocamento: 0, valorMin: 50000, modalidades: [6, 8],
+      q: 'EPI', uf: 'SC', ibge: '4205407', dias: 7, deslocamento: 0, valorMin: 50000, modalidades: [6, 8], orgao: null, raio: null,
     });
+  });
+  it('órgão e raio: a lista leva os dois; o mapa leva a cidade só junto com o raio', () => {
+    const tela: FiltrosTela = { ...TELA_VAZIA, cidade: JOINVILLE, orgao: ORGAO, raio: 100 };
+    expect(paraParametros(tela).toString()).toBe('orgao=83102244000102&ibge=4209102&raio=100');
+    expect(paraParametros(tela, { comCidade: false }).toString()).toBe('orgao=83102244000102&ibge=4209102&raio=100');
+    expect(paraParametros({ ...tela, raio: null }, { comCidade: false }).toString()).toBe('orgao=83102244000102');
+    expect(paraParametros({ ...tela, cidade: null }).has('raio')).toBe(false);
+  });
+  it('com raio a UF não vai: o raio atravessa a divisa de estado', () => {
+    const tela: FiltrosTela = { ...TELA_VAZIA, uf: 'SC', cidade: JOINVILLE, raio: 100 };
+    expect(paraParametros(tela).has('uf')).toBe(false);
+    expect(paraParametros(tela, { comCidade: false }).has('uf')).toBe(false);
+    expect(paraParametros({ ...tela, raio: null }).get('uf')).toBe('SC');
+  });
+  it('ida e volta com órgão e raio', () => {
+    expect(lerFiltros(paraParametros({ ...TELA_VAZIA, cidade: JOINVILLE, orgao: ORGAO, raio: 200 }))).toEqual({
+      ...BASE, ibge: '4209102', orgao: '83102244000102', raio: 200,
+    });
+  });
+});
+
+describe('normalizarTela', () => {
+  it('sem município o raio sai', () => {
+    expect(normalizarTela({ ...TELA_VAZIA, raio: 100 })).toEqual(TELA_VAZIA);
+  });
+  it('com município o raio fica (e o objeto é o mesmo)', () => {
+    const tela = { ...TELA_VAZIA, cidade: JOINVILLE, raio: 100 };
+    expect(normalizarTela(tela)).toBe(tela);
+  });
+});
+
+describe('recursosUsados', () => {
+  it('órgão escolhido ou trocado conta; manter ou tirar não conta', () => {
+    expect(recursosUsados(TELA_VAZIA, { ...TELA_VAZIA, orgao: ORGAO })).toEqual(['filtro_orgao']);
+    expect(recursosUsados({ ...TELA_VAZIA, orgao: ORGAO }, { ...TELA_VAZIA, orgao: ORGAO, q: 'luva' })).toEqual([]);
+    expect(recursosUsados({ ...TELA_VAZIA, orgao: ORGAO }, TELA_VAZIA)).toEqual([]);
+  });
+  it('raio ligado, trocado ou com outra cidade conta', () => {
+    const com = { ...TELA_VAZIA, cidade: JOINVILLE, raio: 50 };
+    expect(recursosUsados({ ...TELA_VAZIA, cidade: JOINVILLE }, com)).toEqual(['filtro_raio']);
+    expect(recursosUsados(com, { ...com, raio: 100 })).toEqual(['filtro_raio']);
+    expect(recursosUsados(com, { ...com, cidade: { ibge: '4202404', nome: 'Blumenau', uf: 'SC' } })).toEqual(['filtro_raio']);
+    expect(recursosUsados(com, { ...com, seteDias: true })).toEqual([]);
   });
 });
 

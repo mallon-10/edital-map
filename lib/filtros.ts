@@ -12,6 +12,10 @@ export const MODALIDADES: ReadonlyArray<{ id: number; nome: string }> = [
   { id: 12, nome: 'Credenciamento' },
 ];
 const IDS_MODALIDADE = MODALIDADES.map((m) => m.id);
+/** Raios do filtro Pro, em km a partir da sede do município escolhido. */
+export const RAIOS_KM = [50, 100, 200] as const;
+/** CNPJ do órgão comprador: 14 caracteres, os 12 primeiros podem ser letras (CNPJ alfanumérico), como em SLUG_EDITAL. */
+const CNPJ = /^[0-9A-Z]{12}\d{2}$/;
 
 export function lerFiltros(p: URLSearchParams): FiltrosBusca {
   const q = (p.get('q') ?? '').trim().slice(0, 100) || null;
@@ -27,22 +31,51 @@ export function lerFiltros(p: URLSearchParams): FiltrosBusca {
   const ids = [...new Set((p.get('modalidades') ?? '').split(',').map((s) => Number(s.trim())))]
     .filter((id) => IDS_MODALIDADE.includes(id))
     .sort((a, b) => a - b);
-  return { q, uf, ibge, dias, deslocamento, valorMin, modalidades: ids.length ? ids : null };
+  const orgaoBruto = (p.get('orgao') ?? '').trim().toUpperCase();
+  const orgao = CNPJ.test(orgaoBruto) ? orgaoBruto : null;
+  // O raio só vale com município: é contado a partir da sede dele.
+  const r = Number(p.get('raio'));
+  const raio = ibge && (RAIOS_KM as readonly number[]).includes(r) ? r : null;
+  return { q, uf, ibge, dias, deslocamento, valorMin, modalidades: ids.length ? ids : null, orgao, raio };
 }
 
 export function chaveFiltros(f: FiltrosBusca): string {
-  return JSON.stringify([f.q?.toLowerCase() ?? null, f.uf, f.ibge, f.dias, f.deslocamento, f.valorMin, f.modalidades]);
+  return JSON.stringify([f.q?.toLowerCase() ?? null, f.uf, f.ibge, f.dias, f.deslocamento, f.valorMin, f.modalidades, f.orgao, f.raio]);
 }
 
-/** Filtros da tela → parâmetros de `/api/busca` e `/api/mapa` (o mapa não leva a cidade). */
+/**
+ * Filtros da tela → parâmetros de `/api/busca`, `/api/mapa` e `/api/exportar`.
+ * O mapa (`comCidade: false`) não leva a cidade sozinha (mostra todas, para o usuário escolher outra);
+ * com raio, leva a cidade e o raio.
+ */
 export function paraParametros(f: FiltrosTela, opcoes: { comCidade?: boolean; deslocamento?: number } = {}): URLSearchParams {
   const p = new URLSearchParams();
   if (f.q.trim()) p.set('q', f.q.trim());
-  if (f.uf) p.set('uf', f.uf);
+  // Com raio a UF não vai: o raio atravessa a divisa de estado.
+  if (f.uf && !(f.cidade && f.raio)) p.set('uf', f.uf);
   if (f.seteDias) p.set('dias', '7');
   if (f.valorMin) p.set('valor', String(f.valorMin));
   if (f.modalidades.length) p.set('modalidades', [...f.modalidades].sort((a, b) => a - b).join(','));
-  if (opcoes.comCidade !== false && f.cidade) p.set('ibge', f.cidade.ibge);
+  if (f.orgao) p.set('orgao', f.orgao.cnpj);
+  const raio = f.cidade && f.raio ? f.raio : null;
+  if (f.cidade && (opcoes.comCidade !== false || raio)) p.set('ibge', f.cidade.ibge);
+  if (raio) p.set('raio', String(raio));
   if (opcoes.deslocamento) p.set('deslocamento', String(opcoes.deslocamento));
   return p;
+}
+
+/** Sem município não há raio: tirar a cidade (ou trocar a UF, que tira a cidade) tira o raio. */
+export function normalizarTela(f: FiltrosTela): FiltrosTela {
+  return f.cidade || f.raio === null ? f : { ...f, raio: null };
+}
+
+/** Recursos Pro de filtro que o evento usou_recurso registra. */
+export type RecursoFiltro = 'filtro_orgao' | 'filtro_raio';
+
+/** Filtros Pro que passaram a valer nesta mudança (evento usou_recurso); manter ou tirar um filtro não conta. */
+export function recursosUsados(antes: FiltrosTela, depois: FiltrosTela): RecursoFiltro[] {
+  const usados: RecursoFiltro[] = [];
+  if (depois.orgao && depois.orgao.cnpj !== antes.orgao?.cnpj) usados.push('filtro_orgao');
+  if (depois.cidade && depois.raio && (depois.raio !== antes.raio || depois.cidade.ibge !== antes.cidade?.ibge)) usados.push('filtro_raio');
+  return usados;
 }
