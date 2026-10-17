@@ -133,3 +133,31 @@ describe('migração 0007 (recursos Pro)', () => {
     }
   });
 });
+
+describe('migração 0008 (relacionados mais leve)', () => {
+  const sql = ler('supabase/migrations/0008_relacionados_leve.sql');
+  it('a busca da origem é montada uma vez só, com até 8 palavras do objeto', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql).toContain('as materialized');
+    expect(sql).toContain('limit 8');
+    expect(sql).toContain("'^[a-z0-9]{4,}$'");
+  });
+  it('candidatas só pelo objeto; os itens só pesam na relevância', () => {
+    expect(sql).toContain('a.busca @@ o.tq');
+    expect(sql).not.toContain('a.itens_palavras @@ o.tq');
+    expect(sql).toContain('ts_rank(coalesce(a.itens_palavras');
+  });
+  it('ordena primeiro e só então tira cópias e duplicadas (60 no máximo)', () => {
+    expect(sql).toContain('limit 60');
+    expect(sql.indexOf('limit 60')).toBeLessThan(sql.indexOf('select distinct on'));
+  });
+  it('mais palavras genéricas na lista', () => {
+    for (const p of ['outros', 'outras', 'demais', 'kit', 'kits', 'conjunto', 'utilizacao', 'utilizar', 'aquisicao', 'contratacao', 'servicos']) {
+      expect(sql).toMatch(new RegExp(`[' ]${p}[' ]`));
+    }
+  });
+  it('só o servidor executa', () => {
+    expect(sql).toContain('revoke execute on function public.relacionados(text, int) from public, anon, authenticated;');
+    expect(sql).toContain('grant execute on function public.relacionados(text, int) to service_role;');
+  });
+});
