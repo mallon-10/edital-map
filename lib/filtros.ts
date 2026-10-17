@@ -1,4 +1,4 @@
-import { UFS_BRASIL } from './eventos';
+import { UFS_BRASIL, type RecursoUsado } from './eventos';
 import type { FiltrosBusca, FiltrosTela } from './tipos';
 
 /** As 27 UFs em ordem alfabética, para os seletores de UF. */
@@ -70,7 +70,7 @@ export function normalizarTela(f: FiltrosTela): FiltrosTela {
 }
 
 /** Recursos Pro de filtro que o evento usou_recurso registra. */
-export type RecursoFiltro = 'filtro_orgao' | 'filtro_raio';
+export type RecursoFiltro = Extract<RecursoUsado, 'filtro_orgao' | 'filtro_raio'>;
 
 /** Filtros Pro que passaram a valer nesta mudança (evento usou_recurso); manter ou tirar um filtro não conta. */
 export function recursosUsados(antes: FiltrosTela, depois: FiltrosTela): RecursoFiltro[] {

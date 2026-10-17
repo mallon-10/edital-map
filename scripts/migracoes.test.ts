@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { TIPOS_EVENTO } from '../lib/eventos';
 
 const ler = (caminho: string) => readFileSync(new URL(`../${caminho}`, import.meta.url), 'utf8');
 
@@ -159,5 +160,18 @@ describe('migração 0008 (relacionados mais leve)', () => {
   it('só o servidor executa', () => {
     expect(sql).toContain('revoke execute on function public.relacionados(text, int) from public, anon, authenticated;');
     expect(sql).toContain('grant execute on function public.relacionados(text, int) to service_role;');
+  });
+});
+
+describe('eventos e portão (recursos Pro)', () => {
+  it('a restrição de eventos.tipo da 0007 aceita todos os tipos que o site grava', () => {
+    const sql = ler('supabase/migrations/0007_recursos_pro.sql');
+    const restricao = sql.slice(sql.indexOf('add constraint eventos_tipo_check'));
+    for (const tipo of [...TIPOS_EVENTO, 'pediu_alerta']) expect(restricao).toContain(`'${tipo}'`);
+  });
+  it('o portão mostra usou_recurso por recurso, sem internos', () => {
+    const portao = ler('docs/fase-2-portao.sql');
+    expect(portao).toContain("where tipo = 'usou_recurso' and not interno and visitante not in (select visitante from internos)");
+    expect(portao).toContain('as uso_por_recurso;');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { UFS_BRASIL, ufsIniciaisAlerta, validarEvento, validarPedidoAlerta } from './eventos';
+import { LIMITES, RECURSOS_USADOS, TIPOS_EVENTO, UFS_BRASIL, ufsIniciaisAlerta, validarEvento, validarPedidoAlerta } from './eventos';
 
 const SLUG = '00394452000103-2026-21982';
 
@@ -36,6 +36,28 @@ describe('validarEvento', () => {
     });
     expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'filtros_pro' } }).ok).toBe(true);
     expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'resumo_ia' } }).ok).toBe(false);
+  });
+  it('usou_recurso: filtros Pro sem edital; clique em parecido com o edital de origem', () => {
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'filtro_orgao' } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'filtro_orgao' } },
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'filtro_raio', edital: SLUG } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'filtro_raio' } },
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'relacionados_clique', edital: SLUG } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'relacionados_clique', edital: SLUG } },
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'relacionados_clique' } })).toEqual({ ok: false, erro: 'edital inválido' });
+  });
+  it('usou_recurso: exportou só pela rota /api/exportar; recurso desconhecido é recusado', () => {
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'exportou' } })).toEqual({ ok: false, erro: 'recurso inválido' });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'resumo_ia', edital: SLUG } }).ok).toBe(false);
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: {} }).ok).toBe(false);
+  });
+  it('os quatro usos medidos e o limite de exportações por hora', () => {
+    expect(RECURSOS_USADOS).toEqual(['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou']);
+    expect(TIPOS_EVENTO).toContain('usou_recurso');
+    expect(LIMITES.exportacoesPorHora).toBe(20);
   });
   it('recusa tipo desconhecido, pediu_alerta e corpo inválido', () => {
     expect(validarEvento({ tipo: 'pediu_alerta', detalhe: {} }).ok).toBe(false);

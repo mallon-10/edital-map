@@ -1,10 +1,16 @@
-export const TIPOS_EVENTO = ['busca', 'abriu_edital', 'clicou_edital_oficial', 'quer_recurso'] as const;
+export const TIPOS_EVENTO = ['busca', 'abriu_edital', 'clicou_edital_oficial', 'quer_recurso', 'usou_recurso'] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 
 export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia', 'plano_pro', 'filtros_pro'] as const;
 export type Recurso = (typeof RECURSOS)[number];
 /** Interesse em planos e filtros Pro: vem do cabeçalho e dos chips, sem edital. */
 const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro'];
+
+/** Uso dos recursos Pro (evento usou_recurso). */
+export const RECURSOS_USADOS = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou'] as const;
+export type RecursoUsado = (typeof RECURSOS_USADOS)[number];
+/** O navegador manda estes; `exportou` é gravado pela própria rota /api/exportar (que conta o limite por IP). */
+const USOS_DO_NAVEGADOR: readonly string[] = ['relacionados_clique', 'filtro_orgao', 'filtro_raio'];
 
 export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['Sul', ['PR', 'RS', 'SC']],
@@ -20,7 +26,7 @@ export function ufsIniciaisAlerta(uf: string | undefined): string[] {
   return uf && UFS_BRASIL.includes(uf) ? [uf] : [];
 }
 
-export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5 } as const;
+export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5, exportacoesPorHora: 20 } as const;
 export const SLUG_EDITAL = /^[0-9A-Z]{12}\d{2}-\d{4}-\d{1,7}$/;
 
 export type Detalhe = Record<string, string | number | null>;
@@ -48,6 +54,12 @@ export function validarEvento(corpo: unknown): Resultado<{ tipo: TipoEvento; det
   if (tipo === 'quer_recurso') {
     if (typeof d.recurso !== 'string' || !(RECURSOS as readonly string[]).includes(d.recurso)) return { ok: false, erro: 'recurso inválido' };
     if (RECURSOS_SEM_EDITAL.includes(d.recurso)) return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso } } };
+    if (!edital) return { ok: false, erro: 'edital inválido' };
+    return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, edital } } };
+  }
+  if (tipo === 'usou_recurso') {
+    if (typeof d.recurso !== 'string' || !USOS_DO_NAVEGADOR.includes(d.recurso)) return { ok: false, erro: 'recurso inválido' };
+    if (d.recurso !== 'relacionados_clique') return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso } } };
     if (!edital) return { ok: false, erro: 'edital inválido' };
     return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, edital } } };
   }
