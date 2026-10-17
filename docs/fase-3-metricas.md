@@ -46,3 +46,9 @@ O aumento em `contratacoes` são versões antigas das linhas (o `UPDATE` da 0005
 - `orgaos_abertos('prefeitura')`: 115 ms. Raio de 100 km de Joinville: 59 municípios.
 - Produção: /api/busca?q=luva 1,5 s; busca com raio 1,2 s; mapa com raio 1,1 s; /api/orgaos 0,30 s; edital 0,34 s.
 - Exportação sem filtro: 3,1 s, 1.023.131 bytes, 2.000 linhas + aviso de corte (33.931 no total).
+
+## Limites do grátis (0009)
+
+- 0009 aplicada em 2026-10-17 20:33 UTC; site no ar seguiu 200 (`/`, `/api/busca`, `/api/mapa`).
+- Permissões [L1] certas (anon e autenticado sem acesso; service_role com execute e insert; RLS ligado); `eventos_tipo_check` com os 6 tipos de antes + `limite_atingido`; [L2] sem erro; limpeza [L3] apagou ontem e manteve hoje; lista_espera [L4] aceita basic/pro e recusa outro plano; limite_atingido [L5] certo.
+- registrar_uso: 0,15 ms ([L6]). Concorrência (scripts/conferir-limites.ts): 6 simultâneas → 3 permitidas, 3 gravadas; repetir → true, 3; chave nova → false.
