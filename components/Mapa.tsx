@@ -2,30 +2,27 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Point } from 'geojson';
-import type { ExpressionSpecification, GeoJSONSource, Map as MapaLibre, Marker } from 'maplibre-gl';
-import { UFS_BRASIL } from '@/lib/eventos';
-import { moedaCurta, numero } from '@/lib/formato';
-import { areaDoRaio, circulo, limitesDoCirculo, paraGeoJSON, type PropsPonto, type Raio } from '@/lib/geo';
-import { contornosDosEstados, coresDosEstados } from '@/lib/painel';
+import type { GeoJSONSource, Map as MapaLibre, Marker } from 'maplibre-gl';
+import { areaDoRaio, circulo, limitesDoCirculo, paraGeoJSON, type Raio } from '@/lib/geo';
+import { CAMADA_ESPACO_PILULAS, CAMADA_NOMES_ESTADOS, carregarEstilo, linhasDica, pilula, type PropsPilula } from '@/lib/mapaRotulos';
 import type { Cidade, PontoMapa } from '@/lib/tipos';
 import { ALTURA_GAVETA_RECOLHIDA } from './GavetaCelular';
 
 // Abre mostrando o Brasil inteiro.
 const BRASIL: [[number, number], [number, number]] = [[-74.2, -33.9], [-34.6, 5.4]];
-// Raio pela raiz do valor estimado (R$ 1 mi ≈ 8 px; R$ 100 mi ≈ 14 px; R$ 2,5 bi ≈ 26 px; R$ 10 bi ≈ 32 px).
-const RAIO: ExpressionSpecification = ['interpolate', ['linear'], ['sqrt', ['get', 'valor']], 0, 5, 1000, 8, 10000, 14, 50000, 26, 100000, 32];
-const PINO =
-  '<svg viewBox="0 0 22 28" width="26" height="33" overflow="visible" aria-hidden="true"><path d="M11 0C4.9 0 0 4.9 0 11c0 8.3 11 17 11 17s11-8.7 11-17C22 4.9 17.1 0 11 0z" fill="#ff5a1f" stroke="#0c2340" stroke-width="1.5"/><circle cx="11" cy="11" r="3.5" fill="#f4f1e8"/></svg>';
+/** Altura da pílula acima do ponto: a dica abre logo acima dela. */
+const ALTURA_PILULA = 34;
 
 type Props = {
   pontos: PontoMapa[];
-  porUf: Record<string, number>;
-  /** Código IBGE da cidade do edital selecionado: ganha o pino. */
+  /** Código IBGE da cidade do edital selecionado: a pílula dela (ou do grupo que a contém) fica azul-escura. */
   destaque: string | null;
   aoEscolherCidade: (c: Cidade) => void;
   /** Área do filtro de raio (centro na sede do município): círculo fino e enquadramento nela. */
   raio: Raio | null;
 };
+
+type ItemPilula = { marcador: Marker; botao: HTMLButtonElement; texto: HTMLSpanElement; props: PropsPilula };
 
 function conteudo(linhas: string[]): HTMLElement {
   const div = document.createElement('div');
@@ -38,16 +35,12 @@ function conteudo(linhas: string[]): HTMLElement {
   return div;
 }
 
-const editais = (n: number) => `${numero(n)} ${n === 1 ? 'edital aberto' : 'editais abertos'}`;
-
-export function Mapa({ pontos, porUf, destaque, aoEscolherCidade, raio }: Props) {
+export function Mapa({ pontos, destaque, aoEscolherCidade, raio }: Props) {
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<MapaLibre | null>(null);
-  const biblioteca = useRef<typeof import('maplibre-gl') | null>(null);
-  const pino = useRef<Marker | null>(null);
   const [pronto, setPronto] = useState(false);
   const pontosAtuais = useRef(pontos);
-  const porUfAtual = useRef(porUf);
+  const destaqueAtual = useRef(destaque);
   const escolher = useRef(aoEscolherCidade);
   const raioAtual = useRef(raio);
 
@@ -55,19 +48,12 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade, raio }: Props)
     escolher.current = aoEscolherCidade;
   }, [aoEscolherCidade]);
 
+  // Pontos e cidade selecionada vão juntos para a fonte: o destaque precisa passar pelo agrupamento.
   useEffect(() => {
     pontosAtuais.current = pontos;
-    if (pronto) (mapa.current?.getSource('editais') as GeoJSONSource | undefined)?.setData(paraGeoJSON(pontos));
-  }, [pontos, pronto]);
-
-  useEffect(() => {
-    porUfAtual.current = porUf;
-    if (!pronto || !mapa.current) return;
-    const contorno = contornosDosEstados(porUf, UFS_BRASIL);
-    mapa.current.setPaintProperty('estados', 'fill-color', coresDosEstados(porUf) as unknown as ExpressionSpecification);
-    mapa.current.setPaintProperty('estados-contorno', 'line-color', contorno.cor as ExpressionSpecification | string);
-    mapa.current.setPaintProperty('estados-contorno', 'line-width', contorno.largura as ExpressionSpecification | number);
-  }, [porUf, pronto]);
+    destaqueAtual.current = destaque;
+    if (pronto) (mapa.current?.getSource('editais') as GeoJSONSource | undefined)?.setData(paraGeoJSON(pontos, destaque));
+  }, [pontos, destaque, pronto]);
 
   // Raio: círculo fino na área e o mapa enquadra nela. Depende só dos números: um objeto novo com os mesmos valores não reenquadra.
   useEffect(() => {
@@ -83,49 +69,36 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade, raio }: Props)
   }, [pronto, raio?.lng, raio?.lat, raio?.km]);
 
   useEffect(() => {
-    const m = mapa.current;
-    const lib = biblioteca.current;
-    if (!pronto || !m || !lib) return;
-    const ponto = destaque ? pontos.find((p) => p.codigo_ibge === destaque) : undefined;
-    if (!ponto) {
-      pino.current?.remove();
-      pino.current = null;
-      return;
-    }
-    if (!pino.current) {
-      const el = document.createElement('div');
-      el.innerHTML = PINO; // SVG fixo, sem dado de usuário
-      pino.current = new lib.Marker({ element: el, anchor: 'bottom' });
-    }
-    pino.current.setLngLat([ponto.lng, ponto.lat]).addTo(m);
-  }, [pronto, destaque, pontos]);
-
-  useEffect(() => {
     let cancelado = false;
     void (async () => {
       // maplibre-gl 6 é só ESM: sem export default.
       const maplibregl = await import('maplibre-gl');
-      if (cancelado || !caixa.current) return;
-      biblioteca.current = maplibregl;
       // O Turbopack reescreve import.meta.url do maplibre-gl e o worker padrão some (URL vazia):
       // aponta o worker para o arquivo do pacote, que o bundler publica como asset estático.
       maplibregl.setWorkerUrl(new URL('../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).href);
+      // Fundo do OpenFreeMap ajustado, ou a reserva (fundo branco + nosso contorno) se ele não responder.
+      const estilo = await carregarEstilo();
+      if (cancelado || !caixa.current) return;
+      // Os nomes dos estados e o espaço das pílulas precisam das fontes do OpenFreeMap: na reserva ficam de fora.
+      const comFontes = Boolean(estilo.glyphs);
       // No celular a gaveta recolhida cobre a base do mapa: reserva esse espaço no enquadramento inicial,
       // mas no máximo metade da altura, senão em tela baixa o fitBounds desiste e o mapa fica em [0,0].
       const celular = window.matchMedia('(max-width: 1023px)').matches;
       const baixo = Math.min(ALTURA_GAVETA_RECOLHIDA + 16, Math.floor(caixa.current.clientHeight / 2));
       const m = new maplibregl.Map({
         container: caixa.current,
-        style: {
-          version: 8,
-          sources: {},
-          layers: [{ id: 'fundo', type: 'background', paint: { 'background-color': '#ffffff' } }],
-        },
+        style: estilo,
         bounds: BRASIL,
         fitBoundsOptions: { padding: celular ? { top: 16, right: 16, left: 16, bottom: baixo } : 16 },
-        attributionControl: false,
+        // Crédito do OpenStreetMap é obrigatório com o fundo; na reserva não há fonte de terceiros.
+        attributionControl: comFontes ? { compact: true } : false,
         // Textos nativos do MapLibre em português do Brasil.
-        locale: { 'Map.Title': 'Mapa de editais', 'NavigationControl.ZoomIn': 'Aproximar', 'NavigationControl.ZoomOut': 'Afastar' },
+        locale: {
+          'Map.Title': 'Mapa de editais',
+          'NavigationControl.ZoomIn': 'Aproximar',
+          'NavigationControl.ZoomOut': 'Afastar',
+          'AttributionControl.ToggleAttribution': 'Mostrar créditos do mapa',
+        },
         // Sem bússola, o usuário não consegue voltar ao norte: nada de rotação nem inclinação.
         dragRotate: false,
         pitchWithRotate: false,
@@ -135,97 +108,92 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade, raio }: Props)
       m.keyboard.disableRotation();
       mapa.current = m;
       m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-      const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12 });
+      const dica = new maplibregl.Popup({ closeButton: false, closeOnClick: false, anchor: 'bottom', offset: ALTURA_PILULA });
 
       m.on('load', () => {
-        m.addSource('estados', { type: 'geojson', data: '/geo/estados.json' });
-        m.addLayer({
-          id: 'estados', type: 'fill', source: 'estados',
-          paint: { 'fill-color': coresDosEstados(porUfAtual.current) as unknown as ExpressionSpecification },
-        });
-        const contorno = contornosDosEstados(porUfAtual.current, UFS_BRASIL);
-        m.addLayer({
-          id: 'estados-contorno', type: 'line', source: 'estados',
-          paint: { 'line-color': contorno.cor as ExpressionSpecification | string, 'line-width': contorno.largura as ExpressionSpecification | number },
-        });
         m.addSource('raio', { type: 'geojson', data: areaDoRaio(raioAtual.current) });
         m.addLayer({
           id: 'raio', type: 'line', source: 'raio',
           paint: { 'line-color': '#0c2340', 'line-width': 1.5, 'line-dasharray': [2, 2] },
         });
         m.addSource('editais', {
-          type: 'geojson', data: paraGeoJSON(pontosAtuais.current),
-          cluster: true, clusterRadius: 40, clusterMaxZoom: 8,
-          clusterProperties: { qtd: ['+', ['get', 'qtd']], valor: ['+', ['get', 'valor']] },
+          type: 'geojson', data: paraGeoJSON(pontosAtuais.current, destaqueAtual.current),
+          cluster: true, clusterRadius: 60, clusterMaxZoom: 8,
+          clusterProperties: { qtd: ['+', ['get', 'qtd']], valor: ['+', ['get', 'valor']], destaque: ['max', ['get', 'destaque']] },
         });
-        m.addLayer({
-          id: 'grupos', type: 'circle', source: 'editais', filter: ['has', 'point_count'],
-          paint: { 'circle-color': '#ff5a1f', 'circle-opacity': 0.9, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-radius': RAIO },
-        });
-        m.addLayer({
-          id: 'cidades', type: 'circle', source: 'editais', filter: ['!', ['has', 'point_count']],
-          paint: { 'circle-color': '#ff5a1f', 'circle-opacity': 0.9, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5, 'circle-radius': RAIO },
-        });
+        if (comFontes) {
+          m.addSource('nomes-estados', { type: 'geojson', data: '/geo/estados-rotulos.json' });
+          m.addLayer(CAMADA_NOMES_ESTADOS);
+          // Por cima dos nomes: o MapLibre posiciona de cima para baixo, então o espaço das pílulas vem primeiro.
+          m.addLayer(CAMADA_ESPACO_PILULAS);
+        }
         setPronto(true);
       });
 
-      // Dica estável: guarda o último texto e, se não mudou, só acompanha o cursor (sem refazer o DOM).
-      let textoDica = '';
-      const fecharDica = () => {
-        popup.remove();
-        textoDica = '';
+      // Pílulas: um botão por grupo ou cidade visível, reaproveitado enquanto continuar na tela.
+      const pilulas = new Map<string, ItemPilula>();
+
+      const aoClicar = async (chave: string) => {
+        const item = pilulas.get(chave);
+        if (!item) return;
+        dica.remove();
+        const p = item.props;
+        if (p.cluster === true) {
+          const zoom = await (m.getSource('editais') as GeoJSONSource).getClusterExpansionZoom(Number(p.cluster_id));
+          m.easeTo({ center: item.marcador.getLngLat(), zoom });
+          return;
+        }
+        escolher.current({ ibge: String(p.ibge), nome: String(p.nome), uf: String(p.uf) });
       };
 
-      // Um clique só, para o que estiver por cima: cidade e grupo podem se sobrepor.
-      m.on('click', async (e) => {
-        if (!m.getLayer('cidades')) return;
-        const [f] = m.queryRenderedFeatures(e.point, { layers: ['cidades', 'grupos'] });
-        if (!f) return;
-        if (f.layer.id === 'grupos') {
-          const zoom = await (m.getSource('editais') as GeoJSONSource).getClusterExpansionZoom(Number(f.properties?.cluster_id));
-          m.easeTo({ center: (f.geometry as Point).coordinates as [number, number], zoom });
-          return;
+      const criar = (chave: string, lngLat: [number, number], props: PropsPilula): ItemPilula => {
+        const botao = document.createElement('button');
+        botao.type = 'button';
+        botao.classList.add('pilula-mapa');
+        const texto = document.createElement('span');
+        botao.append(texto);
+        botao.addEventListener('click', () => void aoClicar(chave));
+        botao.addEventListener('mouseenter', () => {
+          const atual = pilulas.get(chave);
+          if (atual) dica.setLngLat(atual.marcador.getLngLat()).setDOMContent(conteudo(linhasDica(atual.props))).addTo(m);
+        });
+        botao.addEventListener('mouseleave', () => dica.remove());
+        const marcador = new maplibregl.Marker({ element: botao, anchor: 'bottom' }).setLngLat(lngLat).addTo(m);
+        return { marcador, botao, texto, props };
+      };
+
+      const atualizarPilulas = () => {
+        const vistas = new Set<string>();
+        for (const f of m.querySourceFeatures('editais')) {
+          const props = f.properties as PropsPilula;
+          const p = pilula(props);
+          // A mesma cidade ou grupo aparece em mais de um tile.
+          if (vistas.has(p.chave)) continue;
+          vistas.add(p.chave);
+          const item = pilulas.get(p.chave) ?? criar(p.chave, (f.geometry as Point).coordinates as [number, number], props);
+          pilulas.set(p.chave, item);
+          item.props = props;
+          item.texto.textContent = p.texto;
+          item.botao.setAttribute('aria-label', p.rotulo);
+          // classList: o Marker põe as classes dele no mesmo elemento.
+          item.botao.classList.toggle('pilula-mapa-destaque', p.destaque);
+          item.botao.style.zIndex = p.destaque ? '2' : '1';
         }
-        const p = f.properties as PropsPonto;
-        escolher.current({ ibge: String(p.ibge), nome: p.nome, uf: p.uf });
-        // No toque não há mouseout: sem isso a dica ficaria na tela.
-        fecharDica();
+        for (const [chave, item] of pilulas) {
+          if (vistas.has(chave)) continue;
+          item.marcador.remove();
+          pilulas.delete(chave);
+        }
+      };
+
+      m.on('render', () => {
+        if (m.getSource('editais') && m.isSourceLoaded('editais')) atualizarPilulas();
       });
-      // Uma dica só, para o que estiver por cima: cidade, grupo ou estado.
-      m.on('mousemove', (e) => {
-        // Antes do 'load' as camadas ainda não existem.
-        if (!m.getLayer('cidades')) return;
-        const [f] = m.queryRenderedFeatures(e.point, { layers: ['cidades', 'grupos', 'estados'] });
-        if (!f) {
-          fecharDica();
-          m.getCanvas().style.cursor = '';
-          return;
-        }
-        const p = (f.properties ?? {}) as Record<string, unknown>;
-        const valor = moedaCurta(Number(p.valor ?? 0));
-        let linhas: string[];
-        if (f.layer.id === 'cidades') linhas = [`${p.nome}/${p.uf}`, editais(Number(p.qtd)), ...(valor ? [valor] : [])];
-        else if (f.layer.id === 'grupos') linhas = [editais(Number(p.qtd)), ...(valor ? [valor] : []), 'Aproxime para ver as cidades'];
-        else {
-          const uf = String(p.uf);
-          linhas = [uf, editais(porUfAtual.current[uf] ?? 0)];
-        }
-        m.getCanvas().style.cursor = f.layer.id === 'estados' ? '' : 'pointer';
-        const texto = linhas.join('|');
-        if (texto === textoDica) {
-          popup.setLngLat(e.lngLat);
-          return;
-        }
-        textoDica = texto;
-        popup.setLngLat(e.lngLat).setDOMContent(conteudo(linhas)).addTo(m);
-      });
-      m.on('mouseout', fecharDica);
     })();
     return () => {
       cancelado = true;
-      pino.current?.remove();
-      pino.current = null;
       setPronto(false);
+      // remove() também tira as pílulas (Markers) e a dica.
       mapa.current?.remove();
       mapa.current = null;
     };
