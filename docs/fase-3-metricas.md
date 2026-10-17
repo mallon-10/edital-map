@@ -25,3 +25,16 @@ O aumento em `contratacoes` são versões antigas das linhas (o `UPDATE` da 0005
 
 - [M2]: tabela `itens` não existe mais; 0 contratações fora da retenção; jobs `sync-pncp` '17 */3 * * *' e `retencao-contratacoes` '45 4 * * *' ativos.
 - Main recebeu só o M2 (até 6cd4b53): workflow do GitHub a cada 3 h, ainda com `UFS: SC,PR,RS`.
+
+## M3 · Brasil todo
+
+- `/proposta` (modalidade 12): `dataFinal` = hoje → 7 registros; hoje + 365 → 8.446. Carga com `--proposta-ate 2027-10-16`.
+- Carga nacional (máquina do dono, 16/10 ~22:50 → 17/10 ~02:47 UTC): 14.226 s (3 h 57 min), 2.827 páginas, 140.680 contratações válidas, 68.866 gravadas, 71.814 fora da retenção, 25.297 compras com itens, 520.660 itens lidos, 0 inválidos, 0 erros, 211 respostas 429. Por modalidade: 6 → 1.050 pág / 4.935 s; 8 → 1.350 / 6.667 s; 4 → 192 / 1.578 s; 7 → 21 / 64 s; 12 → 214 / 982 s.
+- Meio da carga (depois de 6 e 8): banco 131,3 MB.
+- Depois da carga: 34.562 abertas nas 27 UFs (SP 5.946, MG 5.407, RS 3.480, PR 3.368, BA 2.817, RJ 1.409, GO 1.299, CE 1.129, … AP 52); 45.267 contratações; 0 abertas sem resumo; banco 158 MB.
+- Sync nacional local até as chaves BR ficarem em dia: 724 s, 217 páginas, 4.377 gravadas, 0 erros.
+- Rodadas nacionais no GitHub: 18,3 min (workflow_dispatch, 1 dia e meio de atualizações), 19,4 min (schedule, 04:26 UTC), 1,4 min (schedule, 10:44 UTC, 8 páginas). Repositório tornado público em 17/10 (decisão do dono) para o Actions não ter limite de minutos.
+- Site: `/api/mapa` com 27 UFs e 3.485 municípios (1,8 s sem cache); busca "nitrilica" em SP: 49; site no ar com "Editais abertos de todo o Brasil".
+- Conferência nacional (docs/conferencias/2026-10-17.md): passou. Abertas por UF × modalidade em SP, BA e AM entre 100% e 108% do `/proposta`; amostra de 20 compras de 17 UFs sem divergência; idempotência 45.302 → 45.302.
+- Retenção: job `retencao-contratacoes` rodou em 17/10 04:45 UTC com sucesso.
+- Banco final (17/10 ~12:30 UTC): 163,0 MB (`contratacoes` 150,3 MB).

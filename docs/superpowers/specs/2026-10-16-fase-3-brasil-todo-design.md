@@ -57,10 +57,10 @@ Cobrir as 27 UFs sem sair do plano grátis do Supabase (500 MB), mantendo a busc
 
 ## 8. Critérios de aceite
 
-- [ ] Banco abaixo de 300 MB depois da carga do Brasil todo (meta; teto do plano 500 MB).
-- [ ] As 27 UFs com editais abertos no mapa; contagem de abertas por UF coerente com o PNCP numa amostra de 3 UFs.
-- [ ] Busca por termo só presente em itens continua encontrando editais.
-- [ ] Página do edital mostra os itens vindos do PNCP; falha simulada mostra "Itens indisponíveis agora".
-- [ ] Sync a cada 3 h, cada rodada abaixo de 12 min nas primeiras 8 rodadas medidas.
-- [ ] Retenção diária rodando (nenhuma contratação encerrada há mais de 7 dias ou sem prazo).
-- [ ] Testes e typecheck passando; publicado.
+- [x] Banco abaixo de 300 MB depois da carga do Brasil todo (meta; teto do plano 500 MB). — 163 MB em 17/10 (docs/fase-3-metricas.md).
+- [x] As 27 UFs com editais abertos no mapa; contagem de abertas por UF coerente com o PNCP numa amostra de 3 UFs. — /api/mapa com 27 UFs; SP, BA, AM entre 100% e 108% (docs/conferencias/2026-10-17.md).
+- [x] Busca por termo só presente em itens continua encontrando editais. — [M1-a] sem perdas; "botina" achou edital pelos itens na conferência de 17/10.
+- [x] Página do edital mostra os itens vindos do PNCP; falha simulada mostra "Itens indisponíveis agora". — itens do PNCP em produção (ex.: 46482840000139-2026-819); falha coberta por testes (itensPncp, consultas, ListaItens), não simulada no navegador.
+- [ ] Sync a cada 3 h, cada rodada abaixo de 12 min nas primeiras 8 rodadas medidas. — falta: rodadas noturnas chegam a ~19 min (dia inteiro de atualizações do país, limite de 20 consultas/min do PNCP); com o repositório público o tempo não custa; o agendamento do GitHub atrasa (o disparo pelo pg_cron depende do segredo github_disparo).
+- [x] Retenção diária rodando (nenhuma contratação encerrada há mais de 7 dias ou sem prazo). — job de 17/10 04:45 UTC succeeded.
+- [x] Testes e typecheck passando; publicado. — 352 testes; site no ar em 17/10; main em dia.
