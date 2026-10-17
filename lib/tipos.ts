@@ -110,3 +110,9 @@ export type ResumoItens = {
   cota: number;
   criterios: string[];
 };
+
+/** Card de "Editais parecidos abertos" (colunas da função relacionados). */
+export type EditalRelacionado = Pick<
+  EditalResumo,
+  'id' | 'slug' | 'objeto' | 'orgao_nome' | 'municipio_nome' | 'uf' | 'valor_estimado' | 'encerramento_em' | 'publicada_em' | 'modalidade_nome' | 'srp'
+>;

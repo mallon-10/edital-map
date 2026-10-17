@@ -2,12 +2,13 @@ import 'server-only';
 import type { ChaveCompra } from '@/worker/mapear';
 import { criarCache } from '../cache';
 import { chaveFiltros } from '../filtros';
-import type { Edital, EditalResumo, FiltrosBusca, ItemEdital, PontoMapa, ResultadoBusca, ResumoItens } from '../tipos';
+import type { Edital, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, PontoMapa, ResultadoBusca, ResumoItens } from '../tipos';
 import { itensDoPncp } from './itensPncp';
 import { supabaseServidor } from './supabase';
 
 const cache = criarCache(5 * 60 * 1000);
 export const POR_PAGINA = 50;
+export const LIMITE_RELACIONADOS = 6;
 type Linha = Record<string, unknown>;
 
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
@@ -153,5 +154,28 @@ export function atualizadoEm(): Promise<string | null> {
       .maybeSingle();
     if (error) throw new Error(`sync_estado: ${error.message}`);
     return texto(data?.ultima_execucao);
+  });
+}
+
+/** Editais parecidos abertos (função SQL `relacionados`), até 6, mais parecidos primeiro. */
+export function relacionados(id: string): Promise<EditalRelacionado[]> {
+  return cache(`relacionados:${id}`, async () => {
+    const { data, error } = await supabaseServidor().rpc('relacionados', { p_id: id, p_limite: LIMITE_RELACIONADOS });
+    if (error) throw new Error(`relacionados: ${error.message}`);
+    return ((data ?? []) as Linha[]).map(
+      (l): EditalRelacionado => ({
+        id: String(l.id),
+        slug: String(l.slug),
+        objeto: String(l.objeto),
+        orgao_nome: String(l.orgao_nome),
+        municipio_nome: texto(l.municipio_nome),
+        uf: String(l.uf),
+        valor_estimado: num(l.valor_estimado),
+        encerramento_em: String(l.encerramento_em),
+        publicada_em: texto(l.publicada_em),
+        modalidade_nome: texto(l.modalidade_nome),
+        srp: Boolean(l.srp),
+      }),
+    );
   });
 }

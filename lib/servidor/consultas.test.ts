@@ -25,7 +25,7 @@ vi.mock('./supabase', () => ({
   }),
 }));
 
-const { buscarEditais, itensDoEdital, pontosDoMapa, resumoItens } = await import('./consultas');
+const { buscarEditais, itensDoEdital, pontosDoMapa, relacionados, resumoItens } = await import('./consultas');
 
 const compra = (id: string) => ({ id, cnpj: '00394452000103', ano: 2026, sequencial: 21982 });
 const SEM_FILTRO: FiltrosBusca = {
@@ -160,5 +160,40 @@ describe('contrato com as funções SQL (0007)', () => {
         },
       ],
     });
+  });
+});
+
+describe('relacionados (0007)', () => {
+  beforeEach(() => {
+    chamadas.length = 0;
+    respostaRpc = [];
+  });
+
+  it('chama relacionados com o id e o limite de 6 e mapeia as colunas do card', async () => {
+    respostaRpc = [
+      {
+        id: 'R1', slug: '83102244000102-2026-77', objeto: 'Luvas de vaqueta', orgao_nome: 'MUNICIPIO DE JOINVILLE',
+        municipio_nome: 'Joinville', uf: 'SC', valor_estimado: '2500.00', encerramento_em: '2026-10-30T13:00:00+00:00',
+        publicada_em: null, modalidade_nome: 'Pregão - Eletrônico', srp: true,
+      },
+    ];
+    expect(await relacionados('origem-1')).toEqual([
+      {
+        id: 'R1', slug: '83102244000102-2026-77', objeto: 'Luvas de vaqueta', orgao_nome: 'MUNICIPIO DE JOINVILLE',
+        municipio_nome: 'Joinville', uf: 'SC', valor_estimado: 2500, encerramento_em: '2026-10-30T13:00:00+00:00',
+        publicada_em: null, modalidade_nome: 'Pregão - Eletrônico', srp: true,
+      },
+    ]);
+    expect(chamadas).toEqual([{ nome: 'relacionados', args: { p_id: 'origem-1', p_limite: 6 } }]);
+  });
+
+  it('guarda no cache por 5 min: a segunda visita não consulta de novo', async () => {
+    await relacionados('origem-2');
+    await relacionados('origem-2');
+    expect(chamadas).toHaveLength(1);
+  });
+
+  it('sem parecidos, lista vazia', async () => {
+    expect(await relacionados('origem-3')).toEqual([]);
   });
 });
