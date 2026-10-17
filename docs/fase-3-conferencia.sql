@@ -48,6 +48,7 @@ from (select contratacao_id, count(*)::int as total from public.itens group by 1
 join public.contratacoes c on c.id = r.contratacao_id
 where c.encerramento_em > now() - interval '6 days';
 
+-- (Histórico: a assinatura de 8 argumentos de buscar_editais usada abaixo sai na 0007; depois dela, conferir em docs/fase-3-recursos-pro.sql [P1].)
 -- ── [M1-c] Permissões. Esperado: false, true, false, false, true, true.
 select has_function_privilege('anon', 'public.gravar_resumo_itens(text, text, jsonb)', 'execute') as anon_grava,
        has_function_privilege('service_role', 'public.gravar_resumo_itens(text, text, jsonb)', 'execute') as servico_grava,

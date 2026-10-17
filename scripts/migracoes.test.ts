@@ -70,3 +70,66 @@ describe('migração 0006 (retenção e agenda)', () => {
     expect(ler('app/sobre/page.tsx')).toContain('a cada 3 horas');
   });
 });
+
+describe('migração 0007 (recursos Pro)', () => {
+  const sql = ler('supabase/migrations/0007_recursos_pro.sql');
+  const NOVAS = [
+    'abertas_unicas(text, text[], numeric, int[], text)',
+    'municipios_no_raio(text, int)',
+    'buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int)',
+    'mapa_editais(text, text[], int, numeric, int[], text, text, int)',
+    'orgaos_abertos(text, int)',
+    'relacionados(text, int)',
+  ];
+
+  it('troca as assinaturas na mesma transação, com os parâmetros novos de padrão nulo', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    for (const [antiga, nome] of [
+      ['drop function public.buscar_editais(text, text[], text, int, numeric, int[], int, int);', 'buscar_editais'],
+      ['drop function public.mapa_editais(text, text[], int, numeric, int[]);', 'mapa_editais'],
+      ['drop function public.abertas_unicas(text, text[], numeric, int[]);', 'abertas_unicas'],
+    ]) {
+      expect(sql).toContain(antiga);
+      expect(sql.indexOf(antiga)).toBeLessThan(sql.indexOf(`create function public.${nome}(`));
+    }
+    expect(sql).toContain('p_modalidades int[] default null, p_orgao text default null)');
+    expect(sql).toContain('p_orgao text default null, p_raio_km int default null)');
+    expect(sql).toContain('p_orgao text default null, p_ibge text default null, p_raio_km int default null)');
+    expect(sql).toContain("notify pgrst, 'reload schema';");
+  });
+  it('o órgão filtra antes de tirar as duplicadas e a lista devolve o link de origem', () => {
+    expect(sql).toContain('and (p_orgao is null or a.cnpj = p_orgao)');
+    expect(sql).toContain('modalidade_nome text, srp boolean, link_origem text, onde text, total bigint)');
+  });
+  it('órgãos: o CNPJ abre o distinct on e o order by, como a lista filtrada por órgão', () => {
+    expect(sql).toContain('select distinct on (c.cnpj, c.codigo_ibge, c.encerramento_em, c.valor_estimado, public.objeto_normalizado(c.objeto))');
+    expect(sql).toContain('order by c.cnpj, c.codigo_ibge, c.encerramento_em, c.valor_estimado, public.objeto_normalizado(c.objeto),');
+    expect(sql).toContain('abertas_unicas, orgaos_abertos, relacionados');
+  });
+  it('raio: haversine sobre municipios.lat/lng, a mesma regra na lista e no mapa', () => {
+    expect(sql).toContain('2 * 6371 * asin(least(1, sqrt(');
+    expect(sql.match(/u\.codigo_ibge in \(select public\.municipios_no_raio\(p_ibge, p_raio_km\)\)/g)?.length).toBe(2);
+  });
+  it('relacionados: palavras do objeto, só abertas, sem o próprio edital e sem duplicadas', () => {
+    expect(sql).toContain("unnest(ts_filter(c.busca, '{a}')) u");
+    expect(sql).toContain('limit 16) p) as tq');
+    expect(sql).toContain('on a.encerramento_em > now()');
+    expect(sql).toContain('and (a.busca @@ o.tq or a.itens_palavras @@ o.tq)');
+    expect(sql).toContain('and a.id <> o.id');
+    expect(sql).toContain('select distinct on (k.codigo_ibge, k.encerramento_em, k.valor_estimado, public.objeto_normalizado(k.objeto)) k.*');
+    expect(sql).toContain('* (case when a.uf = o.uf then 2 else 1 end) as relevancia');
+    expect(sql).toContain('order by x.relevancia desc, x.encerramento_em, x.id');
+  });
+  it('eventos aceitam usou_recurso', () => {
+    expect(sql).toContain('alter table public.eventos drop constraint eventos_tipo_check;');
+    expect(sql).toContain(
+      "check (tipo in ('busca', 'abriu_edital', 'clicou_edital_oficial', 'pediu_alerta', 'quer_recurso', 'usou_recurso'));",
+    );
+  });
+  it('só o servidor executa as funções novas e as trocadas', () => {
+    for (const f of NOVAS) {
+      expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
+    }
+  });
+});
