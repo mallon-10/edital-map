@@ -146,6 +146,20 @@ const CREDENCIADOS = String.raw`(?:pessoas?|empresas?|interessad[oa]s|prestadore
 
 /** Aberturas burocráticas; o tipo diz o que a abertura informava. Aplicadas em sequência até nada mudar. */
 const ABERTURAS: Array<[RegExp, TipoObjeto | null]> = [
+  [/^republicação\s*[-–:]\s*/iu, null],
+  [/^edital\s+de\s+credenciamento\s*(?:n[º°o]?\.?\s*)?\d[\d./-]*\s*[-–:]\s*/iu, 'Credenciamento'],
+  // Rótulo do documento com número no começo ("PROC ADM 1078/2026 -", "EDITAL DE CREDENCIAMENTO Nº 007/2026 -", "Ofício n°020/2026 -").
+  [/^(?:edital(?:\s+de\s+(?:credenciamento|chamamento\s+público|pregão(?:\s+eletrônico)?|licitação))?|proc(?:esso)?\.?(?:\s+adm(?:inistrativo)?\.?)?|pregão(?:\s+eletrônico)?|dispensa(?:\s+eletrônica)?|concorrência(?:\s+eletrônica)?|credenciamento|chamamento\s+público|inexigibilidade|ofício|memorando)(?:\s+\p{L}+){0,2}?\s*(?:n[º°o]?\.?\s*)?\d[\d./-]*\s*[-–:]\s*/iu, null],
+  // Código com ano no começo ("RSD-020105/001259/2026-", "PE DGA 90425/2026-").
+  [/^(?:\p{L}{2,6}[\s-]+){1,2}(?:n[º°o]?\.?\s*)?[\d./-]*\/20\d\d\s*[-–:]\s*/iu, null],
+  [/^visando\s+credenciar\s+/iu, 'Credenciamento'],
+  [/^solicita(?:ção\s+de)?\s+abertura\s+de\s+processo\s+licitatório\s+(?:para|visando)(?:\s+a)?\s+/iu, null],
+  [/^abertura\s+de\s+processo\s+licitatório\s+(?:através\s+de|por\s+meio\s+de|para)\s+/iu, null],
+  // "…especializada no ramo da construção civil, visando a contratação de empresa…": o ramo não é o assunto.
+  [/^ramo\s+d[aeo]\s+[^,]{3,60},\s*(?:visando|objetivando|para)(?:\s+a)?\s+/iu, null],
+  [/^chamad[ao]\s+pública\s+(?:para|de)\s+(?=aquisi|compra|contrata|credenciamento)/iu, null],
+  [/^registro\s+de\s+preços?\s+(?:de|dos|das|do)\s+(?!aquisi|compra|contrata|fornecimento|prestação|execução)/iu, null],
+  [/^(?:a\s+)?contratação\s+de\s+(?=obras?\s)/iu, 'Obra'],
   // Códigos de processo no começo ("RP", "PE 111 CG 97").
   [/^(?:(?:RP|SRP|PE|PP|CC|CP|DL|TP|CG|IN)\b\.?\s*(?:n?º?\s*[\d/.-]+\s*)?)+(?=\p{Lu})/u, null],
   [/^[A-Z]{2,6}(?:-[A-Z]{1,3})?\s*n?º?\s*\d[\d/.-]*\s*[-–:]?\s*(?=\p{L})/u, null],
@@ -162,10 +176,10 @@ const ABERTURAS: Array<[RegExp, TipoObjeto | null]> = [
   [new RegExp(String.raw`^(?:(?:a|o)\s+)?(?:(?:edital\s+de\s+)?(?:chamamento|chamada)\s+pública?o?\s+(?:para\s+fins\s+de|destinad[oa]\s+ao|para|de)\s+)?(?:o\s+)?credenciamento(?:\s+e\s+contratação)?\s+(?:de|das|dos)\s+${CREDENCIADOS},?\s+(?:para|na|no|em)${AO}\s+(?:(?:prestar|prestarem|prestação\s+d[eoa]s?)\s+)?(?:serviços?${DE})?`, 'iu'), 'Credenciamento'],
   [/^credenciamento\s+de\s+prestadores\s+de\s+serviços?\s+(?:de|em)\s+/iu, 'Credenciamento'],
   [new RegExp(EMPRESA, 'iu'), 'Serviço'],
-  [new RegExp(String.raw`^(?:a\s+)?(?:contratação\s+de\s+)?execução\s+(?:de|da|das)\s+obras?(?:\s+(?:de|do|da|dos|das|em|para)\s+|\s+)`, 'iu'), 'Obra'],
+  [new RegExp(String.raw`^(?:a\s+)?(?:contratação\s+de\s+)?execução\s+(?:de|da|das)\s+obras?(?:\s+civis)?(?:\s+(?:de|do|da|dos|das|em|para)\s+|\s+)`, 'iu'), 'Obra'],
   [new RegExp(String.raw`^(?:a\s+)?(?:contratação\s+(?:de|para)${AO}\s+)?(?:prestação|execução|realização)(?:\s+continuada)?\s+(?:de|do|dos)\s+serviços?(?:\s+continuados?)?${DE}`, 'iu'), 'Serviço'],
   [new RegExp(String.raw`^(?:a\s+)?(?:contratação\s+(?:de|para)${AO}\s+)?(?:prestação|execução)(?:\s+continuada)?\s+de\s+(?=serviços?\s)`, 'iu'), 'Serviço'],
-  [new RegExp(String.raw`^(?:(?:a|o)\s+)?(?:contratação\s+de\s+)?(?:aquisição|aquisições|compra|fornecimento)(?:\s+parcelad[oa]s?)?${DE}`, 'iu'), 'Compra'],
+  [new RegExp(String.raw`^(?:(?:a|o)\s+)?(?:contratação\s+de\s+)?(?:aquisição|aquisições|compra|fornecimento)(?:\s+(?:parcelad[oa]s?|emergencia(?:l|is)|futuras?|eventua(?:l|is)|exclusivas?))*${DE}`, 'iu'), 'Compra'],
   [new RegExp(String.raw`^(?:a\s+)?contratação\s+de\s+(?=serviços?${DE})`, 'iu'), 'Serviço'],
   [/^(?:a\s+)?contratação\s+de\s+(?=seguros?\s)/iu, 'Serviço'],
 ];
@@ -178,9 +192,15 @@ const GENERICO = /^(?:registro\s+de\s+preços?|registrar\s+preços|contratação
 
 /** Finais que só dizem para quem é, onde fica ou remetem a outro documento. */
 const CAUDA = new RegExp(
-  String.raw`(?:(?<=[\p{Ll}\d)]{2})\.\s+(?=\p{Lu})|;\s+|(?:,\s*|\s+)(?:para\s+(?:atender|suprir|uso|utilização|atendimento)|(?:tudo\s+)?conforme|de\s+acordo\s+com|visando|objetivando|a\s+fim\s+de|com\s+a\s+finalidade|que\s+serão|em\s+atendimento|atendendo|pelo\s+(?:período|prazo)|durante\s+o|no\s+âmbito|junto\s+(?:a|ao|à)|compreendendo|contemplando|incluindo|bem\s+como|mediante|localizad[oa]s?|situad[oa]s?|no\s+município|de\s+forma\s+(?:complementar|integral)|a\s+serem\s|que\s+ser|destinad[oa]s?\s+(?:a|à|ao|aos|às)\s|aos\s+(?:beneficiários|usuários|servidores|alunos|munícipes|pacientes)|(?:na|no|nas|nos|para\s+(?:a|o|as|os))\s+(?:rede|secretarias?|prefeitura|município|fundo|câmara|departamento|unidades?|escolas?)\b))`,
+  String.raw`(?:(?<=[\p{Ll}\d)]{2})\.\s+(?=\p{Lu})|;\s+|,\s*complementar\s+(?:ao|à|a)(?!\p{L})|(?:,\s*|\s+)(?:para\s+(?:atender|suprir|uso|utilização|atendimento)|(?:tudo\s+)?conforme|de\s+acordo\s+com|visando|objetivando|a\s+fim\s+de|com\s+a\s+finalidade|que\s+serão|em\s+atendimento|atendendo|pelo\s+(?:período|prazo)|durante\s+o|no\s+âmbito|junto\s+(?:a|ao|à)|compreendendo|contemplando|incluindo|bem\s+como|mediante|localizad[oa]s?|situad[oa]s?|no\s+município|de\s+forma\s+(?:complementar|integral)|a\s+serem\s|que\s+ser|decorrente\s|\(origem:|destinad[oa]s?\s+(?:a|à|ao|aos|às)\s|aos\s+(?:beneficiários|usuários|servidores|alunos|munícipes|pacientes)|(?:na|no|nas|nos|para\s+(?:a|o|as|os))\s+(?:rede|secretarias?|prefeitura|município|fundo|câmara|departamento|unidades?|escolas?)\b))`,
   'iu',
 );
+
+/** Número de processo com rótulo, em qualquer ponto ("SEI 31539/2026", "Contrato UT06-823/2024", "Pregão 038/2026"). */
+const CODIGO_PROCESSO =
+  /\s*[-–,]?\s*\b(?:SEI|PC|D\.?E|PE|PP|DL|CC|SC|PA|RP|PROC(?:ESSO)?(?:\s+ADM)?|CONTRATO|PREG[ÃA]O|EDITAL|CONV[ÊE]NIO|EMENDA(?:\s+IMPOSITIVA|\s+PARLAMENTAR)?|PORTARIA|PROPOSTA|OF[ÍI]CIO|MEMORANDO)\b\.?\s*(?:N[º°O]?\.?\s*)?[A-Z]{0,4}[-\d][\w./-]*\/\d{2,4}\b(?:-\d{1,3}\b)?/giu;
+/** Número/ano solto ("1814/2026"); datas ("11/12/2026"), "14.133/2021" e "2022/2023" ficam. */
+const NUMERO_ANO = /(?:\s*\bn[º°]\.?)?\s*(?<![\d/.])(?!20\d\d\/)\d{1,7}\/20\d\d(?![\d/])/giu;
 
 const NUMEROS = 'um|uma|dois|duas|três|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzent[oa]s|trezent[oa]s|quatrocent[oa]s|quinhent[oa]s|seiscent[oa]s|setecent[oa]s|oitocent[oa]s|novecent[oa]s|mil|e';
 /** "17 dezessete" / "17 (dezessete)" → "17". */
@@ -208,7 +228,13 @@ export function assunto(objeto: string): Assunto {
       mudou = true;
     }
   }
-  t = t.replace(EXTENSO, '$1 ').replace(/\s{2,}/g, ' ');
+  t = t
+    .replace(EXTENSO, '$1 ')
+    .replace(CODIGO_PROCESSO, '')
+    .replace(NUMERO_ANO, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,;.])/g, '$1')
+    .replace(/^[\s\-–:;,.]+/, '');
   const cauda = CAUDA.exec(t);
   // "destinado a…" às vezes é o que diz o assunto ("barracão destinado à compostagem"): só corta se sobrar bastante.
   const minimo = cauda && /destinad/i.test(cauda[0]) ? 30 : 12;

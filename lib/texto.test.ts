@@ -147,6 +147,105 @@ describe('assunto', () => {
     expect(assunto(objeto)).toEqual({ titulo, tipo });
   });
 
+  it.each([
+    ['Seguros de carros GCM SC 1814/2026 SEI 31539/2026 PC 149/2026 D.E 57/2026', 'Seguros de carros GCM', null],
+    [
+      'PROC ADM 1078/2026 - CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA ADEQUAÇÃO DO SISTEMA DE COMBATE A INCÊNDIO DA UNIDADE DE PRONTO ATENDIMENTO (UPA)',
+      'Adequação do sistema de combate a incêndio da unidade de pronto atendimento (UPA)',
+      'Serviço',
+    ],
+    [
+      '[Portal de Compras Públicas] - DISPENSA ELETRÔNICA VISANDO A AQUISIÇÃO EMERGENCIAL DE ALUZINCO E CUMEEIRAS PARA DISTRIBUIÇÃO À POPULAÇÃO ATINGIDA PELO TEMPORAL',
+      'Aluzinco e cumeeiras para distribuição à população atingida pelo temporal',
+      'Compra',
+    ],
+    [
+      'REGISTRO DE PREÇO PARA AQUISIÇÃO DE GÊNEROS ALIMENTÍCIOS NÃO PERECÍVEIS, COMPLEMENTAR AO PREGÃO 038/2026, DESTINADOS A ATENDER AS NECESSIDADES',
+      'Gêneros alimentícios não perecíveis',
+      'Compra',
+    ],
+    [
+      'Aquisição de equipamentos e materiais permanentes para a Unidade Especializada em Saúde, conforme CONVÊNIO TRANSFEREGOV.BR Nº 961255/2024 – PROPOSTA Nº 01',
+      'Equipamentos e materiais permanentes',
+      'Compra',
+    ],
+    [
+      'Serviços de conservação rodoviária BR-354/MG km 380,7 ao km 497,2 - Contrato UT06-823/2024',
+      'Serviços de conservação rodoviária BR-354/MG km 380,7 ao km 497,2',
+      null,
+    ],
+  ])('sem números de processo: %s', (objeto, titulo, tipo) => {
+    expect(assunto(objeto)).toEqual({ titulo, tipo });
+  });
+
+  it.each([
+    [
+      'Ofício n°020/2026 - Solicita abertura de processo licitatório para contratação de empresa especializada para prestação de serviços com lavagem de veículos',
+      'Serviços com lavagem de veículos',
+      'Serviço',
+    ],
+    ['RSD-020105/001259/2026-AQUISIÇÃO DE 02 (DOIS) VEÍCULOS TIPO VAN COM ACESSIBILIDADE', '02 veículos tipo van com acessibilidade', 'Compra'],
+    [
+      'PE DGA 90425/2026- Registro de Preços de Sistemas de Monitorização Hemodinâmica e Intracraniana',
+      'Sistemas de Monitorização Hemodinâmica e Intracraniana',
+      null,
+    ],
+    [
+      'CONTRATAÇÃO DE EMPRESA ESPECIALIZADA NO RAMO DA CONSTRUÇÃO CIVIL, VISANDO A CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA CONSTRUÇÃO DE UM BANHEIRO MASCULINO',
+      'Construção de um banheiro masculino',
+      'Obra',
+    ],
+    [
+      'CHAMADA PÚBLICA PARA AQUISIÇÃO EXCLUSIVA DE GÊNEROS ALIMENTÍCIOS DA AGRICULTURA FAMILIAR PARA O PROGRAMA DE ALIMENTAÇÃO ESCOLAR',
+      'Gêneros alimentícios da agricultura familiar para o programa de alimentação escolar',
+      'Compra',
+    ],
+    [
+      'REPUBLICAÇÃO - CREDENCIAMENTO 001/2025-Credenciamento de Companhias/Agências de Viagens e Turismo, objetivando o menor preço',
+      'Credenciamento de Companhias/Agências de Viagens e Turismo',
+      null,
+    ],
+    ['Contratação de obras e serviços de engenharia em estradas vicinais, em conformidade com o convênio', 'Obras e serviços de engenharia em estradas vicinais, em conformidade com o convênio', 'Obra'],
+  ])('aberturas com número de documento: %s', (objeto, titulo, tipo) => {
+    expect(assunto(objeto)).toEqual({ titulo, tipo });
+  });
+
+  it.each([
+    [
+      'Credenciamento de pessoas jurídicas para prestação de serviços médicos, sem vínculo empregatício, em caráter complementar ao Sistema Único de Saúde – SUS',
+      'Serviços médicos, sem vínculo empregatício, em caráter complementar ao Sistema Único de Saúde – SUS',
+      'Credenciamento',
+    ],
+    [
+      'Republicação - Contratação de empresa especializada para a execução das obras civis de construção da Creche do Copacabana, Tipo 2',
+      'Construção da Creche do Copacabana, Tipo 2',
+      'Obra',
+    ],
+    ['DGA N° 90415/2026 - Registro de Preços de Condicionadores de Ar com instalação inclusa', 'Condicionadores de Ar com instalação inclusa', null],
+    ['Aquisição de Materiais de TIC para esta SECTI - Sei nº 3100000021.001010/2026-11', 'Materiais de TIC para esta SECTI', 'Compra'],
+    ['EDITAL DE CREDENCIAMENTO 004-2026 - MUSICOS PARA EVENTOS DO MUNICÍPIO', 'Musicos para eventos do município', 'Credenciamento'],
+  ])('casos da comparação com os títulos reais: %s', (objeto, titulo, tipo) => {
+    expect(assunto(objeto)).toEqual({ titulo, tipo });
+  });
+
+  it('"nº" não fica solto quando o número sai', () => {
+    expect(assunto('Leilão Público de Bens Imóveis nº 09/2026 com sessão híbrida presencial e online').titulo).toBe(
+      'Leilão Público de Bens Imóveis com sessão híbrida presencial e online',
+    );
+  });
+
+  it('rótulo "EDITAL DE CREDENCIAMENTO 014/2026 -" sai do começo', () => {
+    expect(
+      assunto('EDITAL DE CREDENCIAMENTO 014/2026 - CREDENCIAMENTO DE PESSOA JURÍDICA, PREFERENCIALMENTE MICROEMPREENDEDOR INDIVIDUAL (MEI) PARA PRESTAÇÃO DE SERVIÇO DE TRANSPORTE').titulo,
+    ).toMatch(/^Credenciamento de pessoa jurídica/);
+  });
+
+  it('datas no título continuam (11/12/2026 não é número de processo)', () => {
+    expect(
+      assunto('Contratação de empresa para organização do evento "Escolha das Soberanas da Expo Concórdia 2027", em 11/12/2026, compreendendo workshops').titulo,
+    ).toContain('11/12/2026');
+  });
+
   it('abertura sem assunto ("Registro de Preços, pelo período…") volta ao título normal', () => {
     const objeto = 'Registro de Preços, pelo período de 1 (um) ano, podendo ser prorrogado por igual período';
     expect(assunto(objeto)).toEqual({ titulo: tituloCurto(objeto).titulo, tipo: null });
