@@ -21,18 +21,22 @@ const ALTERNADOR = 'h-10 flex-1 rounded-sm text-sm font-semibold transition-colo
 /**
  * Celular: folha em tela cheia com os mesmos controles do computador (UF, Município, Valor, Modalidade, Órgão, Raio) e o prazo.
  * As escolhas ficam num rascunho e só valem no "Ver N editais" (uma busca só, no limite do dia). N vem de /api/contagem,
- * que não conta como busca.
+ * que não conta como busca. Fechada, a folha não existe: cada abertura começa um rascunho novo dos filtros que valem.
  */
-export function FolhaFiltros({ aberta, filtros, pontos, atualizadoEm, agora, aoAplicar, aoFechar }: Props) {
+export function FolhaFiltros({ aberta, ...resto }: Props) {
+  return aberta ? <ConteudoFolha {...resto} /> : null;
+}
+
+function ConteudoFolha({ filtros, pontos, atualizadoEm, agora, aoAplicar, aoFechar }: Omit<Props, 'aberta'>) {
   const [rascunho, setRascunho] = useState<FiltrosTela>(filtros);
   const [total, setTotal] = useState<number | null>(null);
+  const folha = useRef<HTMLDivElement>(null);
   const titulo = useRef<HTMLHeadingElement>(null);
   const parametros = paraParametros(rascunho).toString();
 
   // Aberta, a página de baixo não rola; ao fechar, o foco volta para quem abriu (o botão "Filtros").
   // Vem antes do efeito que leva o foco ao título, para guardar o foco de antes de abrir.
   useEffect(() => {
-    if (!aberta) return;
     const antes = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const raiz = document.documentElement;
     const overflow = raiz.style.overflow;
@@ -41,18 +45,28 @@ export function FolhaFiltros({ aberta, filtros, pontos, atualizadoEm, agora, aoA
       raiz.style.overflow = overflow;
       antes?.focus({ preventScroll: true });
     };
-  }, [aberta]);
+  }, []);
 
-  // Ao abrir, começa dos filtros que valem agora e leva o foco para o título.
   useEffect(() => {
-    if (!aberta) return;
-    setRascunho(filtros);
     titulo.current?.focus();
-  }, [aberta, filtros]);
+  }, []);
+
+  // A folha é só do celular: se a tela passa a ter a largura do computador, ela fecha (e a página volta a rolar).
+  useEffect(() => {
+    const computador = window.matchMedia('(min-width: 1024px)');
+    if (computador.matches) {
+      aoFechar();
+      return;
+    }
+    const mudou = (e: MediaQueryListEvent) => {
+      if (e.matches) aoFechar();
+    };
+    computador.addEventListener('change', mudou);
+    return () => computador.removeEventListener('change', mudou);
+  }, [aoFechar]);
 
   // Quantos editais o rascunho traria (espera o toque parar por 300 ms).
   useEffect(() => {
-    if (!aberta) return;
     setTotal(null);
     const controle = new AbortController();
     const espera = setTimeout(() => {
@@ -65,20 +79,21 @@ export function FolhaFiltros({ aberta, filtros, pontos, atualizadoEm, agora, aoA
       clearTimeout(espera);
       controle.abort();
     };
-  }, [aberta, parametros]);
+  }, [parametros]);
 
+  // Esc fecha a folha, a menos que seja para um painel aberto dentro dela (Município, Modalidade, Órgão): esse fecha sozinho.
   useEffect(() => {
-    if (!aberta) return;
     const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') aoFechar();
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (folha.current?.querySelector('[role="dialog"]')) return;
+      aoFechar();
     };
     document.addEventListener('keydown', tecla);
     return () => document.removeEventListener('keydown', tecla);
-  }, [aberta, aoFechar]);
+  }, [aoFechar]);
 
-  if (!aberta) return null;
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="folha-filtros-titulo" className="fixed inset-0 z-50 flex flex-col bg-surface lg:hidden">
+    <div ref={folha} role="dialog" aria-modal="true" aria-labelledby="folha-filtros-titulo" className="fixed inset-0 z-50 flex flex-col bg-surface lg:hidden">
       <div className="flex shrink-0 items-center gap-2 border-b border-line bg-raised px-2 py-1.5">
         <button type="button" onClick={aoFechar} aria-label="Fechar filtros" className="size-11 rounded-sm text-2xl leading-none">
           ×

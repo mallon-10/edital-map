@@ -44,7 +44,7 @@ export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoA
             type="submit"
             aria-label="Buscar"
             disabled={carregando}
-            className="absolute left-1 flex size-9 items-center justify-center rounded-sm text-ink-muted disabled:opacity-60"
+            className="absolute left-0 flex size-11 items-center justify-center rounded-sm text-ink-muted disabled:opacity-60 lg:left-1 lg:size-9"
           >
             <Lupa className="size-[18px]" />
           </button>
@@ -57,7 +57,7 @@ export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoA
             placeholder="Ex.: EPI, uniformes"
             autoComplete="off"
             maxLength={100}
-            className="h-11 w-full rounded-sm border border-line-strong bg-raised pl-10 pr-3 lg:border-0 lg:bg-transparent"
+            className="h-11 w-full rounded-sm border border-line-strong bg-raised pl-11 pr-3 lg:border-0 lg:bg-transparent lg:pl-10"
           />
         </div>
         <button

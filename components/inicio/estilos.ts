@@ -1,10 +1,10 @@
 import type { TomEtiqueta } from '@/lib/formato';
 
-const BASE_CHIP = 'inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[13px] font-semibold';
+const BASE_CHIP = 'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-[13px] font-semibold';
 
-/** Chip de filtro; ativo em azul-marinho como no mockup. */
-export function chip(ativo: boolean): string {
-  return `${BASE_CHIP} ${ativo ? 'border-ink bg-ink text-surface' : 'border-line-strong bg-raised text-ink hover:bg-sunken'}`;
+/** Chip de filtro; ativo em azul-marinho como no mockup. `grande`: 44 px de altura (toque na folha de Filtros do celular). */
+export function chip(ativo: boolean, grande = false): string {
+  return `${BASE_CHIP} ${grande ? 'h-11' : 'h-9'} ${ativo ? 'border-ink bg-ink text-surface' : 'border-line-strong bg-raised text-ink hover:bg-sunken'}`;
 }
 
 export const ESTILO_ETIQUETA: Record<TomEtiqueta, string> = {

@@ -76,9 +76,12 @@ type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'limite' | 'tela' | 'sele
 
 export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicial, agoraInicial, atualizadoEm }: Props) {
   const [filtros, setFiltros] = useState<FiltrosTela>(filtrosIniciais);
-  // Celular: a parte da página em que a pessoa está (mapa em cima ou lista embaixo), guardada no endereço (`tela=lista`
-  // abre a página rolada até a lista) e acesa na barra de baixo.
+  // Celular: a parte da página pedida por último (botão da barra, cidade escolhida, aviso ou limite na lista), guardada
+  // no endereço (`tela=lista` abre a página rolada até a lista). Só muda por ação explícita, nunca pela rolagem.
   const [tela, setTela] = useState<Tela>(telaInicial);
+  // Item aceso na barra de baixo: segue a rolagem. Fica fora do endereço: o replaceState do Next durante uma navegação
+  // pendente (tocar num card e rolar um pouco) a descartaria.
+  const [ativoBarra, setAtivoBarra] = useState<Tela>(telaInicial);
   const [resultado, setResultado] = useState<ResultadoBusca>(inicial ?? SEM_RESULTADO);
   const [limite, setLimite] = useState<Limite | null>(limiteInicial);
   const [agora, setAgora] = useState(() => new Date(agoraInicial));
@@ -135,6 +138,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   const irPara = useCallback(
     (t: Tela, f: FiltrosTela) => {
       trocarTela(t, f);
+      setAtivoBarra(t);
       rolarPara(t);
     },
     [trocarTela, rolarPara],
@@ -211,22 +215,22 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   // Última busca, para os links Mapa e Lista da barra do celular nas outras páginas.
   useEffect(() => guardarUltimaBusca(urlDaBusca(filtros)), [filtros]);
 
-  // Celular: a barra acende Mapa ou Lista conforme a parte da página que está na tela, e o endereço acompanha
-  // (`tela=lista` só quando a lista está na tela). Um quadro por vez; parado durante a rolagem pedida pela barra.
+  // Celular: a barra acende Mapa ou Lista conforme a parte da página que está na tela. Só o item aceso muda: nada de
+  // `tela` nem de endereço (replaceState), que cancelaria uma ida ao edital ainda carregando. A volta do edital usa a
+  // posição da página (rolagemPagina). Um quadro por vez; parado durante a rolagem pedida pela barra.
   useEffect(() => {
     let quadro = 0;
     const medir = () => {
       quadro = 0;
-      const atual = paraGuardar.current;
       const inicio = inicioLista.current;
-      if (!atual || !inicio || !ehCelular() || Date.now() < ignorarRolagemAte.current) return;
+      if (!inicio || !ehCelular() || Date.now() < ignorarRolagemAte.current) return;
       const raiz = document.documentElement;
       const nova = telaPelaRolagem({
         topoLista: inicio.getBoundingClientRect().top,
         alturaJanela: window.innerHeight,
         noFim: window.scrollY > 0 && window.scrollY + window.innerHeight >= raiz.scrollHeight - 2,
       });
-      if (nova !== atual.tela) trocarTela(nova, atual.filtros);
+      setAtivoBarra(nova);
     };
     const rolar = () => {
       if (!quadro) quadro = requestAnimationFrame(medir);
@@ -236,7 +240,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
       window.removeEventListener('scroll', rolar);
       cancelAnimationFrame(quadro);
     };
-  }, [trocarTela]);
+  }, []);
 
   // Volta do edital: devolve a página e a lista às posições em que estavam (a lista, quando estiver visível).
   useEffect(() => {
@@ -266,6 +270,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
     if (volta) {
       setFiltros(volta.filtros);
       setTela(volta.tela);
+      setAtivoBarra(volta.tela);
       setResultado(volta.resultado);
       setLimite(volta.limite);
       setSelecionadoId(volta.selecionadoId);
@@ -353,7 +358,8 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 space-y-3 px-4 pt-3 lg:px-6 lg:pt-5">
+      {/* Espaço entre a busca e os chips só a partir de lg: no celular os chips ficam escondidos (estão na folha). */}
+      <div className="shrink-0 px-4 pt-3 lg:space-y-3 lg:px-6 lg:pt-5">
         <BuscaPrincipal
           q={filtros.q}
           uf={filtros.uf}
@@ -432,7 +438,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
         }}
         aoFechar={fecharFolha}
       />
-      <BarraCelular ativo={tela} aoTrocarTela={(t) => irPara(t, filtros)} />
+      <BarraCelular ativo={ativoBarra} aoTrocarTela={(t) => irPara(t, filtros)} />
     </div>
   );
 }

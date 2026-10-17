@@ -89,6 +89,40 @@ describe('celular', () => {
     expect(folha).toContain('emFolha');
   });
 
+  it('a rolagem só acende o item da barra: não troca a tela nem o endereço (replaceState cancelaria a ida ao edital)', () => {
+    const explorador = ler('components/Explorador.tsx');
+    const inicio = explorador.indexOf('telaPelaRolagem({');
+    const fim = explorador.indexOf("addEventListener('scroll'", inicio);
+    expect(inicio).toBeGreaterThan(-1);
+    expect(fim).toBeGreaterThan(inicio);
+    // O efeito inteiro do espião: do começo do useEffect até o addEventListener.
+    const espiao = explorador.slice(explorador.lastIndexOf('useEffect(', inicio), fim);
+    expect(espiao).toContain('setAtivoBarra(');
+    expect(espiao).not.toMatch(/trocarTela|irPara|replaceState|setTela\(/);
+    expect(explorador).toContain('<BarraCelular ativo={ativoBarra}');
+  });
+
+  it('fora da inicial, Mapa e Lista levam à última busca (Mapa no topo, Lista na lista)', () => {
+    const barra = ler('components/BarraCelular.tsx');
+    expect(barra).toContain("comTela(busca, 'mapa')");
+    expect(barra).toContain("comTela(busca, 'lista')");
+  });
+
+  it('toque de 44 px no celular: lupa da busca e chips da folha (o computador continua igual)', () => {
+    const busca = ler('components/inicio/BuscaPrincipal.tsx');
+    expect(busca).toMatch(/aria-label="Buscar"[\s\S]*?className="[^"]*\bsize-11\b[^"]*\blg:size-9\b/);
+    const estilos = ler('components/inicio/estilos.ts');
+    expect(estilos).toMatch(/grande \? 'h-11' : 'h-9'/);
+    const chips = ler('components/inicio/Chips.tsx');
+    expect(chips).toContain('grande={emFolha}');
+  });
+
+  it('celular: sem espaço da linha de chips escondida acima do mapa', () => {
+    const explorador = ler('components/Explorador.tsx');
+    expect(explorador).toContain('lg:space-y-3');
+    expect(explorador).not.toMatch(/className="[^"]*(?<!lg:)space-y-3/);
+  });
+
   it('página do edital no celular: "Abrir edital oficial" fixo acima da barra de navegação', () => {
     const pagina = ler('app/edital/[slug]/page.tsx');
     expect(pagina).toContain('bottom-[var(--altura-barra)]');

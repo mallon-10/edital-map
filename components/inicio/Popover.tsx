@@ -9,12 +9,14 @@ type Props = {
   nome: string;
   rotulo: ReactNode;
   ativo: boolean;
+  /** Chip de 44 px (folha de Filtros do celular). */
+  grande?: boolean;
   /** Pode ser uma função que recebe `fechar`, para o painel se fechar ao escolher um item (o foco volta ao chip). */
   children: ReactNode | ((fechar: () => void) => ReactNode);
 };
 
 /** Chip que abre um painel. O painel é `fixed` para não ser cortado pela linha de chips que rola de lado no celular. */
-export function Popover({ nome, rotulo, ativo, children }: Props) {
+export function Popover({ nome, rotulo, ativo, grande = false, children }: Props) {
   const [aberto, setAberto] = useState(false);
   const [posicao, setPosicao] = useState({ top: 0, left: 0 });
   const botao = useRef<HTMLButtonElement>(null);
@@ -73,7 +75,7 @@ export function Popover({ nome, rotulo, ativo, children }: Props) {
 
   return (
     <>
-      <button ref={botao} type="button" aria-expanded={aberto} aria-controls={id} onClick={alternar} className={chip(ativo)}>
+      <button ref={botao} type="button" aria-expanded={aberto} aria-controls={id} onClick={alternar} className={chip(ativo, grande)}>
         {rotulo}
         <Seta className="size-3.5" />
       </button>

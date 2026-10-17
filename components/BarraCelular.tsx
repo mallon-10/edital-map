@@ -20,7 +20,8 @@ type Props = {
 
 /** Barra fixa do celular (abaixo de lg): Mapa · Lista · Alertas · Planos, com área de toque de 60 px e a área segura do iPhone. */
 export function BarraCelular({ ativo, aoTrocarTela }: Props) {
-  // Fora da página inicial, Lista volta para a última busca feita (guardada pela página inicial), já rolada até a lista.
+  // Fora da página inicial, Mapa e Lista voltam para a última busca feita (guardada pela página inicial): Mapa no topo,
+  // Lista já rolada até a lista.
   const [busca, setBusca] = useState('/');
   useEffect(() => setBusca(lerUltimaBusca()), []);
   const estilo = (i: ItemBarra) => `${ITEM} ${ativo === i ? 'text-pin-strong' : 'text-ink-muted'}`;
@@ -43,7 +44,7 @@ export function BarraCelular({ ativo, aoTrocarTela }: Props) {
 
   return (
     <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-raised pb-[env(safe-area-inset-bottom)] lg:hidden">
-      {parteDaInicial('mapa', '/', <IconeMapa className={ICONE} />, <>Mapa</>)}
+      {parteDaInicial('mapa', comTela(busca, 'mapa'), <IconeMapa className={ICONE} />, <>Mapa</>)}
       {parteDaInicial('lista', comTela(busca, 'lista'), <IconeLista className={ICONE} />, <>Lista</>)}
       <Link href="/alertas" aria-current={atual('alertas')} className={estilo('alertas')}>
         <IconeSino className={ICONE} />

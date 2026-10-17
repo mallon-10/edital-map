@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import type { MouseEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 import { etiqueta, moedaCurta } from '@/lib/formato';
 import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
 import { ESTILO_ETIQUETA, PONTO_ETIQUETA } from './estilos';
+import { useComputador } from './useComputador';
 
 type Props = { edital: EditalResumo; agora: Date; selecionado: boolean; aoSelecionar: () => void };
 
@@ -13,11 +14,13 @@ type Props = { edital: EditalResumo; agora: Date; selecionado: boolean; aoSeleci
  * Card da lista: título limpo, valor curto à direita, órgão · UF e etiqueta de prazo.
  * Computador (lg+): clicar seleciona (o resumo aparece na coluna da direita). Celular: tocar abre o edital.
  * Ctrl/⌘/Shift/Alt/botão do meio abrem em outra aba. Sem prefetch: cada edital aberto conta no limite do dia.
+ * No computador, Espaço também seleciona (como o botão de antes) e o card escolhido é o `aria-current`.
  */
 export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props) {
   const et = etiqueta(edital, agora);
   const valor = moedaCurta(edital.valor_estimado);
   const { titulo, tipo } = assunto(edital.objeto);
+  const computador = useComputador();
 
   function clicar(e: MouseEvent<HTMLAnchorElement>) {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -27,12 +30,20 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
     }
   }
 
+  function tecla(e: KeyboardEvent<HTMLAnchorElement>) {
+    if (e.key !== ' ' || !computador) return;
+    e.preventDefault();
+    aoSelecionar();
+  }
+
   return (
     <Link
       href={`/edital/${edital.slug}`}
       prefetch={false}
       onClick={clicar}
-      aria-current={selecionado ? 'true' : undefined}
+      onKeyDown={tecla}
+      // Seleção só existe no computador; no celular tocar abre o edital.
+      aria-current={computador && selecionado ? 'true' : undefined}
       className={`flex w-full shrink-0 flex-col gap-2 rounded-md border bg-raised p-3.5 text-left transition-colors ${
         selecionado ? 'border-line lg:border-ink lg:shadow-[0_0_0_1px_#0c2340]' : 'border-line hover:border-line-strong'
       }`}

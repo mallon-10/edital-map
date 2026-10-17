@@ -56,6 +56,7 @@ function ChipSelect({
   desabilitado = false,
   pro = false,
   aviso,
+  grande = false,
   children,
 }: {
   rotulo: string;
@@ -66,12 +67,14 @@ function ChipSelect({
   desabilitado?: boolean;
   pro?: boolean;
   aviso?: string;
+  /** Chip de 44 px (folha de Filtros do celular). */
+  grande?: boolean;
   children: ReactNode;
 }) {
   return (
     <label
       title={aviso}
-      className={`${chip(ativo)} relative pr-8 focus-within:outline focus-within:outline-2 focus-within:outline-rio ${desabilitado ? 'cursor-not-allowed opacity-60' : ''}`}
+      className={`${chip(ativo, grande)} relative pr-8 focus-within:outline focus-within:outline-2 focus-within:outline-rio ${desabilitado ? 'cursor-not-allowed opacity-60' : ''}`}
     >
       <span className="pointer-events-none max-w-[14rem] truncate">
         {rotulo}: {textoValor}
@@ -161,6 +164,7 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha =
         }
       >
         <ChipSelect
+          grande={emFolha}
           rotulo="UF"
           textoValor={filtros.uf || 'todas'}
           ativo={Boolean(filtros.uf) && !ufIgnorada}
@@ -176,6 +180,7 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha =
           ))}
         </ChipSelect>
         <Popover
+          grande={emFolha}
           nome="Município"
           ativo={Boolean(cidade)}
           rotulo={<span className="max-w-[14rem] truncate">{cidade ? `Município: ${cidade.nome}/${cidade.uf}` : 'Município'}</span>}
@@ -192,6 +197,7 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha =
           )}
         </Popover>
         <ChipSelect
+          grande={emFolha}
           rotulo="Valor"
           textoValor={filtros.valorMin ? `acima de ${rotuloValor(filtros.valorMin)}` : 'qualquer'}
           ativo={filtros.valorMin !== null}
@@ -205,7 +211,7 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha =
             </option>
           ))}
         </ChipSelect>
-        <Popover nome="Modalidade" ativo={qtdModalidades > 0} rotulo={qtdModalidades ? `Modalidade · ${qtdModalidades}` : 'Modalidade'}>
+        <Popover grande={emFolha} nome="Modalidade" ativo={qtdModalidades > 0} rotulo={qtdModalidades ? `Modalidade · ${qtdModalidades}` : 'Modalidade'}>
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-xs font-semibold text-ink-muted">Modalidade</legend>
             {MODALIDADES.map((m) => {
@@ -230,6 +236,7 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha =
           </fieldset>
         </Popover>
         <Popover
+          grande={emFolha}
           nome="Órgão"
           ativo={Boolean(filtros.orgao)}
           rotulo={
@@ -250,6 +257,7 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha =
           )}
         </Popover>
         <ChipSelect
+          grande={emFolha}
           rotulo="Raio"
           textoValor={!cidade ? 'escolha um município' : filtros.raio ? `${filtros.raio} km` : 'só o município'}
           ativo={Boolean(cidade && filtros.raio)}
