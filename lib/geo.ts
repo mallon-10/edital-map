@@ -46,7 +46,7 @@ export function circulo(lng: number, lat: number, km: number, passos = 64): Feat
 }
 
 /** Caixa [[oeste, sul], [leste, norte]] do círculo, para enquadrar o mapa. */
-export function limitesDoCirculo(c: Feature<Polygon>): [[number, number], [number, number]] {
+export function limitesDoCirculo(c: Feature<Polygon>): Limites {
   const anel = c.geometry.coordinates[0];
   const lngs = anel.map((p) => p[0]);
   const lats = anel.map((p) => p[1]);
@@ -59,4 +59,44 @@ export function limitesDoCirculo(c: Feature<Polygon>): [[number, number], [numbe
 /** GeoJSON da área do raio: vazio sem raio. */
 export function areaDoRaio(r: Raio | null): FeatureCollection<Polygon> {
   return { type: 'FeatureCollection', features: r ? [circulo(r.lng, r.lat, r.km)] : [] };
+}
+
+/** Caixa [[oeste, sul], [leste, norte]]. */
+export type Limites = [[number, number], [number, number]];
+
+/** O Brasil inteiro: enquadramento inicial do mapa e a volta quando não há município nem raio. */
+export const BRASIL: Limites = [[-74.2, -33.9], [-34.6, 5.4]];
+
+/** Município escolhido sem raio: o mapa mostra a cidade e os vizinhos (círculo invisível deste tamanho em volta da sede). */
+export const RAIO_MUNICIPIO_KM = 25;
+
+/** A partir deste zoom o mapa não agrupa cidades: o município escolhido tem pílula própria (clusterMaxZoom = este − 1). */
+export const ZOOM_SEM_GRUPOS = 9;
+
+/** Duração das animações do foco pedidas pelo usuário. */
+const DURACAO_FOCO_MS = 600;
+
+/** O que o mapa faz com o foco: nada, voltar ao Brasil, enquadrar o raio ou voar até a sede do município. */
+export type DecisaoFoco =
+  | { tipo: 'nada' }
+  | { tipo: 'brasil' | 'enquadrar'; limites: Limites; duracao: number }
+  | { tipo: 'voar'; centro: [number, number]; zoom: number; duracao: number };
+
+/**
+ * Para onde o mapa vai. O raio vence (é a área da busca). Sem ele, a sede do município ([lng, lat]) com o zoom que
+ * enquadra um círculo de RAIO_MUNICIPIO_KM (`zoomDoCirculo`, conta do MapLibre), mas nunca abaixo de ZOOM_SEM_GRUPOS.
+ * Sem os dois: de volta ao Brasil se o mapa saiu dele (`focado`); senão nada. `animar` falso (foco da abertura: link
+ * direto ou volta do edital) vai direto, sem repetir o voo desde o Brasil.
+ */
+export function focoDoMapa(
+  e: { raio: Raio | null; sede: [number, number] | null; focado: boolean; animar: boolean },
+  zoomDoCirculo: (limites: Limites) => number | null,
+): DecisaoFoco {
+  const duracao = e.animar ? DURACAO_FOCO_MS : 0;
+  if (e.raio) return { tipo: 'enquadrar', limites: limitesDoCirculo(circulo(e.raio.lng, e.raio.lat, e.raio.km)), duracao };
+  if (e.sede) {
+    const zoom = zoomDoCirculo(limitesDoCirculo(circulo(e.sede[0], e.sede[1], RAIO_MUNICIPIO_KM)));
+    return { tipo: 'voar', centro: e.sede, zoom: Math.max(zoom ?? ZOOM_SEM_GRUPOS, ZOOM_SEM_GRUPOS), duracao };
+  }
+  return e.focado ? { tipo: 'brasil', limites: BRASIL, duracao } : { tipo: 'nada' };
 }
