@@ -49,13 +49,25 @@ describe('validarEvento', () => {
     });
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'relacionados_clique' } })).toEqual({ ok: false, erro: 'edital inválido' });
   });
+  it('usou_recurso: baixou_documento com o edital e o tipo do documento', () => {
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'baixou_documento', edital: SLUG, documento: 'Termo de Referência' } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'baixou_documento', edital: SLUG, documento: 'Termo de Referência' } },
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'baixou_documento', edital: SLUG, documento: 'x'.repeat(200) } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'baixou_documento', edital: SLUG, documento: 'x'.repeat(80) } },
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'baixou_documento', edital: SLUG } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'baixou_documento', edital: SLUG, documento: null } },
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'baixou_documento' } })).toEqual({ ok: false, erro: 'edital inválido' });
+  });
   it('usou_recurso: exportou só pela rota /api/exportar; recurso desconhecido é recusado', () => {
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'exportou' } })).toEqual({ ok: false, erro: 'recurso inválido' });
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'resumo_ia', edital: SLUG } }).ok).toBe(false);
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: {} }).ok).toBe(false);
   });
-  it('os quatro usos medidos e o limite de exportações por hora', () => {
-    expect(RECURSOS_USADOS).toEqual(['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou']);
+  it('os cinco usos medidos e o limite de exportações por hora', () => {
+    expect(RECURSOS_USADOS).toEqual(['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento']);
     expect(TIPOS_EVENTO).toContain('usou_recurso');
     expect(LIMITES.exportacoesPorHora).toBe(20);
   });

@@ -7,10 +7,10 @@ export type Recurso = (typeof RECURSOS)[number];
 const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro'];
 
 /** Uso dos recursos Pro (evento usou_recurso). */
-export const RECURSOS_USADOS = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou'] as const;
+export const RECURSOS_USADOS = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento'] as const;
 export type RecursoUsado = (typeof RECURSOS_USADOS)[number];
 /** O navegador manda estes; `exportou` é gravado pela própria rota /api/exportar (que conta o limite por IP). */
-const USOS_DO_NAVEGADOR: readonly string[] = ['relacionados_clique', 'filtro_orgao', 'filtro_raio'];
+const USOS_DO_NAVEGADOR: readonly string[] = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'baixou_documento'];
 
 export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['Sul', ['PR', 'RS', 'SC']],
@@ -59,9 +59,11 @@ export function validarEvento(corpo: unknown): Resultado<{ tipo: TipoEvento; det
   }
   if (tipo === 'usou_recurso') {
     if (typeof d.recurso !== 'string' || !USOS_DO_NAVEGADOR.includes(d.recurso)) return { ok: false, erro: 'recurso inválido' };
-    if (d.recurso !== 'relacionados_clique') return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso } } };
+    if (d.recurso !== 'relacionados_clique' && d.recurso !== 'baixou_documento') return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso } } };
     if (!edital) return { ok: false, erro: 'edital inválido' };
-    return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, edital } } };
+    if (d.recurso === 'relacionados_clique') return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, edital } } };
+    const documento = typeof d.documento === 'string' && d.documento.trim() ? d.documento.trim().slice(0, 80) : null;
+    return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, edital, documento } } };
   }
   if (!edital) return { ok: false, erro: 'edital inválido' };
   return { ok: true, valor: { tipo: tipo as TipoEvento, detalhe: { edital } } };

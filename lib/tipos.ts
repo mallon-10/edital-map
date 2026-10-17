@@ -98,6 +98,9 @@ export type ItemEdital = {
   criterio_julgamento: string | null;
 };
 
+/** Arquivo publicado no PNCP (edital, termo de referência, anexos), com o link de download. */
+export type ArquivoEdital = { titulo: string; tipo: string; url: string };
+
 export type ResumoItens = {
   total: number;
   materiais: number;

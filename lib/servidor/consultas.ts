@@ -5,8 +5,9 @@ import { MAX_EXPORTACAO } from '../csv';
 import { chaveFiltros } from '../filtros';
 import { nomeProprio } from '../texto';
 import type {
-  Edital, EditalExportado, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens,
+  ArquivoEdital, Edital, EditalExportado, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens,
 } from '../tipos';
+import { arquivosDoPncp } from './arquivosPncp';
 import { itensDoPncp } from './itensPncp';
 import { supabaseServidor } from './supabase';
 
@@ -126,6 +127,14 @@ export function edital(slug: string): Promise<Edital | null> {
 export function itensDoEdital(compra: ChaveCompra, limite: number): Promise<ItemEdital[] | null> {
   return cache(`itens:${compra.id}:${limite}`, () => itensDoPncp(compra, limite)).catch((erro: unknown) => {
     console.error(`itens do edital ${compra.id}:`, erro);
+    return null;
+  });
+}
+
+/** Arquivos do edital no PNCP; `null` se falhar (a página mostra "Documentos indisponíveis agora"). */
+export function arquivosDoEdital(compra: ChaveCompra): Promise<ArquivoEdital[] | null> {
+  return cache(`arquivos:${compra.id}`, () => arquivosDoPncp(compra)).catch((erro: unknown) => {
+    console.error(`arquivos do edital ${compra.id}:`, erro);
     return null;
   });
 }

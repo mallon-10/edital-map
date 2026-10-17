@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
+import { DocumentosEdital } from '@/components/edital/DocumentosEdital';
 import { ListaItens } from '@/components/edital/ListaItens';
 import { PrincipaisInformacoes } from '@/components/edital/PrincipaisInformacoes';
 import { Relacionados } from '@/components/edital/Relacionados';
@@ -15,7 +16,7 @@ import { VitrineEmBreve } from '@/components/VitrineEmBreve';
 import { SLUG_EDITAL } from '@/lib/eventos';
 import { data, haQuanto, linkOficial, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
-import { atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
+import { arquivosDoEdital, atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
 import { assunto, lotesDaInfo, nomeProprio, paragrafos, textoLimpo } from '@/lib/texto';
 import type { EditalRelacionado, ResumoItens } from '@/lib/tipos';
 
@@ -44,8 +45,9 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   if (!e) notFound();
 
   const todos = modoItens === 'todos';
-  const [itens, resumo, atualizado, parecidos] = await Promise.all([
+  const [itens, arquivos, resumo, atualizado, parecidos] = await Promise.all([
     itensDoEdital(e, todos ? 2000 : 50),
+    arquivosDoEdital(e),
     resumoItens(e.id).catch(() => RESUMO_VAZIO),
     atualizadoEm(),
     // Falha nos parecidos não derruba a página: o bloco só não aparece.
@@ -107,6 +109,11 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
 
         <div className="flex flex-wrap items-start gap-5">
           <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5">
+            <section className="rounded-lg border border-line bg-raised p-5">
+              <h2 className="mb-1 text-[17px] font-bold">Documentos do edital</h2>
+              <p className="mb-2 text-[13px] text-ink-muted">Os documentos exigidos para participar estão no edital e no termo de referência.</p>
+              <DocumentosEdital arquivos={arquivos} slug={e.slug} />
+            </section>
             <section className="rounded-lg border border-line bg-raised p-5">
               <h2 className="mb-3 text-[17px] font-bold">Itens da licitação</h2>
               <ListaItens itens={itens} total={totalItens} slug={e.slug} todos={todos} />
