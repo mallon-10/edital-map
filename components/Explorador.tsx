@@ -202,7 +202,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
         <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
           {selecionado ? <CartaoSelecionado edital={selecionado} agora={agora} /> : null}
           <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
-          <LegendaMapa />
+          <LegendaMapa porUf={painel.porUf} />
         </aside>
       </main>
     </div>

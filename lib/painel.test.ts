@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONTORNO_VAZIO_COR, CORES_FAIXA, contornosDosEstados, coresDosEstados, faixaDaUf, resumirPontos } from './painel';
+import { CONTORNO_VAZIO_COR, CORES_FAIXA, contornosDosEstados, coresDosEstados, faixasRelativas, resumirPontos } from './painel';
 import type { PontoMapa } from './tipos';
 
 const P = (codigo_ibge: string, nome: string, uf: string, qtd: number, valor_total: number | null): PontoMapa => ({
@@ -37,13 +37,47 @@ describe('resumirPontos', () => {
   });
 });
 
-describe('cores dos estados', () => {
-  it('faixas 1–19, 20–49, 50–199, 200+', () => {
-    expect([0, 1, 19, 20, 49, 50, 199, 200].map(faixaDaUf)).toEqual([0, 1, 1, 2, 2, 3, 3, 4]);
+describe('faixas relativas', () => {
+  it('quatro grupos de tamanho parecido, do menor ao maior número de editais', () => {
+    const porUf = { AP: 52, RR: 79, AC: 128, AM: 237, SE: 248, PI: 407, PE: 926, CE: 1129, BA: 2817, PR: 3368, MG: 5407, SP: 5946 };
+    const f = faixasRelativas(porUf);
+    expect(['AP', 'RR', 'AC'].map((uf) => f.faixaDe(porUf[uf as keyof typeof porUf]))).toEqual([1, 1, 1]);
+    expect(['AM', 'SE', 'PI'].map((uf) => f.faixaDe(porUf[uf as keyof typeof porUf]))).toEqual([2, 2, 2]);
+    expect(['PE', 'CE', 'BA'].map((uf) => f.faixaDe(porUf[uf as keyof typeof porUf]))).toEqual([3, 3, 3]);
+    expect(['PR', 'MG', 'SP'].map((uf) => f.faixaDe(porUf[uf as keyof typeof porUf]))).toEqual([4, 4, 4]);
+    expect(f.limites).toEqual([
+      { faixa: 1, de: 52, ate: 128 },
+      { faixa: 2, de: 237, ate: 407 },
+      { faixa: 3, de: 926, ate: 2817 },
+      { faixa: 4, de: 3368, ate: 5946 },
+    ]);
   });
-  it('expressão de cor: cada estado com editais pela faixa, os outros no tom mais claro', () => {
-    expect(coresDosEstados({ SC: 5, PR: 352, RS: 0, BA: 60 })).toEqual([
-      'match', ['get', 'uf'], 'BA', CORES_FAIXA[3], 'PR', CORES_FAIXA[4], 'SC', CORES_FAIXA[1], CORES_FAIXA[0],
+  it('valores iguais ficam na mesma faixa', () => {
+    const f = faixasRelativas({ SC: 10, PR: 10, RS: 10, BA: 10, SP: 40 });
+    expect(f.faixaDe(10)).toBe(f.faixaDe(10));
+    expect(f.faixaDe(40)).toBe(4);
+    expect(f.faixaDe(10)).toBeLessThan(4);
+  });
+  it('poucos estados: o maior fica no tom mais escuro', () => {
+    expect(faixasRelativas({ SP: 3 }).faixaDe(3)).toBe(4);
+    const f = faixasRelativas({ SP: 8, AM: 1 });
+    expect([f.faixaDe(1), f.faixaDe(8)]).toEqual([3, 4]);
+    expect(f.limites).toEqual([
+      { faixa: 3, de: 1, ate: 1 },
+      { faixa: 4, de: 8, ate: 8 },
+    ]);
+  });
+  it('sem editais: faixa 0 e nenhum limite', () => {
+    const f = faixasRelativas({ SC: 0 });
+    expect(f.faixaDe(0)).toBe(0);
+    expect(f.limites).toEqual([]);
+  });
+});
+
+describe('cores dos estados', () => {
+  it('expressão de cor: cada estado com editais pela faixa relativa, os outros no tom mais claro', () => {
+    expect(coresDosEstados({ SC: 5, PR: 352, RS: 0, BA: 60, SP: 400 })).toEqual([
+      'match', ['get', 'uf'], 'BA', CORES_FAIXA[2], 'PR', CORES_FAIXA[3], 'SC', CORES_FAIXA[1], 'SP', CORES_FAIXA[4], CORES_FAIXA[0],
     ]);
   });
   it('nenhum estado com editais: cor única (o match do MapLibre exige ao menos um rótulo)', () => {
