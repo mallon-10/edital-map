@@ -11,6 +11,8 @@ export function BuscaPrincipal({ q, uf, carregando, aoBuscar }: Props) {
   const [texto, setTexto] = useState(q);
   const [local, setLocal] = useState(uf);
   useEffect(() => setLocal(uf), [uf]);
+  // A busca pode mudar fora do campo (voltar do edital restaura o termo): o campo acompanha.
+  useEffect(() => setTexto(q), [q]);
 
   return (
     <form

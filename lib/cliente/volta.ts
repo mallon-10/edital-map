@@ -15,6 +15,8 @@ export type Volta = {
   selecionadoId: string | null;
   /** Posição da lista (scrollTop). */
   rolagem: number;
+  /** Posição da página (window.scrollY), para quando a página inteira rola (celular). */
+  rolagemPagina?: number;
 };
 
 export type Armazem = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;

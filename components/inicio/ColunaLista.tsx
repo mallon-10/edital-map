@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 import { moedaCurta, numero } from '@/lib/formato';
 import type { Painel } from '@/lib/painel';
 import type { Cidade, EditalResumo, ResultadoBusca } from '@/lib/tipos';
@@ -30,6 +30,9 @@ type Props = {
   raio: number | null;
   /** Parâmetros da busca atual (os mesmos de /api/busca), para o botão Exportar. */
   parametrosBusca: string;
+  /** Área que rola (a página guarda a posição para voltar do edital no mesmo lugar). */
+  listaRef: RefObject<HTMLDivElement | null>;
+  aoRolar: (topo: number) => void;
   aoTirarCidade: () => void;
   aoSelecionar: (e: EditalResumo) => void;
   aoMudarPrazo: (seteDias: boolean) => void;
@@ -41,14 +44,13 @@ const ALTERNADOR = 'h-8 flex-1 rounded-sm text-[13px] font-semibold transition-c
 export function ColunaLista(p: Props) {
   const { total, editais } = p.resultado;
   const painelPronto = p.painelPronto ?? true;
-  const lista = useRef<HTMLDivElement>(null);
   const [erroExportar, setErroExportar] = useState<string | null>(null);
   // Toda busca nova (inclusive a que traz o mesmo primeiro edital) volta ao topo; "carregar mais" não mexe em `carregandoLista`.
   // O erro da exportação é da busca em que ocorreu: some quando a busca muda.
   useEffect(() => setErroExportar(null), [p.parametrosBusca]);
   useEffect(() => {
-    if (p.carregandoLista) lista.current?.scrollTo({ top: 0 });
-  }, [p.carregandoLista]);
+    if (p.carregandoLista) p.listaRef.current?.scrollTo({ top: 0 });
+  }, [p.carregandoLista, p.listaRef]);
 
   if (p.limite) {
     return (
@@ -117,7 +119,8 @@ export function ColunaLista(p: Props) {
         {p.erro ? <p role="alert" className="mb-3 shrink-0 rounded-sm bg-pin-soft px-3 py-2 text-sm text-pin-strong">{p.erro}</p> : null}
         {erroExportar ? <p role="alert" className="mb-3 shrink-0 rounded-sm bg-pin-soft px-3 py-2 text-sm text-pin-strong">{erroExportar}</p> : null}
         <div
-          ref={lista}
+          ref={p.listaRef}
+          onScroll={(e) => p.aoRolar(e.currentTarget.scrollTop)}
           aria-busy={p.carregandoLista}
           className={`flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-1 transition-opacity ${p.carregandoLista ? 'opacity-60' : ''}`}
         >
