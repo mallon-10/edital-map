@@ -70,12 +70,33 @@ export const BRASIL: Limites = [[-74.2, -33.9], [-34.6, 5.4]];
 /** Município escolhido sem raio: o mapa mostra a cidade e os vizinhos (círculo invisível deste tamanho em volta da sede). */
 export const RAIO_MUNICIPIO_KM = 25;
 
+/** A partir deste zoom o mapa não agrupa cidades: o município escolhido tem pílula própria (clusterMaxZoom = este − 1). */
+export const ZOOM_SEM_GRUPOS = 9;
+
+/** Duração das animações do foco pedidas pelo usuário. */
+const DURACAO_FOCO_MS = 600;
+
+/** O que o mapa faz com o foco: nada, voltar ao Brasil, enquadrar o raio ou voar até a sede do município. */
+export type DecisaoFoco =
+  | { tipo: 'nada' }
+  | { tipo: 'brasil' | 'enquadrar'; limites: Limites; duracao: number }
+  | { tipo: 'voar'; centro: [number, number]; zoom: number; duracao: number };
+
 /**
- * Para onde o mapa vai: o raio vence (é a área da busca); sem ele, a sede do município ([lng, lat]) com RAIO_MUNICIPIO_KM;
- * sem os dois, null (o Brasil inteiro).
+ * Para onde o mapa vai. O raio vence (é a área da busca). Sem ele, a sede do município ([lng, lat]) com o zoom que
+ * enquadra um círculo de RAIO_MUNICIPIO_KM (`zoomDoCirculo`, conta do MapLibre), mas nunca abaixo de ZOOM_SEM_GRUPOS.
+ * Sem os dois: de volta ao Brasil se o mapa saiu dele (`focado`); senão nada. `animar` falso (foco da abertura: link
+ * direto ou volta do edital) vai direto, sem repetir o voo desde o Brasil.
  */
-export function enquadramento(raio: Raio | null, sede: [number, number] | null): Limites | null {
-  if (raio) return limitesDoCirculo(circulo(raio.lng, raio.lat, raio.km));
-  if (sede) return limitesDoCirculo(circulo(sede[0], sede[1], RAIO_MUNICIPIO_KM));
-  return null;
+export function focoDoMapa(
+  e: { raio: Raio | null; sede: [number, number] | null; focado: boolean; animar: boolean },
+  zoomDoCirculo: (limites: Limites) => number | null,
+): DecisaoFoco {
+  const duracao = e.animar ? DURACAO_FOCO_MS : 0;
+  if (e.raio) return { tipo: 'enquadrar', limites: limitesDoCirculo(circulo(e.raio.lng, e.raio.lat, e.raio.km)), duracao };
+  if (e.sede) {
+    const zoom = zoomDoCirculo(limitesDoCirculo(circulo(e.sede[0], e.sede[1], RAIO_MUNICIPIO_KM)));
+    return { tipo: 'voar', centro: e.sede, zoom: Math.max(zoom ?? ZOOM_SEM_GRUPOS, ZOOM_SEM_GRUPOS), duracao };
+  }
+  return e.focado ? { tipo: 'brasil', limites: BRASIL, duracao } : { tipo: 'nada' };
 }

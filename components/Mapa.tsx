@@ -3,15 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Point } from 'geojson';
 import type { GeoJSONSource, Map as MapaLibre, Marker } from 'maplibre-gl';
-import { areaDoRaio, BRASIL, enquadramento, paraGeoJSON, type Raio } from '@/lib/geo';
+import { areaDoRaio, BRASIL, focoDoMapa, paraGeoJSON, ZOOM_SEM_GRUPOS, type Raio } from '@/lib/geo';
 import { CAMADA_ESPACO_PILULAS, CAMADA_NOMES_ESTADOS, carregarEstilo, linhasDica, pilula, type PropsPilula } from '@/lib/mapaRotulos';
 import type { Cidade, PontoMapa } from '@/lib/tipos';
 import { ALTURA_GAVETA_RECOLHIDA } from './GavetaCelular';
 
 /** Altura da pílula acima do ponto: a dica abre logo acima dela. */
 const ALTURA_PILULA = 34;
-/** A partir deste zoom não há grupos: cada cidade tem a pílula dela (o município escolhido nunca fica escondido num grupo). */
-const ZOOM_SEM_GRUPOS = 9;
 
 type Props = {
   pontos: PontoMapa[];
@@ -22,6 +20,8 @@ type Props = {
   raio: Raio | null;
   /** Sede ([lng, lat]) do município filtrado: sem raio, o mapa vai até a cidade; sem os dois, volta ao Brasil. */
   sede: [number, number] | null;
+  /** Falso até o usuário mudar um filtro: o foco da abertura (link direto, volta do edital) vai direto, sem voo desde o Brasil. */
+  animarFoco: boolean;
 };
 
 type ItemPilula = { marcador: Marker; botao: HTMLButtonElement; texto: HTMLSpanElement; props: PropsPilula };
@@ -51,7 +51,7 @@ function conteudo(linhas: string[]): HTMLElement {
   return div;
 }
 
-export function Mapa({ pontos, destaque, aoEscolherCidade, raio, sede }: Props) {
+export function Mapa({ pontos, destaque, aoEscolherCidade, raio, sede, animarFoco }: Props) {
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<MapaLibre | null>(null);
   const [pronto, setPronto] = useState(false);
@@ -61,10 +61,16 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio, sede }: Props) 
   const raioAtual = useRef(raio);
   // Falso enquanto o mapa mostra o Brasil da abertura: sem foco, só volta ao Brasil quem saiu dele.
   const focado = useRef(false);
+  const animarAtual = useRef(animarFoco);
 
   useEffect(() => {
     escolher.current = aoEscolherCidade;
   }, [aoEscolherCidade]);
+
+  // Lido pelo efeito do foco (declarado depois, roda depois no mesmo commit) sem virar dependência dele.
+  useEffect(() => {
+    animarAtual.current = animarFoco;
+  }, [animarFoco]);
 
   // Pontos e cidade selecionada vão juntos para a fonte: o destaque precisa passar pelo agrupamento.
   useEffect(() => {
@@ -81,24 +87,17 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio, sede }: Props) 
     const m = mapa.current;
     if (!pronto || !m) return;
     (m.getSource('raio') as GeoJSONSource | undefined)?.setData(areaDoRaio(raio));
-    const limites = enquadramento(raio, sede);
-    // Já no Brasil da abertura: nada a animar.
-    if (!limites && !focado.current) return;
-    focado.current = limites !== null;
     const celular = window.matchMedia('(max-width: 1023px)').matches;
     const altura = m.getContainer().clientHeight;
-    if (!limites) {
-      m.fitBounds(BRASIL, { padding: folgaBrasil(celular, altura), duration: 600 });
-      return;
-    }
     const padding = folgaFoco(celular, altura);
-    if (raio || !sede) {
-      m.fitBounds(limites, { padding, duration: 600 });
-      return;
-    }
-    // Município: a cidade e os vizinhos, mas perto o bastante para ela sair do grupo (no celular estreito o círculo pediria menos zoom).
-    const zoom = Math.max(m.cameraForBounds(limites, { padding })?.zoom ?? ZOOM_SEM_GRUPOS, ZOOM_SEM_GRUPOS);
-    m.flyTo({ center: sede, zoom, duration: 600 });
+    const d = focoDoMapa(
+      { raio, sede, focado: focado.current, animar: animarAtual.current },
+      (limites) => m.cameraForBounds(limites, { padding })?.zoom ?? null,
+    );
+    focado.current = d.tipo === 'enquadrar' || d.tipo === 'voar';
+    if (d.tipo === 'brasil') m.fitBounds(d.limites, { padding: folgaBrasil(celular, altura), duration: d.duracao });
+    else if (d.tipo === 'enquadrar') m.fitBounds(d.limites, { padding, duration: d.duracao });
+    else if (d.tipo === 'voar') m.flyTo({ center: d.centro, zoom: d.zoom, duration: d.duracao });
   }, [pronto, raio?.lng, raio?.lat, raio?.km, sede?.[0], sede?.[1]]);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { areaDoRaio, BRASIL, circulo, distanciaKm, enquadramento, limitesDoCirculo, paraGeoJSON, RAIO_MUNICIPIO_KM } from './geo';
+import { areaDoRaio, BRASIL, circulo, distanciaKm, focoDoMapa, limitesDoCirculo, paraGeoJSON, RAIO_MUNICIPIO_KM, ZOOM_SEM_GRUPOS, type Limites } from './geo';
 
 describe('paraGeoJSON', () => {
   it('converte pontos em features com [lng, lat]', () => {
@@ -63,30 +63,56 @@ describe('areaDoRaio', () => {
   });
 });
 
-describe('enquadramento (para onde o mapa vai)', () => {
-  it('com raio, enquadra o círculo do raio (mesmo com a sede do município)', () => {
-    const raio = { lng: JOINVILLE[0], lat: JOINVILLE[1], km: 100 };
-    expect(enquadramento(raio, JOINVILLE)).toEqual(limitesDoCirculo(circulo(JOINVILLE[0], JOINVILLE[1], 100)));
-    expect(enquadramento(raio, null)).toEqual(limitesDoCirculo(circulo(JOINVILLE[0], JOINVILLE[1], 100)));
-  });
-  it('só o município: um círculo de RAIO_MUNICIPIO_KM em volta da sede (a cidade e os vizinhos)', () => {
-    expect(RAIO_MUNICIPIO_KM).toBeGreaterThanOrEqual(15);
-    expect(RAIO_MUNICIPIO_KM).toBeLessThanOrEqual(40);
-    const [[oeste, sul], [leste, norte]] = enquadramento(null, JOINVILLE)!;
-    expect(norte - sul).toBeCloseTo((2 * RAIO_MUNICIPIO_KM) / 111.195, 3);
-    expect(oeste).toBeLessThan(JOINVILLE[0]);
-    expect(leste).toBeGreaterThan(JOINVILLE[0]);
-    expect(sul).toBeLessThan(JOINVILLE[1]);
-    expect(norte).toBeGreaterThan(JOINVILLE[1]);
-  });
-  it('sem raio nem município: null (o mapa volta ao Brasil inteiro)', () => {
-    expect(enquadramento(null, null)).toBeNull();
-  });
-  it('a caixa do Brasil cobre o país (oeste < leste, sul < norte)', () => {
+// Sedes nos extremos do país: Cruzeiro do Sul/AC (oeste), Chuí/RS (sul), Uiramutã/RR (norte), João Pessoa/PB (leste).
+const EXTREMOS: [number, number][] = [[-72.67, -7.63], [-53.46, -33.69], [-60.17, 4.6], [-34.86, -7.12]];
+const RAIO_JOINVILLE = { lng: JOINVILLE[0], lat: JOINVILLE[1], km: 100 };
+const sem = () => null;
+
+describe('BRASIL (enquadramento da abertura e da volta)', () => {
+  it('contém as sedes dos extremos do país', () => {
     const [[oeste, sul], [leste, norte]] = BRASIL;
-    expect(oeste).toBeLessThan(leste);
-    expect(sul).toBeLessThan(norte);
-    expect(oeste).toBeLessThan(JOINVILLE[0]);
-    expect(leste).toBeGreaterThan(JOINVILLE[0]);
+    for (const [lng, lat] of EXTREMOS) {
+      expect(lng).toBeGreaterThan(oeste);
+      expect(lng).toBeLessThan(leste);
+      expect(lat).toBeGreaterThan(sul);
+      expect(lat).toBeLessThan(norte);
+    }
+  });
+});
+
+describe('focoDoMapa (para onde o mapa vai)', () => {
+  it('com raio, enquadra o círculo do raio — vence a sede, com ou sem foco anterior', () => {
+    const limites = limitesDoCirculo(circulo(JOINVILLE[0], JOINVILLE[1], 100));
+    for (const focado of [false, true]) {
+      expect(focoDoMapa({ raio: RAIO_JOINVILLE, sede: JOINVILLE, focado, animar: true }, () => 12)).toEqual({ tipo: 'enquadrar', limites, duracao: 600 });
+    }
+  });
+  it('só o município: voa até a sede com o zoom do círculo de RAIO_MUNICIPIO_KM', () => {
+    let pedido: Limites | null = null;
+    const d = focoDoMapa({ raio: null, sede: JOINVILLE, focado: false, animar: true }, (l) => {
+      pedido = l;
+      return 9.8;
+    });
+    expect(d).toEqual({ tipo: 'voar', centro: JOINVILLE, zoom: 9.8, duracao: 600 });
+    expect(pedido).toEqual(limitesDoCirculo(circulo(JOINVILLE[0], JOINVILLE[1], RAIO_MUNICIPIO_KM)));
+  });
+  it('só o município: o zoom nunca fica abaixo de ZOOM_SEM_GRUPOS (a cidade não some num grupo)', () => {
+    expect(ZOOM_SEM_GRUPOS).toBe(9);
+    expect(focoDoMapa({ raio: null, sede: JOINVILLE, focado: false, animar: true }, () => 8.7)).toMatchObject({ tipo: 'voar', zoom: ZOOM_SEM_GRUPOS });
+    expect(focoDoMapa({ raio: null, sede: JOINVILLE, focado: false, animar: true }, sem)).toMatchObject({ tipo: 'voar', zoom: ZOOM_SEM_GRUPOS });
+  });
+  it('sem raio nem município, ainda no Brasil da abertura: nada a fazer', () => {
+    expect(focoDoMapa({ raio: null, sede: null, focado: false, animar: true }, sem)).toEqual({ tipo: 'nada' });
+    expect(focoDoMapa({ raio: null, sede: null, focado: false, animar: false }, sem)).toEqual({ tipo: 'nada' });
+  });
+  it('tirou o filtro (estava focado): volta ao Brasil', () => {
+    expect(focoDoMapa({ raio: null, sede: null, focado: true, animar: true }, sem)).toEqual({ tipo: 'brasil', limites: BRASIL, duracao: 600 });
+  });
+  it('tirou o raio e ficou o município: voa até a sede', () => {
+    expect(focoDoMapa({ raio: null, sede: JOINVILLE, focado: true, animar: true }, () => 10)).toEqual({ tipo: 'voar', centro: JOINVILLE, zoom: 10, duracao: 600 });
+  });
+  it('foco da abertura (link direto, volta do edital): sem animação', () => {
+    expect(focoDoMapa({ raio: null, sede: JOINVILLE, focado: false, animar: false }, () => 10)).toMatchObject({ duracao: 0 });
+    expect(focoDoMapa({ raio: RAIO_JOINVILLE, sede: JOINVILLE, focado: false, animar: false }, sem)).toMatchObject({ tipo: 'enquadrar', duracao: 0 });
   });
 });
