@@ -1,35 +1,38 @@
 import 'server-only';
 import { createHash, randomUUID } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
-import type { Detalhe, PedidoAlerta, TipoEvento } from '../eventos';
+import type { Detalhe, PedidoAlerta, TipoEvento, TipoEventoServidor } from '../eventos';
+import { COOKIE_INTERNO, COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie, visitanteValido } from '../visitante';
 import { supabaseServidor } from './supabase';
 
-export const COOKIE_VISITANTE = 'em_visitante';
-export const COOKIE_INTERNO = 'em_interno';
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const OPCOES_COOKIE = {
-  maxAge: 60 * 60 * 24 * 365,
-  httpOnly: true,
-  sameSite: 'lax' as const,
-  secure: process.env.NODE_ENV === 'production',
-  path: '/',
-};
+export { COOKIE_INTERNO, COOKIE_VISITANTE };
 
 export type Contexto = { visitante: string; interno: boolean; ipHash: string | null };
+
+/** Hash do IP com o sal do servidor (IP_SAL). Sem sal ou sem IP: null (os limites por IP não valem). */
+function hashDoIp(h: { get(nome: string): string | null }): string | null {
+  const ip = (h.get('x-forwarded-for') ?? '').split(',')[0]?.trim() || h.get('x-real-ip') || null;
+  const sal = process.env.IP_SAL;
+  return ip && sal ? createHash('sha256').update(`${sal}:${ip}`).digest('hex') : null;
+}
 
 /** Lê (ou cria) o visitante anônimo, a marca de interno e o hash do IP. Só em rotas (pode gravar cookie). */
 export async function contexto(): Promise<Contexto> {
   const c = await cookies();
-  const h = await headers();
-  let visitante = c.get(COOKIE_VISITANTE)?.value ?? '';
-  if (!UUID.test(visitante)) {
-    visitante = randomUUID();
-    c.set(COOKIE_VISITANTE, visitante, OPCOES_COOKIE);
-  }
-  const ip = (h.get('x-forwarded-for') ?? '').split(',')[0]?.trim() || h.get('x-real-ip') || null;
-  const sal = process.env.IP_SAL;
-  const ipHash = ip && sal ? createHash('sha256').update(`${sal}:${ip}`).digest('hex') : null;
-  return { visitante, interno: c.get(COOKIE_INTERNO)?.value === '1', ipHash };
+  const { visitante, novo } = visitanteDoCookie(c.get(COOKIE_VISITANTE)?.value, randomUUID);
+  if (novo) c.set(COOKIE_VISITANTE, visitante, OPCOES_COOKIE);
+  return { visitante, interno: c.get(COOKIE_INTERNO)?.value === '1', ipHash: hashDoIp(await headers()) };
+}
+
+/**
+ * Contexto para páginas (componente de servidor não grava cookie; o proxy.ts já garantiu em_visitante).
+ * null = sem visitante válido: a página não conta uso.
+ */
+export async function contextoDaPagina(): Promise<Contexto | null> {
+  const c = await cookies();
+  const visitante = c.get(COOKIE_VISITANTE)?.value;
+  if (!visitanteValido(visitante)) return null;
+  return { visitante, interno: c.get(COOKIE_INTERNO)?.value === '1', ipHash: hashDoIp(await headers()) };
 }
 
 export async function marcarInterno(): Promise<void> {
@@ -63,7 +66,7 @@ export async function exportacaoDentroDoLimite(ipHash: string | null, limite: nu
   return (count ?? 0) < limite;
 }
 
-export async function gravarEvento(ctx: Contexto, tipo: TipoEvento | 'pediu_alerta', detalhe: Detalhe): Promise<void> {
+export async function gravarEvento(ctx: Contexto, tipo: TipoEvento | TipoEventoServidor, detalhe: Detalhe): Promise<void> {
   const { error } = await supabaseServidor()
     .from('eventos')
     .insert({ visitante: ctx.visitante, tipo, detalhe, interno: ctx.interno, ip_hash: ctx.ipHash });
