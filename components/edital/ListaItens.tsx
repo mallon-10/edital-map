@@ -27,7 +27,7 @@ export function ListaItens({ itens, total, slug, todos }: { itens: ItemEdital[] 
         ))}
       </ol>
       {!todos && total > itens.length ? (
-        <Link href={`/edital/${slug}?itens=todos`} className="mt-3 inline-block text-sm font-semibold text-pin-strong hover:underline">
+        <Link href={`/edital/${slug}?itens=todos`} prefetch={false} className="mt-3 inline-block text-sm font-semibold text-pin-strong hover:underline">
           Ver todos os {numero(total)} itens
         </Link>
       ) : null}

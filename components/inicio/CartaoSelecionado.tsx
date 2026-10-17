@@ -42,7 +42,7 @@ export function CartaoSelecionado({ edital: e, agora, aoFechar }: { edital: Edit
         </div>
       </div>
       {forma ? <p className="text-[13px] text-[#c7d6d3]">{forma}</p> : null}
-      <Link href={`/edital/${e.slug}`} className="mt-1 inline-flex h-11 items-center justify-center rounded-sm bg-pin text-sm font-semibold text-on-pin">
+      <Link href={`/edital/${e.slug}`} prefetch={false} className="mt-1 inline-flex h-11 items-center justify-center rounded-sm bg-pin text-sm font-semibold text-on-pin">
         Ver edital
       </Link>
     </article>
