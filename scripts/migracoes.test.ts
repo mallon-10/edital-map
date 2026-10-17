@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { TIPOS_EVENTO } from '../lib/eventos';
+import { TIPOS_EVENTO, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';
 
 const ler = (caminho: string) => readFileSync(new URL(`../${caminho}`, import.meta.url), 'utf8');
 
@@ -172,6 +172,85 @@ describe('eventos e portão (recursos Pro)', () => {
   it('o portão mostra usou_recurso por recurso, sem internos', () => {
     const portao = ler('docs/fase-2-portao.sql');
     expect(portao).toContain("where tipo = 'usou_recurso' and not interno and visitante not in (select visitante from internos)");
-    expect(portao).toContain('as uso_por_recurso;');
+    expect(portao).toContain('as uso_por_recurso,');
+  });
+});
+
+describe('migração 0009 (limites do grátis e lista de espera)', () => {
+  const sql = ler('supabase/migrations/0009_limites_lista_espera.sql');
+  const DIA_BRASILIA = "(now() at time zone 'America/Sao_Paulo')::date";
+
+  it('uma transação curta e o PostgREST relê as funções no fim', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql.trimEnd().endsWith("notify pgrst, 'reload schema';")).toBe(true);
+  });
+  it('uso_diario: uma linha por visitante, dia, tipo e chave', () => {
+    expect(sql).toContain('create table public.uso_diario (');
+    expect(sql).toContain("tipo       text not null check (tipo in ('busca', 'edital')),");
+    expect(sql).toContain('primary key (visitante, dia, tipo, chave)');
+  });
+  it('registrar_uso: trava por visitante e tipo antes de contar; repetir não conta; além do limite não grava', () => {
+    expect(sql).toContain('create function public.registrar_uso(p_visitante uuid, p_tipo text, p_chave text, p_limite int)');
+    expect(sql).toContain('returns table (permitido boolean, usados int)');
+    const trava = sql.indexOf("perform pg_advisory_xact_lock(hashtextextended('uso_diario:' || p_visitante::text || ':' || p_tipo, 0));");
+    const conta = sql.indexOf('select count(*)::int into v_usados');
+    const repetida = sql.indexOf('return query select true, v_usados;');
+    const recusada = sql.indexOf('return query select false, v_usados;');
+    const grava = sql.indexOf('insert into public.uso_diario (visitante, dia, tipo, chave)');
+    expect(trava).toBeGreaterThan(-1);
+    expect(trava).toBeLessThan(conta);
+    expect(conta).toBeLessThan(repetida);
+    expect(repetida).toBeLessThan(recusada);
+    expect(recusada).toBeLessThan(grava);
+    expect(sql).toContain('return query select true, v_usados + 1;');
+  });
+  it('dia de Brasília no registro, no selo e na limpeza (e só nesses três lugares)', () => {
+    expect(sql.split(DIA_BRASILIA).length - 1).toBe(3);
+  });
+  it('uso_do_dia devolve buscas e editais de hoje', () => {
+    expect(sql).toContain('create function public.uso_do_dia(p_visitante uuid)');
+    expect(sql).toContain('returns table (buscas int, editais int)');
+  });
+  it('lista_espera: plano basic ou pro, com o hash do IP para o limite de envios', () => {
+    expect(sql).toContain("plano      text not null check (plano in ('basic', 'pro')),");
+    expect(sql).toContain('create index lista_espera_ip_idx on public.lista_espera (ip_hash, criado_em);');
+  });
+  it('eventos.tipo ganha limite_atingido sem perder nenhum tipo da 0007', () => {
+    const tipos = (texto: string) => {
+      const trecho = texto.slice(texto.indexOf('add constraint eventos_tipo_check'));
+      return [...trecho.slice(0, trecho.indexOf(';')).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    };
+    const antes = tipos(ler('supabase/migrations/0007_recursos_pro.sql'));
+    const depois = tipos(sql);
+    expect(antes).toHaveLength(6);
+    for (const t of [...antes, ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR]) expect(depois).toContain(t);
+    expect(depois).toContain('limite_atingido');
+  });
+  it('a retenção diária apaga o uso dos dias anteriores e continua apagando as contratações', () => {
+    expect(sql).toContain('create or replace function public.aplicar_retencao()');
+    expect(sql).toContain(`delete from public.uso_diario where dia < ${DIA_BRASILIA};`);
+    expect(sql).toContain("where encerramento_em is null or encerramento_em < now() - interval '7 days'");
+    expect(sql).not.toContain('cron.schedule');
+  });
+  it('só o servidor lê e grava', () => {
+    for (const t of ['uso_diario', 'lista_espera']) {
+      expect(sql).toContain(`alter table public.${t} enable row level security;`);
+      expect(sql).toContain(`revoke all on table public.${t} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant select, insert, delete on table public.${t} to service_role;`);
+    }
+    for (const f of ['registrar_uso(uuid, text, text, int)', 'uso_do_dia(uuid)', 'aplicar_retencao()']) {
+      expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
+    }
+  });
+});
+
+describe('portão (limites do grátis)', () => {
+  const portao = ler('docs/fase-2-portao.sql');
+  it('mostra quem bateu no limite e a lista de espera, sem internos', () => {
+    expect(portao).toContain("where tipo = 'limite_atingido' and not interno and visitante not in (select visitante from internos)");
+    expect(portao).toContain('as limite_atingido_por_tipo,');
+    expect(portao).toContain('select visitante from public.lista_espera where interno and visitante is not null');
+    expect(portao).toContain('as lista_espera_por_plano;');
   });
 });

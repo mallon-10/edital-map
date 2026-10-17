@@ -1,5 +1,8 @@
 export const TIPOS_EVENTO = ['busca', 'abriu_edital', 'clicou_edital_oficial', 'quer_recurso', 'usou_recurso'] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
+/** Eventos gravados só pelo servidor (o navegador não manda): pedido de alerta e limite do grátis atingido. */
+export const TIPOS_EVENTO_SERVIDOR = ['pediu_alerta', 'limite_atingido'] as const;
+export type TipoEventoServidor = (typeof TIPOS_EVENTO_SERVIDOR)[number];
 
 export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia', 'plano_pro', 'filtros_pro'] as const;
 export type Recurso = (typeof RECURSOS)[number];
