@@ -4,7 +4,7 @@ import type { FiltrosBusca, ResultadoBusca } from './tipos';
 export const LIMITE_GRATIS = { busca: 3, edital: 3 } as const;
 export type TipoUso = keyof typeof LIMITE_GRATIS;
 
-/** Uso do dia que o selo mostra. `interno`: navegador do dono, sem limite e sem selo. */
+/** Uso do dia que a faixa do plano grátis mostra. `interno`: navegador do dono, sem limite e sem faixa. */
 export type UsoHoje = { interno: boolean; buscas: number; editais: number };
 /** Quantidades já usadas hoje. */
 type Usados = Pick<UsoHoje, 'buscas' | 'editais'>;
@@ -35,31 +35,34 @@ export function combinacaoBusca(f: FiltrosBusca): string | null {
   return partes.every((p) => p === null) ? null : JSON.stringify(partes);
 }
 
-const PALAVRAS: Record<TipoUso, { um: string; varios: string; nenhum: string }> = {
-  busca: { um: 'busca', varios: 'buscas', nenhum: 'nenhuma busca' },
-  edital: { um: 'edital', varios: 'editais', nenhum: 'nenhum edital' },
+const PALAVRAS: Record<TipoUso, { varios: string; nenhum: string }> = {
+  busca: { varios: 'buscas', nenhum: 'nenhuma busca' },
+  edital: { varios: 'editais', nenhum: 'nenhum edital' },
 };
-
-function quantos(tipo: TipoUso, n: number): string {
-  const p = PALAVRAS[tipo];
-  return n <= 0 ? p.nenhum : `${n} ${n === 1 ? p.um : p.varios}`;
-}
 
 function restantes(uso: Usados): { buscas: number; editais: number } {
   return { buscas: Math.max(0, LIMITE_GRATIS.busca - uso.buscas), editais: Math.max(0, LIMITE_GRATIS.edital - uso.editais) };
 }
 
-/** "Grátis · restam 2 buscas e 1 edital hoje"; com os dois zerados, "Grátis · nenhuma busca e nenhum edital hoje". */
-export function textoSelo(uso: Usados): string {
-  const r = restantes(uso);
-  if (r.buscas === 0 && r.editais === 0) return 'Grátis · nenhuma busca e nenhum edital hoje';
-  return `Grátis · restam ${quantos('busca', r.buscas)} e ${quantos('edital', r.editais)} hoje`;
+const restam = (tipo: TipoUso, usados: number) => Math.min(LIMITE_GRATIS[tipo], Math.max(0, LIMITE_GRATIS[tipo] - usados));
+
+/** Bolinhas da faixa: `true` = ainda disponível (cheia), `false` = já usada (vazia). Sempre `maximo` bolinhas. */
+export function bolinhas(usados: number, maximo: number): boolean[] {
+  const sobra = Math.min(maximo, Math.max(0, maximo - usados));
+  return Array.from({ length: maximo }, (_, i) => i < sobra);
 }
 
-/** Selo do celular: "2 buscas · 1 edital". */
-export function textoSeloCompacto(uso: Usados): string {
-  const r = restantes(uso);
-  return `${quantos('busca', r.buscas)} · ${quantos('edital', r.editais)}`;
+/** Texto ao lado das bolinhas: "2 de 3"; zerado, "nenhuma busca" ou "nenhum edital". */
+export function textoFaixa(tipo: TipoUso, usados: number): string {
+  const n = restam(tipo, usados);
+  return n === 0 ? PALAVRAS[tipo].nenhum : `${n} de ${LIMITE_GRATIS[tipo]}`;
+}
+
+/** O que o leitor de tela lê no lugar das bolinhas: "restam 2 de 3 buscas grátis hoje". */
+export function leituraFaixa(tipo: TipoUso, usados: number): string {
+  const n = restam(tipo, usados);
+  if (n === 0) return `${PALAVRAS[tipo].nenhum} grátis restante hoje`;
+  return `${n === 1 ? 'resta' : 'restam'} ${n} de ${LIMITE_GRATIS[tipo]} ${PALAVRAS[tipo].varios} grátis hoje`;
 }
 
 export type TomSelo = 'normal' | 'atencao' | 'esgotado';
