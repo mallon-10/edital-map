@@ -119,3 +119,6 @@ export type EditalRelacionado = Pick<
 
 /** Órgão com editais abertos, na busca do chip Órgão. */
 export type OrgaoAberto = Orgao & { uf: string; qtd: number };
+
+/** Linha da planilha: o card da lista + o link de origem (para o link do edital). */
+export type EditalExportado = EditalResumo & { link_origem: string | null };
