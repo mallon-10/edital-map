@@ -40,6 +40,8 @@ export function ColunaLista(p: Props) {
   const lista = useRef<HTMLDivElement>(null);
   const [erroExportar, setErroExportar] = useState<string | null>(null);
   // Toda busca nova (inclusive a que traz o mesmo primeiro edital) volta ao topo; "carregar mais" não mexe em `carregandoLista`.
+  // O erro da exportação é da busca em que ocorreu: some quando a busca muda.
+  useEffect(() => setErroExportar(null), [p.parametrosBusca]);
   useEffect(() => {
     if (p.carregandoLista) lista.current?.scrollTo({ top: 0 });
   }, [p.carregandoLista]);
