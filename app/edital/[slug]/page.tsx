@@ -6,6 +6,7 @@ import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
 import { ListaItens } from '@/components/edital/ListaItens';
 import { PrincipaisInformacoes } from '@/components/edital/PrincipaisInformacoes';
+import { Relacionados } from '@/components/edital/Relacionados';
 import { TextoRecolhivel } from '@/components/edital/TextoRecolhivel';
 import { TAG_PRAZO, TEXTO_PRAZO } from '@/components/estilosPrazo';
 import { FaixaCobertura } from '@/components/FaixaCobertura';
@@ -14,9 +15,9 @@ import { VitrineEmBreve } from '@/components/VitrineEmBreve';
 import { SLUG_EDITAL } from '@/lib/eventos';
 import { data, haQuanto, linkOficial, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
-import { atualizadoEm, edital, itensDoEdital, resumoItens } from '@/lib/servidor/consultas';
+import { atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
 import { assunto, lotesDaInfo, nomeProprio, paragrafos, textoLimpo } from '@/lib/texto';
-import type { ResumoItens } from '@/lib/tipos';
+import type { EditalRelacionado, ResumoItens } from '@/lib/tipos';
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ itens?: string }> };
 
@@ -43,10 +44,15 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   if (!e) notFound();
 
   const todos = modoItens === 'todos';
-  const [itens, resumo, atualizado] = await Promise.all([
+  const [itens, resumo, atualizado, parecidos] = await Promise.all([
     itensDoEdital(e, todos ? 2000 : 50),
     resumoItens(e.id).catch(() => RESUMO_VAZIO),
     atualizadoEm(),
+    // Falha nos parecidos não derruba a página: o bloco só não aparece.
+    relacionados(e.id).catch((erro: unknown): EditalRelacionado[] => {
+      console.error(`relacionados ${e.id}:`, erro);
+      return [];
+    }),
   ]);
   // O total vem do resumo gravado pelo worker; sem resumo ainda, do que o PNCP devolveu agora.
   const totalItens = Math.max(resumo.total, itens?.length ?? 0);
@@ -105,6 +111,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
               <h2 className="mb-3 text-[17px] font-bold">Itens da licitação</h2>
               <ListaItens itens={itens} total={totalItens} slug={e.slug} todos={todos} />
             </section>
+            <Relacionados editais={parecidos} origem={e.slug} agora={agora} />
             {titulo.titulo !== objetoCompleto ? (
               <section className="rounded-lg border border-line bg-raised p-5">
                 <details>
