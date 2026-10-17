@@ -43,6 +43,13 @@ export function numero(n: number): string {
   return fmtNumero.format(n);
 }
 
+/** Quantidade curta para a pílula do mapa: "1.443", "12 mil", "1,2 mi" (para baixo, com espaço inseparável). */
+export function numeroCurto(n: number): string {
+  if (n >= 1e6) return `${fmtUmaCasa.format(Math.floor(n / 1e5) / 10)}${NBSP}mi`;
+  if (n >= 1e4) return `${fmtInteiro.format(Math.floor(n / 1e3))}${NBSP}mil`;
+  return fmtNumero.format(n);
+}
+
 export function quantidade(n: number | string | null): string {
   if (n === null) return '—';
   const x = Number(n);

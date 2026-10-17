@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { data, dataHora, diasAte, diaMes, etiqueta, haQuanto, hora, linkOficial, moeda, moedaCurta, numero, prazo, quantidade } from './formato';
+import { data, dataHora, diasAte, diaMes, etiqueta, haQuanto, hora, linkOficial, moeda, moedaCurta, numero, numeroCurto, prazo, quantidade } from './formato';
 
 // 15/10/2026 12h em Brasília
 const AGORA = new Date('2026-10-15T15:00:00Z');
@@ -123,5 +123,22 @@ describe('etiqueta', () => {
     expect(etiqueta({ encerramento_em: longe, publicada_em: '2026-10-13T12:00:00Z' }, AGORA)).toEqual({ texto: 'Novo', tom: 'novo' });
     expect(etiqueta({ encerramento_em: longe, publicada_em: '2026-10-12T12:00:00Z' }, AGORA)).toEqual({ texto: 'Aberto', tom: 'aberto' });
     expect(etiqueta({ encerramento_em: longe, publicada_em: null }, AGORA)).toEqual({ texto: 'Aberto', tom: 'aberto' });
+  });
+});
+
+describe('numeroCurto (pílula do mapa)', () => {
+  it('até 9.999 com ponto de milhar', () => {
+    expect(numeroCurto(1)).toBe('1');
+    expect(numeroCurto(1443)).toBe('1.443');
+    expect(numeroCurto(9999)).toBe('9.999');
+  });
+  it('de 10 mil em diante, milhares inteiros', () => {
+    expect(numeroCurto(10000)).toBe('10 mil');
+    expect(numeroCurto(12345)).toBe('12 mil');
+    expect(numeroCurto(999999)).toBe('999 mil');
+  });
+  it('de 1 milhão, uma casa', () => {
+    expect(numeroCurto(1_000_000)).toBe('1,0 mi');
+    expect(numeroCurto(1_260_000)).toBe('1,2 mi');
   });
 });
