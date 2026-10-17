@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { registrar } from '@/lib/cliente/registrar';
+import type { Raio } from '@/lib/geo';
 import { normalizarTela, paraParametros, recursosUsados } from '@/lib/filtros';
 import { resumirPontos } from '@/lib/painel';
 import type { Cidade, EditalResumo, FiltrosTela, PontoMapa, ResultadoBusca } from '@/lib/tipos';
@@ -61,12 +62,19 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
   const [selecionadoId, setSelecionadoId] = useState<string | null>(inicial.editais[0]?.id ?? null);
   const [resumoNoCelular, setResumoNoCelular] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
+  // Sede de cada município já visto no mapa: centro do círculo do raio (a cidade escolhida sempre veio de um ponto do mapa).
+  const [centros, setCentros] = useState<Record<string, [number, number]>>({});
   // Numeração dos pedidos: só a resposta do pedido mais recente pode mudar a tela.
   const pedidoLista = useRef(0);
   const pedidoMapa = useRef(0);
 
   const painel = useMemo(() => resumirPontos(pontos), [pontos]);
   const selecionado = resultado.editais.find((e) => e.id === selecionadoId) ?? resultado.editais[0] ?? null;
+  const centro = filtros.cidade && filtros.raio ? centros[filtros.cidade.ibge] : undefined;
+  const raioMapa = useMemo<Raio | null>(
+    () => (centro && filtros.raio ? { lng: centro[0], lat: centro[1], km: filtros.raio } : null),
+    [centro, filtros.raio],
+  );
 
   const carregarLista = useCallback(async (f: FiltrosTela) => {
     const id = ++pedidoLista.current;
@@ -97,6 +105,11 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
       const novos = await obter<PontoMapa[]>(`/api/mapa?${paraParametros(f, { comCidade: false })}`, ERRO_MAPA);
       if (id !== pedidoMapa.current) return;
       setPontos(novos);
+      setCentros((anteriores) => {
+        const todos = { ...anteriores };
+        for (const p of novos) todos[p.codigo_ibge] = [p.lng, p.lat];
+        return todos;
+      });
       setPontosProntos(true);
       setErroMapa(null);
     } catch (e) {
@@ -192,7 +205,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
           />
         </GavetaCelular>
         <section aria-label="Mapa" className="relative min-h-0 flex-1 overflow-hidden bg-raised lg:rounded-lg lg:border lg:border-line">
-          <Mapa pontos={pontos} porUf={painel.porUf} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} />
+          <Mapa pontos={pontos} porUf={painel.porUf} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} raio={raioMapa} />
           {erroMapa ? (
             <p role="alert" className="absolute left-3 top-3 z-10 max-w-[calc(100%-4.5rem)] rounded-sm bg-pin-soft px-3 py-2 text-xs text-pin-strong">
               {erroMapa}

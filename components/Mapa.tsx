@@ -5,7 +5,7 @@ import type { Point } from 'geojson';
 import type { ExpressionSpecification, GeoJSONSource, Map as MapaLibre, Marker } from 'maplibre-gl';
 import { UFS_BRASIL } from '@/lib/eventos';
 import { moedaCurta, numero } from '@/lib/formato';
-import { paraGeoJSON, type PropsPonto } from '@/lib/geo';
+import { areaDoRaio, circulo, limitesDoCirculo, paraGeoJSON, type PropsPonto, type Raio } from '@/lib/geo';
 import { contornosDosEstados, coresDosEstados } from '@/lib/painel';
 import type { Cidade, PontoMapa } from '@/lib/tipos';
 import { ALTURA_GAVETA_RECOLHIDA } from './GavetaCelular';
@@ -23,6 +23,8 @@ type Props = {
   /** Código IBGE da cidade do edital selecionado: ganha o pino. */
   destaque: string | null;
   aoEscolherCidade: (c: Cidade) => void;
+  /** Área do filtro de raio (centro na sede do município): círculo fino e enquadramento nela. */
+  raio: Raio | null;
 };
 
 function conteudo(linhas: string[]): HTMLElement {
@@ -38,7 +40,7 @@ function conteudo(linhas: string[]): HTMLElement {
 
 const editais = (n: number) => `${numero(n)} ${n === 1 ? 'edital aberto' : 'editais abertos'}`;
 
-export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
+export function Mapa({ pontos, porUf, destaque, aoEscolherCidade, raio }: Props) {
   const caixa = useRef<HTMLDivElement>(null);
   const mapa = useRef<MapaLibre | null>(null);
   const biblioteca = useRef<typeof import('maplibre-gl') | null>(null);
@@ -47,6 +49,7 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
   const pontosAtuais = useRef(pontos);
   const porUfAtual = useRef(porUf);
   const escolher = useRef(aoEscolherCidade);
+  const raioAtual = useRef(raio);
 
   useEffect(() => {
     escolher.current = aoEscolherCidade;
@@ -65,6 +68,19 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
     mapa.current.setPaintProperty('estados-contorno', 'line-color', contorno.cor as ExpressionSpecification | string);
     mapa.current.setPaintProperty('estados-contorno', 'line-width', contorno.largura as ExpressionSpecification | number);
   }, [porUf, pronto]);
+
+  // Raio: círculo fino na área e o mapa enquadra nela. Depende só dos números: um objeto novo com os mesmos valores não reenquadra.
+  useEffect(() => {
+    raioAtual.current = raio;
+    const m = mapa.current;
+    if (!pronto || !m) return;
+    (m.getSource('raio') as GeoJSONSource | undefined)?.setData(areaDoRaio(raio));
+    if (!raio) return;
+    // No celular a gaveta recolhida cobre a base do mapa (no máximo metade da altura, senão o fitBounds desiste).
+    const celular = window.matchMedia('(max-width: 1023px)').matches;
+    const baixo = celular ? Math.min(ALTURA_GAVETA_RECOLHIDA + 24, Math.floor(m.getContainer().clientHeight / 2)) : 40;
+    m.fitBounds(limitesDoCirculo(circulo(raio.lng, raio.lat, raio.km)), { padding: { top: 40, right: 40, left: 40, bottom: baixo }, duration: 600 });
+  }, [pronto, raio?.lng, raio?.lat, raio?.km]);
 
   useEffect(() => {
     const m = mapa.current;
@@ -131,6 +147,11 @@ export function Mapa({ pontos, porUf, destaque, aoEscolherCidade }: Props) {
         m.addLayer({
           id: 'estados-contorno', type: 'line', source: 'estados',
           paint: { 'line-color': contorno.cor as ExpressionSpecification | string, 'line-width': contorno.largura as ExpressionSpecification | number },
+        });
+        m.addSource('raio', { type: 'geojson', data: areaDoRaio(raioAtual.current) });
+        m.addLayer({
+          id: 'raio', type: 'line', source: 'raio',
+          paint: { 'line-color': '#0c2340', 'line-width': 1.5, 'line-dasharray': [2, 2] },
         });
         m.addSource('editais', {
           type: 'geojson', data: paraGeoJSON(pontosAtuais.current),
