@@ -11,9 +11,17 @@ describe('paraGeoJSON', () => {
     expect(g.features[0]).toEqual({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [-51.2, -30.03] },
-      properties: { ibge: '4314902', nome: 'Porto Alegre', uf: 'RS', qtd: 367, valor: 1000 },
+      properties: { ibge: '4314902', nome: 'Porto Alegre', uf: 'RS', qtd: 367, valor: 1000, destaque: 0 },
     });
     expect(g.features[1].properties.valor).toBe(0);
+  });
+  it('marca só a cidade selecionada (para a pílula e o grupo ficarem escuros)', () => {
+    const pontos = [
+      { codigo_ibge: '4314902', nome: 'Porto Alegre', uf: 'RS', lat: -30.03, lng: -51.2, qtd: 367, valor_total: 1000, prazo_mais_proximo: '2026-10-15T20:00:00Z' },
+      { codigo_ibge: '4202404', nome: 'Blumenau', uf: 'SC', lat: -26.9, lng: -49.07, qtd: 3, valor_total: null, prazo_mais_proximo: '2026-10-16T20:00:00Z' },
+    ];
+    expect(paraGeoJSON(pontos, '4202404').features.map((f) => f.properties.destaque)).toEqual([0, 1]);
+    expect(paraGeoJSON(pontos, null).features.map((f) => f.properties.destaque)).toEqual([0, 0]);
   });
 });
 
