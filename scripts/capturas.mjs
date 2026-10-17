@@ -9,7 +9,7 @@ import { mkdir } from 'node:fs/promises';
 import puppeteer from 'puppeteer-core';
 
 const [base = 'http://localhost:3000', ...slugs] = process.argv.slice(2);
-const paginas = [['inicio', '/'], ['alertas', '/alertas'], ['sobre', '/sobre']];
+const paginas = [['inicio', '/'], ['alertas', '/alertas'], ['planos', '/planos'], ['sobre', '/sobre']];
 slugs.forEach((slug, i) => paginas.push([`edital-${i + 1}`, `/edital/${slug}`]));
 
 const navegador = await puppeteer.connect({ browserURL: 'http://127.0.0.1:9333', defaultViewport: null });

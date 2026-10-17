@@ -4,10 +4,10 @@ export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 export const TIPOS_EVENTO_SERVIDOR = ['pediu_alerta', 'limite_atingido'] as const;
 export type TipoEventoServidor = (typeof TIPOS_EVENTO_SERVIDOR)[number];
 
-export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia', 'plano_pro', 'filtros_pro'] as const;
+export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia', 'plano_pro', 'filtros_pro', 'plano_basic'] as const;
 export type Recurso = (typeof RECURSOS)[number];
-/** Interesse em planos e filtros Pro: vem do cabeçalho e dos chips, sem edital. */
-const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro'];
+/** Interesse em planos ("Quero o Basic" / "Quero o Pro" em /planos) e filtros Pro: sem edital. */
+const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro', 'plano_basic'];
 
 /** Uso dos recursos Pro (evento usou_recurso). */
 export const RECURSOS_USADOS = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento'] as const;
@@ -29,7 +29,7 @@ export function ufsIniciaisAlerta(uf: string | undefined): string[] {
   return uf && UFS_BRASIL.includes(uf) ? [uf] : [];
 }
 
-export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5, exportacoesPorHora: 20 } as const;
+export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5, exportacoesPorHora: 20, listaEsperaPorHora: 5 } as const;
 export const SLUG_EDITAL = /^[0-9A-Z]{12}\d{2}-\d{4}-\d{1,7}$/;
 
 export type Detalhe = Record<string, string | number | null>;
@@ -98,4 +98,19 @@ export function validarPedidoAlerta(corpo: unknown): Resultado<PedidoAlerta> {
   if (corpo.aceite !== true) return { ok: false, erro: 'Confirme o uso do e-mail para o aviso.' };
 
   return { ok: true, valor: { email, termos, ufs } };
+}
+
+/** Planos pagos da lista de espera de /planos. */
+export const PLANOS_PAGOS = ['basic', 'pro'] as const;
+export type PlanoPago = (typeof PLANOS_PAGOS)[number];
+export type PedidoListaEspera = { email: string; plano: PlanoPago };
+
+export function validarListaEspera(corpo: unknown): Resultado<PedidoListaEspera> {
+  if (!objeto(corpo)) return { ok: false, erro: 'Formulário inválido.' };
+  if (typeof corpo.site === 'string' && corpo.site.trim() !== '') return { ok: false, erro: 'robô', silencioso: true };
+  const plano = corpo.plano;
+  if (typeof plano !== 'string' || !(PLANOS_PAGOS as readonly string[]).includes(plano)) return { ok: false, erro: 'Escolha o plano.' };
+  const email = typeof corpo.email === 'string' ? corpo.email.trim().toLowerCase() : '';
+  if (email.length > 254 || !EMAIL.test(email)) return { ok: false, erro: 'Confira o e-mail.' };
+  return { ok: true, valor: { email, plano: plano as PlanoPago } };
 }

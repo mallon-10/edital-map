@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHash, randomUUID } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
-import type { Detalhe, PedidoAlerta, TipoEvento, TipoEventoServidor } from '../eventos';
+import type { Detalhe, PedidoAlerta, PedidoListaEspera, TipoEvento, TipoEventoServidor } from '../eventos';
 import { COOKIE_INTERNO, COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie, visitanteValido } from '../visitante';
 import { supabaseServidor } from './supabase';
 
@@ -39,7 +39,7 @@ export async function marcarInterno(): Promise<void> {
   (await cookies()).set(COOKIE_INTERNO, '1', OPCOES_COOKIE);
 }
 
-export async function dentroDoLimite(tabela: 'eventos' | 'pedidos_alerta', ipHash: string | null, limite: number): Promise<boolean> {
+export async function dentroDoLimite(tabela: 'eventos' | 'pedidos_alerta' | 'lista_espera', ipHash: string | null, limite: number): Promise<boolean> {
   if (!ipHash) return true;
   const desde = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count, error } = await supabaseServidor()
@@ -81,4 +81,11 @@ export async function gravarPedido(ctx: Contexto, pedido: PedidoAlerta): Promise
     .single();
   if (error) throw new Error(`gravar pedido: ${error.message}`);
   return String(data.id);
+}
+
+export async function gravarListaEspera(ctx: Contexto, pedido: PedidoListaEspera): Promise<void> {
+  const { error } = await supabaseServidor()
+    .from('lista_espera')
+    .insert({ email: pedido.email, plano: pedido.plano, visitante: ctx.visitante, interno: ctx.interno, ip_hash: ctx.ipHash });
+  if (error) throw new Error(`gravar lista de espera: ${error.message}`);
 }

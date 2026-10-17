@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIMITES, RECURSOS_USADOS, TIPOS_EVENTO, UFS_BRASIL, ufsIniciaisAlerta, validarEvento, validarPedidoAlerta } from './eventos';
+import { LIMITES, RECURSOS_USADOS, TIPOS_EVENTO, UFS_BRASIL, ufsIniciaisAlerta, validarEvento, validarListaEspera, validarPedidoAlerta } from './eventos';
 
 const SLUG = '00394452000103-2026-21982';
 
@@ -133,5 +133,30 @@ describe('ufsIniciaisAlerta', () => {
   it('uf fora da lista ou em outro formato e ignorada', () => {
     expect(ufsIniciaisAlerta('XX')).toEqual([]);
     expect(ufsIniciaisAlerta('sc')).toEqual([]);
+  });
+});
+
+describe('lista de espera dos planos', () => {
+  it('aceita basic e pro com e-mail válido (minúsculo, sem espaços)', () => {
+    expect(validarListaEspera({ email: '  Joao@Empresa.com.br ', plano: 'basic' })).toEqual({
+      ok: true, valor: { email: 'joao@empresa.com.br', plano: 'basic' },
+    });
+    expect(validarListaEspera({ email: 'a@b.co', plano: 'pro' }).ok).toBe(true);
+  });
+  it('recusa plano desconhecido, e-mail ruim e corpo estranho', () => {
+    expect(validarListaEspera({ email: 'a@b.co', plano: 'premium' })).toEqual({ ok: false, erro: 'Escolha o plano.' });
+    expect(validarListaEspera({ email: 'sem-arroba', plano: 'pro' })).toEqual({ ok: false, erro: 'Confira o e-mail.' });
+    expect(validarListaEspera(null)).toEqual({ ok: false, erro: 'Formulário inválido.' });
+  });
+  it('robô (campo escondido preenchido) é recusado em silêncio', () => {
+    expect(validarListaEspera({ email: 'a@b.co', plano: 'pro', site: 'http://spam' })).toEqual({ ok: false, erro: 'robô', silencioso: true });
+  });
+  it('limite de envios por hora, como o pedido de alerta', () => {
+    expect(LIMITES.listaEsperaPorHora).toBe(5);
+  });
+  it('interesse no Basic vem sem edital, como o do Pro', () => {
+    expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'plano_basic' } })).toEqual({
+      ok: true, valor: { tipo: 'quer_recurso', detalhe: { recurso: 'plano_basic' } },
+    });
   });
 });
