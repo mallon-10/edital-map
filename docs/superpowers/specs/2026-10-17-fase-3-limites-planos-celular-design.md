@@ -26,10 +26,13 @@ Aprovado pelo dono em 17/10/2026. Antecipa partes da spec de Planos (docs/superp
 
 ## 3. Celular (abaixo de `lg`, 1024 px)
 
-- **Barra fixa embaixo** em todas as páginas: Mapa · Lista · Alertas · Planos (ícone + texto, item ativo destacado, área de toque ≥ 44 px, respeita a área segura do iPhone).
-- **Página inicial:** Mapa e Lista viram telas cheias trocadas pela barra (a gaveta sai). A Lista mostra contagem, resumo, alternador de prazo, botão Exportar e os cards.
+- **Barra fixa embaixo** em todas as páginas: Mapa · Lista · Alertas · Planos (ícone + texto, item ativo destacado, área de toque ≥ 44 px, respeita a área segura do iPhone). Na página inicial, "Lista" rola até o início da lista e "Mapa" volta ao topo; nas outras páginas, levam à página inicial (na lista ou no topo).
+- **Página inicial (revisto pelo dono em 17/10):** uma página só, que rola, com o mapa em cima e a lista embaixo; a gaveta sai. Pedido dele: "a pessoa consegue dar zoom no mapa e se ela arrastar ela consegue ir descendo e vendo os editais do filtro."
+  - Em cima, o mapa com altura fixa de ~55–60svh; zoom com pinça e arrastar com um dedo continuam funcionando dentro do mapa.
+  - Logo embaixo, no fluxo normal da página, a Lista: contagem, resumo, alternador de prazo, botão Exportar e os cards. Arrastar para cima fora do mapa rola a página e mostra os editais, sem tocar em nada.
+  - Conferir na captura de 390 px o enquadramento inicial do Brasil com o mapa mais baixo.
 - **Busca compacta:** só o campo (exemplo curto que caiba: "Ex.: EPI, uniformes") e um botão **"Filtros (n)"** (n = filtros ativos). O botão abre uma folha em tela cheia com UF, Município, Valor, Modalidade, Órgão, Raio e Prazo, os mesmos controles do computador, e o botão "Ver N editais" que aplica e fecha. "Limpar filtros" no topo da folha.
-- **Card:** tocar abre o edital (`/edital/{slug}`); voltar retorna à Lista na mesma posição.
+- **Card:** tocar abre o edital (`/edital/{slug}`); voltar retorna à página inicial na mesma posição de rolagem.
 - **Busca no endereço:** a página inicial passa a ler e escrever os filtros na URL (`/?q=luva&uf=SC&municipio=…&valor=…&modalidades=…&orgao=…&raio=…&dias=7`), em computador e celular; voltar do edital restaura a busca; a URL pode ser compartilhada. (A busca contada é a mesma de §1.)
 - **Selo** compacto no topo; o cabeçalho do celular mostra logo, selo e "Assinar".
 - **Página do edital no celular:** barra inferior com "Abrir edital oficial" fixa acima da barra de navegação quando a página está liberada.
