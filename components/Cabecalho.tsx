@@ -2,42 +2,53 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BotaoEmBreve } from './BotaoEmBreve';
+import type { UsoHoje } from '@/lib/limites';
 import { Logo } from './Logo';
+import { SeloPlano } from './SeloPlano';
 
-const ABA = 'rounded-sm px-1.5 py-1.5 text-[13px] font-semibold lg:px-3 lg:text-sm';
+const ABA = 'rounded-sm px-3 py-1.5 text-sm font-semibold';
 
-/** Logo, abas (Mapa, Alertas, Planos) e "Assinar Pro". No celular: logo, Alertas e Assinar Pro. */
-export function Cabecalho() {
+type Props = {
+  /** Uso do dia calculado no servidor (página inicial e edital). Sem ele, o selo pergunta a /api/uso. */
+  uso?: UsoHoje | null;
+};
+
+/**
+ * Computador: logo, abas (Mapa, Alertas, Planos), Sobre, selo do grátis e "Assinar Pro".
+ * Celular: logo, selo compacto e "Assinar" (Mapa, Lista, Alertas e Planos ficam na barra de baixo).
+ */
+export function Cabecalho({ uso }: Props) {
   const caminho = usePathname() ?? '/';
   const ativa = (href: string) => (href === '/' ? caminho === '/' : caminho === href || caminho.startsWith(href + '/'));
   const estilo = (href: string) => `${ABA} ${ativa(href) ? 'bg-pin-soft text-pin-strong' : 'text-ink hover:bg-sunken'}`;
   return (
-    <header className="flex shrink-0 items-center gap-1 border-b border-line bg-raised px-3 py-3 lg:gap-8 lg:px-6">
+    <header className="flex shrink-0 items-center gap-2 border-b border-line bg-raised px-3 py-3 lg:gap-8 lg:px-6">
       <Link href="/" aria-label="Edital Map, página inicial" className="shrink-0">
         <Logo />
       </Link>
-      <nav aria-label="Principal" className="flex items-center gap-0.5 lg:gap-1">
-        <Link href="/" aria-current={ativa('/') ? 'page' : undefined} className={`${estilo('/')} hidden lg:inline-block`}>
+      <nav aria-label="Principal" className="hidden items-center gap-1 lg:flex">
+        <Link href="/" aria-current={ativa('/') ? 'page' : undefined} className={estilo('/')}>
           Mapa
         </Link>
         <Link href="/alertas" aria-current={ativa('/alertas') ? 'page' : undefined} className={estilo('/alertas')}>
           Alertas
         </Link>
-        <BotaoEmBreve recurso="plano_pro" className={`${ABA} hidden text-ink hover:bg-sunken lg:inline-block`}>
+        <Link href="/planos" aria-current={ativa('/planos') ? 'page' : undefined} className={estilo('/planos')}>
           Planos
-        </BotaoEmBreve>
+        </Link>
       </nav>
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex min-w-0 items-center gap-2 lg:gap-3">
         <Link href="/sobre" className="hidden text-sm font-semibold text-ink-muted hover:text-ink lg:inline">
           Sobre
         </Link>
-        <BotaoEmBreve
-          recurso="plano_pro"
-          className="h-9 shrink-0 rounded-sm bg-pin px-2.5 text-[13px] font-semibold text-on-pin lg:h-10 lg:px-4 lg:text-sm"
+        <SeloPlano inicial={uso} />
+        <Link
+          href="/planos"
+          className="inline-flex h-9 shrink-0 items-center rounded-sm bg-pin px-2.5 text-[13px] font-semibold text-on-pin lg:h-10 lg:px-4 lg:text-sm"
         >
-          Assinar Pro
-        </BotaoEmBreve>
+          <span className="lg:hidden">Assinar</span>
+          <span className="hidden lg:inline">Assinar Pro</span>
+        </Link>
       </div>
     </header>
   );

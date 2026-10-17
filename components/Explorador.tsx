@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { registrar } from '@/lib/cliente/registrar';
+import { publicarUso } from '@/lib/cliente/uso';
 import type { Raio } from '@/lib/geo';
 import { normalizarTela, paraParametros, recursosUsados } from '@/lib/filtros';
+import { LimiteAtingido, lerLimite, type Limite, type RespostaBusca } from '@/lib/limites';
 import { resumirPontos } from '@/lib/painel';
 import type { Cidade, EditalResumo, FiltrosTela, PontoMapa, ResultadoBusca } from '@/lib/tipos';
 import { GavetaCelular } from './GavetaCelular';
@@ -36,6 +38,9 @@ async function obter<T>(url: string, padrao: string): Promise<T> {
     // página de erro que não é JSON (502 do servidor, por exemplo)
   }
   if (!resposta.ok) {
+    // Limite do grátis (402): a tela mostra o cartão dos planos, não um erro.
+    const limite = lerLimite(resposta.status, corpo);
+    if (limite) throw new LimiteAtingido(limite);
     const erro = typeof corpo === 'object' && corpo !== null ? (corpo as { erro?: unknown }).erro : null;
     throw new Error(typeof erro === 'string' && erro.trim() ? erro : padrao);
   }
@@ -55,6 +60,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
   const [carregandoMais, setCarregandoMais] = useState(false);
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [erroMapa, setErroMapa] = useState<string | null>(null);
+  const [limite, setLimite] = useState<Limite | null>(null);
   const [pontos, setPontos] = useState<PontoMapa[]>([]);
   // Falso até o primeiro mapa chegar: antes disso o resumo (UFs, valor, municípios) ainda não existe.
   const [pontosProntos, setPontosProntos] = useState(false);
@@ -80,9 +86,11 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
     setCarregandoLista(true);
     setCarregandoMais(false);
     try {
-      const novo = await obter<ResultadoBusca>(`/api/busca?${paraParametros(f)}`, ERRO_LISTA);
+      const novo = await obter<RespostaBusca>(`/api/busca?${paraParametros(f)}`, ERRO_LISTA);
       if (id !== pedidoLista.current) return;
-      setResultado(novo);
+      setResultado({ total: novo.total, editais: novo.editais });
+      setLimite(null);
+      if (novo.buscasUsadas !== null) publicarUso({ buscas: novo.buscasUsadas });
       setSelecionadoId(novo.editais[0]?.id ?? null);
       setAgora(new Date());
       setErroLista(null);
@@ -90,8 +98,15 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
       setResumoNoCelular(false);
     } catch (e) {
       if (id !== pedidoLista.current) return;
-      setErroLista(mensagem(e, ERRO_LISTA));
-      // No celular a gaveta recolhida não tem lugar para o aviso: abre para ele aparecer.
+      if (e instanceof LimiteAtingido) {
+        // Busca nova além do limite do dia: o cartão dos planos no lugar da lista (o mapa fica com a última permitida).
+        setLimite(e.limite);
+        publicarUso({ buscas: e.limite.usados });
+        setErroLista(null);
+      } else {
+        setErroLista(mensagem(e, ERRO_LISTA));
+      }
+      // No celular a gaveta recolhida não tem lugar para o aviso nem para o cartão: abre para eles aparecerem.
       setGavetaAberta(true);
     } finally {
       if (id === pedidoLista.current) setCarregandoLista(false);
@@ -101,7 +116,8 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
   const carregarMapa = useCallback(async (f: FiltrosTela) => {
     const id = ++pedidoMapa.current;
     try {
-      const novos = await obter<PontoMapa[]>(`/api/mapa?${paraParametros(f, { comCidade: false })}`, ERRO_MAPA);
+      // Os mesmos parâmetros da lista: a mesma busca no limite do dia (o servidor ignora a cidade sem raio no mapa).
+      const novos = await obter<PontoMapa[]>(`/api/mapa?${paraParametros(f)}`, ERRO_MAPA);
       if (id !== pedidoMapa.current) return;
       setPontos(novos);
       setCentros((anteriores) => {
@@ -113,6 +129,8 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
       setErroMapa(null);
     } catch (e) {
       if (id !== pedidoMapa.current) return;
+      // Limite do dia: o mapa fica com a última busca permitida, sem aviso (o cartão aparece na lista).
+      if (e instanceof LimiteAtingido) return;
       setErroMapa(mensagem(e, ERRO_MAPA));
     }
   }, []);
@@ -154,7 +172,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
     const id = pedidoLista.current;
     setCarregandoMais(true);
     try {
-      const mais = await obter<ResultadoBusca>(`/api/busca?${paraParametros(filtros, { deslocamento: resultado.editais.length })}`, ERRO_LISTA);
+      const mais = await obter<RespostaBusca>(`/api/busca?${paraParametros(filtros, { deslocamento: resultado.editais.length })}`, ERRO_LISTA);
       // Busca ou filtro mudou enquanto esperava: essa página não pertence mais à lista na tela.
       if (id !== pedidoLista.current) return;
       setResultado((anterior) => {
@@ -164,7 +182,8 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
       setErroLista(null);
     } catch (e) {
       if (id !== pedidoLista.current) return;
-      setErroLista(mensagem(e, ERRO_LISTA));
+      if (e instanceof LimiteAtingido) setLimite(e.limite);
+      else setErroLista(mensagem(e, ERRO_LISTA));
     } finally {
       if (id === pedidoLista.current) setCarregandoMais(false);
     }
@@ -194,6 +213,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
             carregandoLista={carregandoLista}
             carregandoMais={carregandoMais}
             erro={erroLista}
+            limite={limite}
             recolhida={!gavetaAberta}
             cidade={filtros.cidade}
             raio={filtros.raio}

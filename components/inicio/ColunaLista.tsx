@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { moedaCurta, numero } from '@/lib/formato';
 import type { Painel } from '@/lib/painel';
 import type { Cidade, EditalResumo, ResultadoBusca } from '@/lib/tipos';
+import { CartaoLimite } from '@/components/CartaoLimite';
+import type { Limite } from '@/lib/limites';
 import { BotaoExportar } from './BotaoExportar';
 import { CardCompacto } from './CardCompacto';
 
@@ -18,6 +20,8 @@ type Props = {
   carregandoLista: boolean;
   carregandoMais: boolean;
   erro: string | null;
+  /** Busca nova além das 3 do dia: no lugar da lista, o cartão dos planos. */
+  limite: Limite | null;
   /** No celular, com a gaveta recolhida só a contagem e o alternador aparecem. */
   recolhida: boolean;
   /** Município escolhido no mapa: no celular a linha de chips fica atrás da gaveta, então o filtro aparece e sai daqui. */
@@ -45,6 +49,14 @@ export function ColunaLista(p: Props) {
   useEffect(() => {
     if (p.carregandoLista) lista.current?.scrollTo({ top: 0 });
   }, [p.carregandoLista]);
+
+  if (p.limite) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1">
+        <CartaoLimite tipo={p.limite.tipo} />
+      </div>
+    );
+  }
 
   const valor = moedaCurta(p.painel.valorTotal);
   return (

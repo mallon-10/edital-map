@@ -19,7 +19,7 @@ import { data, haQuanto, linkOficial, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
 import { arquivosDoEdital, atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
 import { contextoDaPagina } from '@/lib/servidor/registro';
-import { decidirEdital } from '@/lib/servidor/uso';
+import { decidirEdital, usoDoDia } from '@/lib/servidor/uso';
 import { assunto, lotesDaInfo, nomeProprio, paragrafos, textoLimpo } from '@/lib/texto';
 import type { Edital, EditalRelacionado, ResumoItens } from '@/lib/tipos';
 
@@ -67,9 +67,11 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const ctx = await contextoDaPagina();
   const decisao = await decidirEdital(ctx, e.slug);
   const todos = modoItens === 'todos';
-  const [atualizado, detalhes] = await Promise.all([
+  // O selo lê o uso depois de contar este edital.
+  const [atualizado, detalhes, uso] = await Promise.all([
     atualizadoEm(),
     decisao.permitido ? detalhesDoEdital(e, todos) : Promise.resolve(null),
+    usoDoDia(ctx),
   ]);
   const agora = new Date();
   const p = prazo(e.encerramento_em, agora);
@@ -82,7 +84,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
 
   return (
     <>
-      <Cabecalho />
+      <Cabecalho uso={uso} />
       <FaixaCobertura atualizadoEm={atualizado} />
       {detalhes ? <RegistrarAbertura slug={e.slug} /> : null}
       <main className="mx-auto flex max-w-[1280px] flex-col gap-6 px-4 py-6 md:px-6">
