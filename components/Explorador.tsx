@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { trocarEndereco } from '@/lib/cliente/endereco';
 import { registrar } from '@/lib/cliente/registrar';
 import { publicarUso } from '@/lib/cliente/uso';
 import { guardarUltimaBusca, guardarVolta, tomarVolta, type Volta } from '@/lib/cliente/volta';
@@ -123,7 +124,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   /** Troca a tela do celular e escreve a busca no endereço (sem recarregar a página nem criar entrada no histórico). */
   const trocarTela = useCallback((nova: Tela, f: FiltrosTela) => {
     setTela(nova);
-    window.history.replaceState(null, '', urlDaBusca(f, nova));
+    trocarEndereco(urlDaBusca(f, nova));
   }, []);
 
   /** Celular: leva a página ao mapa (topo) ou ao início da lista. No computador as duas estão na tela: não rola. */
@@ -281,7 +282,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
       void carregarMapa(volta.filtrosMapa);
     } else {
       // Endereço canônico (ordem dos parâmetros, valores inválidos fora): a volta compara por ele.
-      window.history.replaceState(null, '', urlDaBusca(filtrosIniciais, telaInicial));
+      trocarEndereco(urlDaBusca(filtrosIniciais, telaInicial));
       // Celular com `tela=lista` no endereço (botão Lista de outra página, link compartilhado): abre rolada até a lista.
       if (telaInicial === 'lista') rolarPara('lista', 'auto');
       // Mesmos parâmetros da busca que o servidor já contou (a lista veio pronta): o mapa não conta de novo.
