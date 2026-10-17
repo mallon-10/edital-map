@@ -43,7 +43,7 @@ export function BarraCelular({ ativo, aoTrocarTela }: Props) {
   }
 
   return (
-    <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-raised pb-[env(safe-area-inset-bottom)] lg:hidden">
+    <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-raised pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] lg:hidden">
       {parteDaInicial('mapa', comTela(busca, 'mapa'), <IconeMapa className={ICONE} />, <>Mapa</>)}
       {parteDaInicial('lista', comTela(busca, 'lista'), <IconeLista className={ICONE} />, <>Lista</>)}
       <Link href="/alertas" aria-current={atual('alertas')} className={estilo('alertas')}>

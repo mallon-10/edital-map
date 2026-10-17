@@ -128,4 +128,17 @@ describe('celular', () => {
     expect(pagina).toContain('bottom-[var(--altura-barra)]');
     expect(pagina).toContain('variante="barra"');
   });
+  it('card da lista: no computador Enter e Espaço só selecionam; no celular Enter segue o link', () => {
+    const card = ler('components/inicio/CardCompacto.tsx');
+    expect(card).toMatch(/e\.key !== ' ' && e\.key !== 'Enter'/);
+    expect(card).toContain('!computador');
+  });
+
+  it('margens seguras laterais (iPhone deitado): corpo e barras fixas respeitam esquerda e direita', () => {
+    const css = ler('app/globals.css');
+    expect(css).toContain('padding-left: env(safe-area-inset-left);');
+    expect(css).toContain('padding-right: env(safe-area-inset-right);');
+    expect(ler('components/BarraCelular.tsx')).toContain('pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]');
+    expect(ler('app/edital/[slug]/page.tsx')).toContain('pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]');
+  });
 });

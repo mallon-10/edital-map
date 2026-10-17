@@ -14,7 +14,7 @@ type Props = { edital: EditalResumo; agora: Date; selecionado: boolean; aoSeleci
  * Card da lista: título limpo, valor curto à direita, órgão · UF e etiqueta de prazo.
  * Computador (lg+): clicar seleciona (o resumo aparece na coluna da direita). Celular: tocar abre o edital.
  * Ctrl/⌘/Shift/Alt/botão do meio abrem em outra aba. Sem prefetch: cada edital aberto conta no limite do dia.
- * No computador, Espaço também seleciona (como o botão de antes) e o card escolhido é o `aria-current`.
+ * No computador, Enter e Espaço selecionam (como o botão de antes; abrir é o "Ver edital" da coluna da direita); no celular Enter segue o link e o card escolhido é o `aria-current`.
  */
 export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props) {
   const et = etiqueta(edital, agora);
@@ -31,7 +31,7 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
   }
 
   function tecla(e: KeyboardEvent<HTMLAnchorElement>) {
-    if (e.key !== ' ' || !computador) return;
+    if ((e.key !== ' ' && e.key !== 'Enter') || !computador) return;
     e.preventDefault();
     aoSelecionar();
   }

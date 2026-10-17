@@ -127,7 +127,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
           <>
           <PrincipaisInformacoes edital={e} resumo={{ ...detalhes.resumo, total: detalhes.totalItens }} agora={agora} />
           {/* Celular: "Abrir edital oficial" fixo acima da barra de navegação (só com o edital liberado). */}
-          <div className="fixed inset-x-0 bottom-[var(--altura-barra)] z-30 border-t border-line bg-raised px-4 py-3 lg:hidden">
+          <div className="fixed inset-x-0 bottom-[var(--altura-barra)] z-30 border-t border-line bg-raised py-3 pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))] lg:hidden">
             <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" />
           </div>
 
