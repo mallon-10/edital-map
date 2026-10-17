@@ -22,15 +22,13 @@ type Props = {
   erro: string | null;
   /** Busca nova além das 3 do dia: no lugar da lista, o cartão dos planos. */
   limite: Limite | null;
-  /** No celular, com a gaveta recolhida só a contagem e o alternador aparecem. */
-  recolhida: boolean;
-  /** Município escolhido no mapa: no celular a linha de chips fica atrás da gaveta, então o filtro aparece e sai daqui. */
+  /** Município escolhido: no celular os chips ficam na folha de Filtros, então o filtro aparece e sai daqui. */
   cidade: Cidade | null;
   /** Raio em km a partir da cidade (aparece na pílula do celular). */
   raio: number | null;
   /** Parâmetros da busca atual (os mesmos de /api/busca), para o botão Exportar. */
   parametrosBusca: string;
-  /** Área que rola (a página guarda a posição para voltar do edital no mesmo lugar). */
+  /** Área que rola a partir de lg (a página guarda a posição para voltar do edital no mesmo lugar). No celular rola a página. */
   listaRef: RefObject<HTMLDivElement | null>;
   aoRolar: (topo: number) => void;
   aoTirarCidade: () => void;
@@ -41,6 +39,31 @@ type Props = {
 
 const ALTERNADOR = 'h-8 flex-1 rounded-sm text-[13px] font-semibold transition-colors';
 
+/** Celular: o município escolhido (com o raio), com o × para tirar; no computador ele aparece nos chips. */
+function PilulaCidade({ cidade, raio, aoTirar }: { cidade: Cidade; raio: number | null; aoTirar: () => void }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1 rounded-sm bg-ink pl-2 text-xs font-semibold text-surface lg:hidden">
+      <span className="truncate">
+        {cidade.nome}/{cidade.uf}
+        {raio ? ` + ${raio} km` : ''}
+      </span>
+      {/* 24 px visíveis, 44 px de toque (a área invisível passa 10 px de cada lado). */}
+      <button
+        type="button"
+        onClick={aoTirar}
+        aria-label="Tirar filtro de cidade"
+        className="relative size-6 shrink-0 text-base leading-none after:absolute after:-inset-2.5"
+      >
+        ×
+      </button>
+    </span>
+  );
+}
+
+/**
+ * Contagem, resumo, prazo, Exportar e os cards. A partir de lg é a coluna da esquerda e rola por dentro;
+ * no celular fica embaixo do mapa, no fluxo da página (quem rola é a página).
+ */
 export function ColunaLista(p: Props) {
   const { total, editais } = p.resultado;
   const painelPronto = p.painelPronto ?? true;
@@ -54,7 +77,13 @@ export function ColunaLista(p: Props) {
 
   if (p.limite) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1">
+      <div className="flex flex-col p-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+        {/* Celular: o município fica à mão acima do cartão (tirar o filtro pode voltar a uma busca já feita hoje). */}
+        {p.cidade ? (
+          <div className="mb-3 flex lg:hidden">
+            <PilulaCidade cidade={p.cidade} raio={p.raio} aoTirar={p.aoTirarCidade} />
+          </div>
+        ) : null}
         <CartaoLimite tipo={p.limite.tipo} />
       </div>
     );
@@ -64,7 +93,6 @@ export function ColunaLista(p: Props) {
   return (
     <>
       <div className="shrink-0">
-        {/* A pílula fica na mesma linha da contagem para não aumentar a gaveta recolhida (ALTURA_GAVETA_RECOLHIDA). */}
         <div className="flex items-center gap-2">
           <p aria-live="polite" className="flex shrink-0 items-baseline gap-2">
             <span className="font-mono text-[26px] font-semibold leading-none tracking-[-0.02em] lg:text-[34px]">
@@ -72,19 +100,8 @@ export function ColunaLista(p: Props) {
             </span>
             <span className="text-[15px] font-bold">{total === 1 ? 'edital aberto' : 'editais abertos'}</span>
           </p>
-          {p.cidade ? (
-            <span className="inline-flex min-w-0 items-center gap-1 rounded-sm bg-ink pl-2 text-xs font-semibold text-surface lg:hidden">
-              <span className="truncate">
-                {p.cidade.nome}/{p.cidade.uf}
-                {p.raio ? ` + ${p.raio} km` : ''}
-              </span>
-              <button type="button" onClick={p.aoTirarCidade} aria-label="Tirar filtro de cidade" className="size-6 shrink-0 text-base leading-none">
-                ×
-              </button>
-            </span>
-          ) : null}
-          {/* Some com a gaveta recolhida (altura fixa); o erro aparece na área rolável abaixo. */}
-          <span className={`ml-auto ${p.recolhida ? 'max-lg:hidden' : ''}`}>
+          {p.cidade ? <PilulaCidade cidade={p.cidade} raio={p.raio} aoTirar={p.aoTirarCidade} /> : null}
+          <span className="ml-auto">
             <BotaoExportar parametros={p.parametrosBusca} total={total} aoErro={setErroExportar} />
           </span>
         </div>
@@ -112,7 +129,7 @@ export function ColunaLista(p: Props) {
           </button>
         </div>
       </div>
-      <div className={`mt-3 flex min-h-0 flex-1 flex-col ${p.recolhida ? 'max-lg:hidden' : ''}`}>
+      <div className="mt-3 flex flex-col lg:min-h-0 lg:flex-1">
         <p className="mb-3 shrink-0 font-mono text-[11px] text-ink-muted lg:hidden">
           Editais abertos de todo o Brasil · o ponto é a sede do órgão, não o local de entrega
         </p>
@@ -122,7 +139,7 @@ export function ColunaLista(p: Props) {
           ref={p.listaRef}
           onScroll={(e) => p.aoRolar(e.currentTarget.scrollTop)}
           aria-busy={p.carregandoLista}
-          className={`flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto p-1 transition-opacity ${p.carregandoLista ? 'opacity-60' : ''}`}
+          className={`flex flex-col gap-2.5 p-1 transition-opacity lg:min-h-0 lg:flex-1 lg:overflow-y-auto ${p.carregandoLista ? 'opacity-60' : ''}`}
         >
           {editais.length === 0 && !p.carregandoLista && !p.erro ? (
             <p className="px-2 py-6 text-ink-muted">Nenhum edital aberto para essa busca. Tente outro termo ou tire um filtro.</p>

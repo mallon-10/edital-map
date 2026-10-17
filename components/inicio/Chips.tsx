@@ -10,7 +10,15 @@ import { PainelOrgao } from './PainelOrgao';
 import { Popover } from './Popover';
 import { chip } from './estilos';
 
-type Props = { filtros: FiltrosTela; pontos: PontoMapa[]; atualizadoEm: string | null; agora: Date; aoMudar: (f: FiltrosTela) => void };
+type Props = {
+  filtros: FiltrosTela;
+  pontos: PontoMapa[];
+  atualizadoEm: string | null;
+  agora: Date;
+  aoMudar: (f: FiltrosTela) => void;
+  /** Na folha de Filtros do celular: os chips quebram linha e a linha da fonte some. */
+  emFolha?: boolean;
+};
 
 const NBSP = ' ';
 const MAX_MUNICIPIOS = 50;
@@ -130,7 +138,7 @@ function PainelMunicipio({ ordenados, cidade, aoEscolher }: { ordenados: { p: Po
   );
 }
 
-export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar }: Props) {
+export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha = false }: Props) {
   // Mais editais primeiro, depois ordem alfabética; a chave normalizada é calculada uma vez por lista de pontos.
   const ordenados = useMemo(
     () =>
@@ -145,7 +153,13 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar }: Props) 
   const ufIgnorada = ufIgnoradaPeloRaio(filtros);
   return (
     <div className="flex items-center gap-3">
-      <div className="-mx-4 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-4 py-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:py-0">
+      <div
+        className={
+          emFolha
+            ? 'flex min-w-0 flex-1 flex-wrap items-center gap-2'
+            : '-mx-4 flex min-w-0 flex-1 items-center gap-2 overflow-x-auto px-4 py-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:py-0'
+        }
+      >
         <ChipSelect
           rotulo="UF"
           textoValor={filtros.uf || 'todas'}
@@ -252,9 +266,11 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar }: Props) 
           ))}
         </ChipSelect>
       </div>
-      <p className="hidden shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted xl:block">
-        Fonte: PNCP{atualizadoEm ? ` · atualizado ${haQuanto(atualizadoEm, agora)}` : ''}
-      </p>
+      {emFolha ? null : (
+        <p className="hidden shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted xl:block">
+          Fonte: PNCP{atualizadoEm ? ` · atualizado ${haQuanto(atualizadoEm, agora)}` : ''}
+        </p>
+      )}
     </div>
   );
 }

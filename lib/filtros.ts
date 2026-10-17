@@ -79,6 +79,20 @@ export function normalizarTela(f: FiltrosTela): FiltrosTela {
   return f.uf && f.uf !== f.cidade.uf ? { ...f, uf: f.cidade.uf } : f;
 }
 
+/**
+ * Busca enviada pelo campo da página inicial (termo + UF da barra do computador).
+ * Computador: a barra escolhe o lugar, então o município sai. Celular (`manterCidade`): o campo não mostra o lugar
+ * (fica na folha de Filtros), então município e raio continuam enquanto a UF for a mesma.
+ */
+export function buscaDoCampo(f: FiltrosTela, q: string, uf: string, { manterCidade }: { manterCidade: boolean }): FiltrosTela {
+  return normalizarTela({ ...f, q, uf, cidade: manterCidade && uf === f.uf ? f.cidade : null });
+}
+
+/** "Limpar filtros" da folha do celular: tira UF, município, raio, valor, modalidades, órgão e prazo; o termo fica. */
+export function limparFiltros(f: FiltrosTela): FiltrosTela {
+  return { q: f.q, uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
+}
+
 /** Recursos Pro de filtro que o evento usou_recurso registra. */
 export type RecursoFiltro = Extract<RecursoUsado, 'filtro_orgao' | 'filtro_raio'>;
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lerFiltros, paraParametros } from './filtros';
 import type { FiltrosTela } from './tipos';
-import { comTela, lerBuscaDaUrl, montarTela, paraUrlSearchParams, urlDaBusca, type Tela } from './urlBusca';
+import { comTela, lerBuscaDaUrl, mesmaBusca, montarTela, paraUrlSearchParams, telaPelaRolagem, urlDaBusca, type Tela } from './urlBusca';
 
 const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
 const JOINVILLE = { ibge: '4209102', nome: 'Joinville', uf: 'SC' };
@@ -57,5 +57,33 @@ describe('busca no endereço', () => {
     expect(comTela('/?q=luva', 'lista')).toBe('/?q=luva&tela=lista');
     expect(comTela('/?q=luva&tela=lista', 'mapa')).toBe('/?q=luva');
     expect(comTela('/', 'lista')).toBe('/?tela=lista');
+  });
+});
+
+describe('mesmaBusca (folha de Filtros: aplicar sem mudança não refaz a busca)', () => {
+  it('mesma combinação, inclusive com modalidades em outra ordem', () => {
+    expect(mesmaBusca(CHEIO, { ...CHEIO, modalidades: [6, 8] })).toBe(true);
+    expect(mesmaBusca(VAZIO, { ...VAZIO })).toBe(true);
+  });
+  it('qualquer filtro ou o prazo diferente: outra busca', () => {
+    expect(mesmaBusca(CHEIO, { ...CHEIO, seteDias: false })).toBe(false);
+    expect(mesmaBusca(CHEIO, { ...CHEIO, valorMin: null })).toBe(false);
+    expect(mesmaBusca(VAZIO, { ...VAZIO, uf: 'SC' })).toBe(false);
+  });
+  it('raio sem município não muda a busca (sai na normalização)', () => {
+    expect(mesmaBusca(VAZIO, { ...VAZIO, raio: 100 })).toBe(true);
+  });
+});
+
+describe('telaPelaRolagem (item ativo da barra do celular na página inicial)', () => {
+  it('lista abaixo da metade da tela: Mapa', () => {
+    expect(telaPelaRolagem({ topoLista: 560, alturaJanela: 750, noFim: false })).toBe('mapa');
+  });
+  it('início da lista acima da metade da tela: Lista', () => {
+    expect(telaPelaRolagem({ topoLista: 374, alturaJanela: 750, noFim: false })).toBe('lista');
+    expect(telaPelaRolagem({ topoLista: -2000, alturaJanela: 750, noFim: false })).toBe('lista');
+  });
+  it('página rolada até o fim (lista curta que não sobe até a metade): Lista', () => {
+    expect(telaPelaRolagem({ topoLista: 500, alturaJanela: 750, noFim: true })).toBe('lista');
   });
 });

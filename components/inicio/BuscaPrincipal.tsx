@@ -4,10 +4,21 @@ import { useEffect, useState } from 'react';
 import { UFS_ORDENADAS } from '@/lib/filtros';
 import { Lupa, PinoMini, Seta } from './Icones';
 
-type Props = { q: string; uf: string; carregando: boolean; aoBuscar: (q: string, uf: string) => void };
+type Props = {
+  q: string;
+  uf: string;
+  carregando: boolean;
+  /** Filtros valendo (botão "Filtros (n)" do celular). */
+  filtrosAtivos: number;
+  aoBuscar: (q: string, uf: string) => void;
+  aoAbrirFiltros: () => void;
+};
 
-/** "O que sua empresa vende?" + local ("Todo o Brasil" ou UF) + "Buscar no mapa". No computador é uma barra só. */
-export function BuscaPrincipal({ q, uf, carregando, aoBuscar }: Props) {
+/**
+ * Computador: "O que sua empresa vende?" + local ("Todo o Brasil" ou UF) + "Buscar no mapa", numa barra só.
+ * Celular: só o campo e o botão "Filtros (n)" (a UF e os outros filtros ficam na folha de Filtros).
+ */
+export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoAbrirFiltros }: Props) {
   const [texto, setTexto] = useState(q);
   const [local, setLocal] = useState(uf);
   useEffect(() => setLocal(uf), [uf]);
@@ -26,26 +37,44 @@ export function BuscaPrincipal({ q, uf, carregando, aoBuscar }: Props) {
       <label htmlFor="q" className="sr-only text-[13px] font-semibold lg:not-sr-only">
         O que sua empresa vende?
       </label>
-      <div className="flex flex-wrap gap-2 lg:flex-nowrap lg:items-center lg:gap-0 lg:rounded-md lg:border lg:border-line-strong lg:bg-raised lg:p-1.5">
-        <div className="relative flex min-w-0 basis-full items-center lg:basis-auto lg:flex-1">
-          <Lupa className="pointer-events-none absolute left-3 size-[18px] text-ink-muted" />
+      <div className="flex gap-2 lg:items-center lg:gap-0 lg:rounded-md lg:border lg:border-line-strong lg:bg-raised lg:p-1.5">
+        <div className="relative flex min-w-0 flex-1 items-center">
+          {/* A lupa também envia (no celular é o único botão de busca; Enter também envia). */}
+          <button
+            type="submit"
+            aria-label="Buscar"
+            disabled={carregando}
+            className="absolute left-1 flex size-9 items-center justify-center rounded-sm text-ink-muted disabled:opacity-60"
+          >
+            <Lupa className="size-[18px]" />
+          </button>
           <input
             id="q"
+            type="search"
+            enterKeyHint="search"
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            placeholder="O que sua empresa vende? Ex.: EPI e uniformes"
+            placeholder="Ex.: EPI, uniformes"
             autoComplete="off"
             maxLength={100}
             className="h-11 w-full rounded-sm border border-line-strong bg-raised pl-10 pr-3 lg:border-0 lg:bg-transparent"
           />
         </div>
-        <label className="relative flex h-11 min-w-0 flex-1 items-center rounded-sm border border-line-strong bg-raised lg:flex-none lg:rounded-none lg:border-0 lg:border-l lg:border-line">
+        <button
+          type="button"
+          onClick={aoAbrirFiltros}
+          aria-haspopup="dialog"
+          className="h-11 shrink-0 rounded-sm border border-line-strong bg-raised px-3.5 text-sm font-semibold lg:hidden"
+        >
+          {filtrosAtivos > 0 ? `Filtros (${filtrosAtivos})` : 'Filtros'}
+        </button>
+        <label className="relative hidden h-11 min-w-0 items-center border-l border-line lg:flex lg:flex-none">
           <span className="sr-only">Onde</span>
           <PinoMini className="pointer-events-none absolute left-3 h-4 w-3" />
           <select
             value={local}
             onChange={(e) => setLocal(e.target.value)}
-            className="h-full w-full appearance-none bg-transparent pl-9 pr-8 text-sm font-semibold lg:w-auto [&>option]:bg-raised [&>option]:text-ink"
+            className="h-full w-auto appearance-none bg-transparent pl-9 pr-8 text-sm font-semibold [&>option]:bg-raised [&>option]:text-ink"
           >
             <option value="">Todo o Brasil</option>
             {UFS_ORDENADAS.map((u) => (
@@ -59,7 +88,7 @@ export function BuscaPrincipal({ q, uf, carregando, aoBuscar }: Props) {
         <button
           type="submit"
           disabled={carregando}
-          className="h-11 shrink-0 rounded-sm bg-pin px-5 text-sm font-semibold text-on-pin disabled:opacity-60 lg:ml-1.5"
+          className="hidden h-11 shrink-0 rounded-sm bg-pin px-5 text-sm font-semibold text-on-pin disabled:opacity-60 lg:ml-1.5 lg:block"
         >
           {carregando ? 'Buscando…' : 'Buscar no mapa'}
         </button>

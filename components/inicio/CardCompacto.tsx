@@ -1,3 +1,7 @@
+'use client';
+
+import Link from 'next/link';
+import type { MouseEvent } from 'react';
 import { etiqueta, moedaCurta } from '@/lib/formato';
 import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
@@ -5,18 +9,32 @@ import { ESTILO_ETIQUETA, PONTO_ETIQUETA } from './estilos';
 
 type Props = { edital: EditalResumo; agora: Date; selecionado: boolean; aoSelecionar: () => void };
 
-/** Card da lista: título limpo, valor curto à direita, órgão · UF e etiqueta de prazo. Clicar seleciona. */
+/**
+ * Card da lista: título limpo, valor curto à direita, órgão · UF e etiqueta de prazo.
+ * Computador (lg+): clicar seleciona (o resumo aparece na coluna da direita). Celular: tocar abre o edital.
+ * Ctrl/⌘/Shift/Alt/botão do meio abrem em outra aba. Sem prefetch: cada edital aberto conta no limite do dia.
+ */
 export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props) {
   const et = etiqueta(edital, agora);
   const valor = moedaCurta(edital.valor_estimado);
   const { titulo, tipo } = assunto(edital.objeto);
+
+  function clicar(e: MouseEvent<HTMLAnchorElement>) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      e.preventDefault();
+      aoSelecionar();
+    }
+  }
+
   return (
-    <button
-      type="button"
-      onClick={aoSelecionar}
-      aria-pressed={selecionado}
+    <Link
+      href={`/edital/${edital.slug}`}
+      prefetch={false}
+      onClick={clicar}
+      aria-current={selecionado ? 'true' : undefined}
       className={`flex w-full shrink-0 flex-col gap-2 rounded-md border bg-raised p-3.5 text-left transition-colors ${
-        selecionado ? 'border-ink shadow-[0_0_0_1px_#0c2340]' : 'border-line hover:border-line-strong'
+        selecionado ? 'border-line lg:border-ink lg:shadow-[0_0_0_1px_#0c2340]' : 'border-line hover:border-line-strong'
       }`}
     >
       <span className="flex items-start justify-between gap-3">
@@ -35,6 +53,6 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
         <span className={`size-[7px] rounded-full ${PONTO_ETIQUETA[et.tom]}`} aria-hidden="true" />
         {et.texto}
       </span>
-    </button>
+    </Link>
   );
 }

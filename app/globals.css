@@ -28,9 +28,20 @@
   --radius-lg: 20px;
 }
 
+/* Barra de navegação do celular (components/BarraCelular.tsx): 60 px + área segura do iPhone; a partir de lg não existe. */
+:root {
+  --altura-barra: calc(60px + env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) {
+  :root {
+    --altura-barra: 0px;
+  }
+}
+
 body {
   background: var(--color-surface);
   color: var(--color-ink);
+  padding-bottom: var(--altura-barra);
 }
 
 :focus-visible {
@@ -49,7 +60,7 @@ body {
   pointer-events: none;
 }
 
-/* A dica fica por cima das pílulas (z-index 1 e 2), mas abaixo da gaveta e do alerta. */
+/* A dica fica por cima das pílulas (z-index 1 e 2), mas abaixo do alerta do mapa. */
 .maplibregl-popup {
   z-index: 3;
 }

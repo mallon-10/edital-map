@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chaveFiltros, lerFiltros, filtrosAtivos, lerTermoOrgao, normalizarTela, paraParametros, recursosUsados, ufIgnoradaPeloRaio, UFS_ORDENADAS } from './filtros';
+import { buscaDoCampo, chaveFiltros, lerFiltros, filtrosAtivos, lerTermoOrgao, limparFiltros, normalizarTela, paraParametros, recursosUsados, ufIgnoradaPeloRaio, UFS_ORDENADAS } from './filtros';
 import type { FiltrosTela } from './tipos';
 
 const ler = (s: string) => lerFiltros(new URLSearchParams(s));
@@ -177,5 +177,28 @@ describe('filtrosAtivos (botão "Filtros (n)" do celular)', () => {
   });
   it('raio sem município não vale', () => {
     expect(filtrosAtivos({ ...nada, raio: 100 })).toBe(0);
+  });
+});
+
+describe('buscaDoCampo (campo de busca da página inicial)', () => {
+  const comCidade: FiltrosTela = { ...TELA_VAZIA, q: 'luva', uf: 'SC', cidade: JOINVILLE, raio: 100, valorMin: 50_000 };
+  it('computador: buscar tira o município (e o raio com ele), mesmo com a mesma UF', () => {
+    expect(buscaDoCampo(comCidade, 'botina', 'SC', { manterCidade: false })).toEqual({ ...comCidade, q: 'botina', cidade: null, raio: null });
+  });
+  it('celular: com a mesma UF, município e raio continuam valendo', () => {
+    expect(buscaDoCampo(comCidade, 'botina', 'SC', { manterCidade: true })).toEqual({ ...comCidade, q: 'botina' });
+  });
+  it('celular: UF trocada tira o município e o raio', () => {
+    expect(buscaDoCampo(comCidade, 'botina', 'PR', { manterCidade: true })).toEqual({ ...comCidade, q: 'botina', uf: 'PR', cidade: null, raio: null });
+  });
+});
+
+describe('limparFiltros (folha de Filtros do celular)', () => {
+  it('tira todos os filtros e mantém o termo', () => {
+    const cheio: FiltrosTela = {
+      q: 'luva', uf: 'SC', cidade: JOINVILLE, valorMin: 50_000, modalidades: [6], seteDias: true, orgao: ORGAO, raio: 100,
+    };
+    expect(limparFiltros(cheio)).toEqual({ ...TELA_VAZIA, q: 'luva' });
+    expect(filtrosAtivos(limparFiltros(cheio))).toBe(0);
   });
 });

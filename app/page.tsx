@@ -32,11 +32,12 @@ export default async function Inicio({ searchParams }: Props) {
     usoDoDia(ctx),
   ]);
   const agora = new Date().toISOString();
-  // Uma tela só: as colunas ocupam a altura que sobra e cada uma rola por dentro.
+  // Computador: uma tela só, as colunas ocupam a altura que sobra e cada uma rola por dentro.
+  // Celular: a página rola, com o mapa em cima e a lista embaixo (a barra de baixo reserva o espaço dela no body).
   // A chave muda a cada desenho do servidor: o logo ou "Mapa" (href="/") com uma busca na tela recomeça o Explorador
   // (com a mesma chave o React manteria o estado da busca anterior sob o endereço novo). Mesmo endereço: a volta restaura.
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex flex-col lg:h-dvh">
       <Cabecalho uso={uso} />
       <Explorador
         key={`${urlDaBusca(filtros, tela)}@${agora}`}

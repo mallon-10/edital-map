@@ -87,7 +87,8 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
       <Cabecalho uso={uso} />
       <FaixaCobertura atualizadoEm={atualizado} />
       {detalhes ? <RegistrarAbertura slug={e.slug} /> : null}
-      <main className="mx-auto flex max-w-[1280px] flex-col gap-6 px-4 py-6 md:px-6">
+      {/* Celular com o edital liberado: espaço no fim para a barra fixa do "Abrir edital oficial" (a de navegação já tem o dela). */}
+      <main className={`mx-auto flex max-w-[1280px] flex-col gap-6 px-4 pt-6 md:px-6 lg:pb-6 ${detalhes ? 'pb-28' : 'pb-6'}`}>
         <nav aria-label="Caminho" className="flex flex-wrap gap-2 text-[13px] text-ink-muted">
           <Link href="/" className="hover:underline">Mapa</Link>
           <span aria-hidden="true">/</span>
@@ -125,6 +126,10 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
         {detalhes ? (
           <>
           <PrincipaisInformacoes edital={e} resumo={{ ...detalhes.resumo, total: detalhes.totalItens }} agora={agora} />
+          {/* Celular: "Abrir edital oficial" fixo acima da barra de navegação (só com o edital liberado). */}
+          <div className="fixed inset-x-0 bottom-[var(--altura-barra)] z-30 border-t border-line bg-raised px-4 py-3 lg:hidden">
+            <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" />
+          </div>
 
           <div className="flex flex-wrap items-start gap-5">
             <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5">

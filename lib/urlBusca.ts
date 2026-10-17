@@ -1,7 +1,10 @@
 import { lerFiltros, normalizarTela } from './filtros';
 import type { Cidade, FiltrosBusca, FiltrosTela, Orgao } from './tipos';
 
-/** Tela do celular (abaixo de lg): Mapa ou Lista. No computador as duas aparecem juntas e a tela não muda nada. */
+/**
+ * Parte da página inicial em que o celular (abaixo de lg) está: o mapa, em cima, ou a lista, embaixo. No endereço,
+ * `tela=lista` faz a página abrir rolada até a lista. No computador as duas aparecem juntas e a tela não muda nada.
+ */
 export type Tela = 'mapa' | 'lista';
 
 /**
@@ -69,4 +72,17 @@ export function comTela(endereco: string, tela: Tela): string {
   else p.delete('tela');
   const texto = p.toString();
   return texto ? `/?${texto}` : '/';
+}
+
+/** Mesma combinação de filtros (o que a página escreveria no endereço): aplicar a folha sem mudança não refaz a busca. */
+export function mesmaBusca(a: FiltrosTela, b: FiltrosTela): boolean {
+  return urlDaBusca(normalizarTela(a)) === urlDaBusca(normalizarTela(b));
+}
+
+/**
+ * Item ativo da barra do celular na página inicial (mapa em cima, lista embaixo): Lista quando o início da lista
+ * passou da metade da tela, ou quando a página chegou ao fim (lista curta que não sobe até lá).
+ */
+export function telaPelaRolagem({ topoLista, alturaJanela, noFim }: { topoLista: number; alturaJanela: number; noFim: boolean }): Tela {
+  return noFim || topoLista < alturaJanela / 2 ? 'lista' : 'mapa';
 }

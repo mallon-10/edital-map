@@ -5,17 +5,18 @@ import { registrar } from '@/lib/cliente/registrar';
 import { publicarUso } from '@/lib/cliente/uso';
 import { guardarUltimaBusca, guardarVolta, tomarVolta, type Volta } from '@/lib/cliente/volta';
 import type { Raio } from '@/lib/geo';
-import { normalizarTela, paraParametros, recursosUsados } from '@/lib/filtros';
+import { buscaDoCampo, filtrosAtivos, normalizarTela, paraParametros, recursosUsados } from '@/lib/filtros';
 import { LimiteAtingido, lerLimite, type Limite, type RespostaBusca } from '@/lib/limites';
 import { resumirPontos } from '@/lib/painel';
 import type { Cidade, EditalResumo, FiltrosTela, PontoMapa, ResultadoBusca } from '@/lib/tipos';
-import { urlDaBusca, type Tela } from '@/lib/urlBusca';
-import { GavetaCelular } from './GavetaCelular';
+import { mesmaBusca, telaPelaRolagem, urlDaBusca, type Tela } from '@/lib/urlBusca';
+import { BarraCelular } from './BarraCelular';
 import { Mapa } from './Mapa';
 import { BuscaPrincipal } from './inicio/BuscaPrincipal';
 import { CartaoSelecionado } from './inicio/CartaoSelecionado';
 import { Chips } from './inicio/Chips';
 import { ColunaLista } from './inicio/ColunaLista';
+import { FolhaFiltros } from './inicio/FolhaFiltros';
 import { OndeMaisCompram } from './inicio/OndeMaisCompram';
 
 const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
@@ -24,8 +25,12 @@ const ERRO_LISTA = 'Não foi possível buscar agora. Confira a conexão e tente 
 const ERRO_MAPA = 'Não foi possível carregar o mapa agora.';
 const TEMPO_LIMITE_MS = 20_000;
 
-/** Abaixo de lg (1024 px): a tela do celular (Mapa ou Lista) entra no endereço. */
+/** Abaixo de lg (1024 px): uma página que rola, com o mapa em cima e a lista embaixo; a parte em que está entra no endereço. */
 const ehCelular = () => window.matchMedia('(max-width: 1023px)').matches;
+/** Rolagem suave, menos para quem pediu ao sistema menos movimento. */
+const comportamento = (): ScrollBehavior => (window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+/** Depois de um toque em Mapa ou Lista, a rolagem (suave) não decide o item ativo da barra enquanto anda. */
+const ESPERA_ROLAGEM_MS = 1000;
 
 /** Busca JSON da API. O erro lançado sempre traz texto em português: o da API, quando houver, ou o `padrao`. */
 async function obter<T>(url: string, padrao: string): Promise<T> {
@@ -71,7 +76,8 @@ type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'limite' | 'tela' | 'sele
 
 export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicial, agoraInicial, atualizadoEm }: Props) {
   const [filtros, setFiltros] = useState<FiltrosTela>(filtrosIniciais);
-  // Celular: Mapa ou Lista (por enquanto, a gaveta aberta), guardada no endereço para voltar do edital na mesma tela.
+  // Celular: a parte da página em que a pessoa está (mapa em cima ou lista embaixo), guardada no endereço (`tela=lista`
+  // abre a página rolada até a lista) e acesa na barra de baixo.
   const [tela, setTela] = useState<Tela>(telaInicial);
   const [resultado, setResultado] = useState<ResultadoBusca>(inicial ?? SEM_RESULTADO);
   const [limite, setLimite] = useState<Limite | null>(limiteInicial);
@@ -84,7 +90,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   // Falso até o primeiro mapa chegar: antes disso o resumo (UFs, valor, municípios) ainda não existe.
   const [pontosProntos, setPontosProntos] = useState(false);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(inicial?.editais[0]?.id ?? null);
-  const [resumoNoCelular, setResumoNoCelular] = useState(false);
+  const [folhaAberta, setFolhaAberta] = useState(false);
   // Sede de cada município já visto no mapa: centro do círculo do raio (a cidade escolhida sempre veio de um ponto do mapa).
   const [centros, setCentros] = useState<Record<string, [number, number]>>({});
   // Numeração dos pedidos: só a resposta do pedido mais recente pode mudar a tela.
@@ -99,6 +105,9 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   const rolagemPaginaPendente = useRef<number | null>(null);
   const filtrosDoMapa = useRef<FiltrosTela>(VAZIO);
   const paraGuardar = useRef<Guardavel | null>(null);
+  // Celular: início da lista (alvo do botão Lista) e até quando a rolagem não decide o item ativo da barra.
+  const inicioLista = useRef<HTMLElement>(null);
+  const ignorarRolagemAte = useRef(0);
 
   const painel = useMemo(() => resumirPontos(pontos), [pontos]);
   const selecionado = resultado.editais.find((e) => e.id === selecionadoId) ?? resultado.editais[0] ?? null;
@@ -114,9 +123,29 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
     window.history.replaceState(null, '', urlDaBusca(f, nova));
   }, []);
 
+  /** Celular: leva a página ao mapa (topo) ou ao início da lista. No computador as duas estão na tela: não rola. */
+  const rolarPara = useCallback((t: Tela, jeito: ScrollBehavior = comportamento()) => {
+    if (!ehCelular()) return;
+    ignorarRolagemAte.current = Date.now() + ESPERA_ROLAGEM_MS;
+    if (t === 'lista') inicioLista.current?.scrollIntoView({ behavior: jeito, block: 'start' });
+    else window.scrollTo({ top: 0, behavior: jeito });
+  }, []);
+
+  /** Celular: vai ao mapa ou à lista (barra de baixo, cidade escolhida, aviso ou cartão do limite na lista). */
+  const irPara = useCallback(
+    (t: Tela, f: FiltrosTela) => {
+      trocarTela(t, f);
+      rolarPara(t);
+    },
+    [trocarTela, rolarPara],
+  );
+
   const carregarLista = useCallback(
     async (f: FiltrosTela) => {
       const id = ++pedidoLista.current;
+      // Posições de uma volta do edital que ainda não foram aplicadas são da lista antiga: não valem para a nova.
+      rolagemPendente.current = null;
+      rolagemPaginaPendente.current = null;
       setCarregandoLista(true);
       setCarregandoMais(false);
       try {
@@ -128,8 +157,6 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
         setSelecionadoId(novo.editais[0]?.id ?? null);
         setAgora(new Date());
         setErroLista(null);
-        // O cartão escuro do celular só vale para o toque que o abriu, não para as buscas seguintes.
-        setResumoNoCelular(false);
       } catch (e) {
         if (id !== pedidoLista.current) return;
         if (e instanceof LimiteAtingido) {
@@ -140,13 +167,13 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
         } else {
           setErroLista(mensagem(e, ERRO_LISTA));
         }
-        // No celular a gaveta recolhida não tem lugar para o aviso nem para o cartão: a lista abre para eles aparecerem.
-        if (ehCelular()) trocarTela('lista', f);
+        // No celular o aviso e o cartão aparecem na lista, embaixo do mapa: a página rola até eles.
+        if (ehCelular()) irPara('lista', f);
       } finally {
         if (id === pedidoLista.current) setCarregandoLista(false);
       }
     },
-    [trocarTela],
+    [irPara],
   );
 
   const carregarMapa = useCallback(async (f: FiltrosTela) => {
@@ -184,6 +211,33 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   // Última busca, para os links Mapa e Lista da barra do celular nas outras páginas.
   useEffect(() => guardarUltimaBusca(urlDaBusca(filtros)), [filtros]);
 
+  // Celular: a barra acende Mapa ou Lista conforme a parte da página que está na tela, e o endereço acompanha
+  // (`tela=lista` só quando a lista está na tela). Um quadro por vez; parado durante a rolagem pedida pela barra.
+  useEffect(() => {
+    let quadro = 0;
+    const medir = () => {
+      quadro = 0;
+      const atual = paraGuardar.current;
+      const inicio = inicioLista.current;
+      if (!atual || !inicio || !ehCelular() || Date.now() < ignorarRolagemAte.current) return;
+      const raiz = document.documentElement;
+      const nova = telaPelaRolagem({
+        topoLista: inicio.getBoundingClientRect().top,
+        alturaJanela: window.innerHeight,
+        noFim: window.scrollY > 0 && window.scrollY + window.innerHeight >= raiz.scrollHeight - 2,
+      });
+      if (nova !== atual.tela) trocarTela(nova, atual.filtros);
+    };
+    const rolar = () => {
+      if (!quadro) quadro = requestAnimationFrame(medir);
+    };
+    window.addEventListener('scroll', rolar, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', rolar);
+      cancelAnimationFrame(quadro);
+    };
+  }, [trocarTela]);
+
   // Volta do edital: devolve a página e a lista às posições em que estavam (a lista, quando estiver visível).
   useEffect(() => {
     if (rolagemPaginaPendente.current !== null) {
@@ -215,12 +269,16 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
       setResultado(volta.resultado);
       setLimite(volta.limite);
       setSelecionadoId(volta.selecionadoId);
+      // Os prazos ("encerra em 2 dias") contam a partir de agora, não da hora em que a lista foi guardada.
+      setAgora(new Date());
       rolagemPendente.current = volta.rolagem;
       rolagemPaginaPendente.current = volta.rolagemPagina ?? null;
       void carregarMapa(volta.filtrosMapa);
     } else {
       // Endereço canônico (ordem dos parâmetros, valores inválidos fora): a volta compara por ele.
       window.history.replaceState(null, '', urlDaBusca(filtrosIniciais, telaInicial));
+      // Celular com `tela=lista` no endereço (botão Lista de outra página, link compartilhado): abre rolada até a lista.
+      if (telaInicial === 'lista') rolarPara('lista', 'auto');
       // Mesmos parâmetros da busca que o servidor já contou (a lista veio pronta): o mapa não conta de novo.
       // Busca do endereço bloqueada pelo limite: o mapa do Brasil todo, que não conta.
       void carregarMapa(limiteInicial ? VAZIO : filtrosIniciais);
@@ -236,7 +294,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
         rolagemPagina: rolagemPagina.current,
       });
     };
-  }, [carregarMapa, filtrosIniciais, telaInicial, limiteInicial]);
+  }, [carregarMapa, rolarPara, filtrosIniciais, telaInicial, limiteInicial]);
 
   /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança conta como busca. */
   function aplicar(pedido: FiltrosTela, opcoes: { abrirLista?: boolean } = {}) {
@@ -244,10 +302,11 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
     const novo = normalizarTela(pedido);
     // O mapa recebe tudo menos a cidade sozinha; com raio, recebe a cidade e o raio.
     const mudouMapa = paraParametros(novo, { comCidade: false }).toString() !== paraParametros(filtros, { comCidade: false }).toString();
-    // Cidade nova (pelo mapa, pelo chip ou pelo painel): no celular a lista abre para mostrar os editais dela.
+    // Cidade nova (pelo mapa, pelo painel ou pela folha de Filtros): no celular a página rola até a lista dela.
     const cidadeNova = Boolean(novo.cidade && novo.cidade.ibge !== filtros.cidade?.ibge);
     setFiltros(novo);
-    trocarTela((opcoes.abrirLista || cidadeNova) && ehCelular() ? 'lista' : tela, novo);
+    if ((opcoes.abrirLista || cidadeNova) && ehCelular()) irPara('lista', novo);
+    else trocarTela(tela, novo);
     registrar('busca', { q: novo.q.trim() || null, uf: novo.uf || null, dias: novo.seteDias ? 7 : null });
     for (const recurso of recursosUsados(filtros, novo)) registrar('usou_recurso', { recurso });
     void carregarLista(novo);
@@ -257,13 +316,15 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
 
   // O Mapa guarda o callback numa ref atualizada a cada render: uma função comum basta.
   function escolherCidade(c: Cidade) {
-    // Também abre a lista quando a cidade já era a escolhida (a lista pode ter sido fechada), o que `cidadeNova` não cobre.
+    // Também rola até a lista quando a cidade já era a escolhida, o que `cidadeNova` não cobre.
     aplicar({ ...filtros, cidade: c }, { abrirLista: true });
   }
 
+  const fecharFolha = useCallback(() => setFolhaAberta(false), []);
+
+  /** Computador: o card selecionado aparece no resumo da direita (no celular, tocar no card abre o edital). */
   function selecionar(e: EditalResumo) {
     setSelecionadoId(e.id);
-    setResumoNoCelular(true);
   }
 
   async function carregarMais() {
@@ -290,21 +351,33 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
     }
   }
 
-  const listaAberta = tela === 'lista';
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 space-y-3 px-4 pt-3 lg:px-6 lg:pt-5">
-        <BuscaPrincipal q={filtros.q} uf={filtros.uf} carregando={carregandoLista} aoBuscar={(q, uf) => aplicar({ ...filtros, q, uf, cidade: null })} />
-        <Chips filtros={filtros} pontos={pontos} atualizadoEm={atualizadoEm} agora={agora} aoMudar={aplicar} />
+        <BuscaPrincipal
+          q={filtros.q}
+          uf={filtros.uf}
+          carregando={carregandoLista}
+          filtrosAtivos={filtrosAtivos(filtros)}
+          // Celular: o campo não mostra o lugar, então município e raio continuam enquanto a UF for a mesma.
+          aoBuscar={(q, uf) => aplicar(buscaDoCampo(filtros, q, uf, { manterCidade: ehCelular() }))}
+          aoAbrirFiltros={() => setFolhaAberta(true)}
+        />
+        {/* Celular: os chips ficam na folha de Filtros. */}
+        <div className="hidden lg:block">
+          <Chips filtros={filtros} pontos={pontos} atualizadoEm={atualizadoEm} agora={agora} aoMudar={aplicar} />
+        </div>
       </div>
-      <main className="flex min-h-0 flex-1 flex-col pt-3 lg:grid lg:grid-cols-[360px_minmax(0,1fr)_300px] lg:grid-rows-[minmax(0,1fr)] lg:gap-5 lg:px-6 lg:pb-6 lg:pt-4">
+      {/* Celular: uma página que rola, com o mapa (altura fixa) em cima e a lista embaixo, no fluxo.
+          Computador: três colunas (lista, mapa, resumo) na altura da tela, cada uma rolando por dentro. */}
+      <main className="flex flex-col pt-3 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[360px_minmax(0,1fr)_300px] lg:grid-rows-[minmax(0,1fr)] lg:gap-5 lg:px-6 lg:pb-6 lg:pt-4">
         <h1 className="sr-only">Editais abertos no mapa</h1>
-        <GavetaCelular aberta={listaAberta} aoAlternar={() => trocarTela(listaAberta ? 'mapa' : 'lista', filtros)}>
-          {listaAberta && resumoNoCelular && selecionado ? (
-            <div className="mb-3 shrink-0 lg:hidden">
-              <CartaoSelecionado edital={selecionado} agora={agora} aoFechar={() => setResumoNoCelular(false)} />
-            </div>
-          ) : null}
+        <section
+          aria-label="Lista de editais"
+          id="lista-editais"
+          ref={inicioLista}
+          className="flex scroll-mt-3 flex-col px-4 pb-4 pt-4 lg:min-h-0 lg:overflow-hidden lg:p-0"
+        >
           <ColunaLista
             resultado={resultado}
             agora={agora}
@@ -316,7 +389,6 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
             carregandoMais={carregandoMais}
             erro={erroLista}
             limite={limite}
-            recolhida={!listaAberta}
             cidade={filtros.cidade}
             raio={filtros.raio}
             parametrosBusca={paraParametros(filtros).toString()}
@@ -329,10 +401,11 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
             aoMudarPrazo={(seteDias) => aplicar({ ...filtros, seteDias })}
             aoCarregarMais={carregarMais}
           />
-        </GavetaCelular>
-        <section aria-label="Mapa" className="relative min-h-0 flex-1 overflow-hidden bg-raised lg:rounded-lg lg:border lg:border-line">
+        </section>
+        {/* Celular: primeiro na página, com 58svh (pinça e um dedo mexem no mapa; fora dele, arrastar rola a página). */}
+        <section aria-label="Mapa" className="relative order-first h-[58svh] min-h-0 shrink-0 overflow-hidden bg-raised lg:order-none lg:h-auto lg:rounded-lg lg:border lg:border-line">
           <Mapa pontos={pontos} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} raio={raioMapa} />
-          {/* No celular a gaveta cobre este canto: a observação fica só no computador. */}
+          {/* No celular a observação fica embaixo do mapa, no começo da lista. */}
           <p className="pointer-events-none absolute bottom-2 left-2 z-10 hidden rounded-sm bg-raised/85 px-2 py-1 text-xs text-ink-muted lg:block">
             O ponto é a sede do órgão, não o local de entrega.
           </p>
@@ -347,6 +420,19 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
           <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
         </aside>
       </main>
+      <FolhaFiltros
+        aberta={folhaAberta}
+        filtros={filtros}
+        pontos={pontos}
+        atualizadoEm={atualizadoEm}
+        agora={agora}
+        // Aplicar sem mudar nada só fecha (não refaz a busca).
+        aoAplicar={(f) => {
+          if (!mesmaBusca(f, filtros)) aplicar(f);
+        }}
+        aoFechar={fecharFolha}
+      />
+      <BarraCelular ativo={tela} aoTrocarTela={(t) => irPara(t, filtros)} />
     </div>
   );
 }
