@@ -45,7 +45,7 @@ export function BotaoQueroPlano({ plano, destaque = false }: { plano: PlanoPago;
           registrar('quer_recurso', { recurso: plano === 'basic' ? 'plano_basic' : 'plano_pro' });
           dialogo.current?.showModal();
         }}
-        className={`inline-flex h-10 items-center justify-center rounded-sm px-4 text-sm font-semibold ${
+        className={`inline-flex h-11 items-center justify-center rounded-sm px-4 text-sm font-semibold ${
           destaque ? 'bg-pin text-on-pin' : 'border border-line-strong bg-raised text-ink hover:bg-sunken'
         }`}
       >
@@ -54,7 +54,7 @@ export function BotaoQueroPlano({ plano, destaque = false }: { plano: PlanoPago;
       <dialog
         ref={dialogo}
         aria-labelledby={titulo}
-        className="m-auto w-[min(92vw,440px)] rounded-lg border border-line bg-raised p-6 text-left text-ink shadow-[0_8px_32px_rgba(12,35,64,.18)] backdrop:bg-ink/40"
+        className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[440px] overflow-y-auto rounded-lg border border-line bg-raised p-6 text-left text-ink shadow-[0_8px_32px_rgba(12,35,64,.18)] backdrop:bg-ink/40"
       >
         <h2 id={titulo} className="text-lg font-bold">Plano {NOME[plano]}</h2>
         {estado.tipo === 'pronto' ? (
@@ -65,7 +65,7 @@ export function BotaoQueroPlano({ plano, destaque = false }: { plano: PlanoPago;
             <button
               type="button"
               onClick={() => dialogo.current?.close()}
-              className="h-10 self-start rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
+              className="h-11 self-start rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
             >
               Fechar
             </button>
@@ -93,14 +93,14 @@ export function BotaoQueroPlano({ plano, destaque = false }: { plano: PlanoPago;
               <button
                 type="submit"
                 disabled={estado.tipo === 'enviando'}
-                className="h-10 rounded-sm bg-pin px-4 text-sm font-semibold text-on-pin disabled:opacity-60"
+                className="h-11 rounded-sm bg-pin px-4 text-sm font-semibold text-on-pin disabled:opacity-60"
               >
                 {estado.tipo === 'enviando' ? 'Enviando…' : 'Avisar quando abrir'}
               </button>
               <button
                 type="button"
                 onClick={() => dialogo.current?.close()}
-                className="h-10 rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
+                className="h-11 rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
               >
                 Fechar
               </button>

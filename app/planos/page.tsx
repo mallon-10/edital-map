@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Cabecalho } from '@/components/Cabecalho';
+import { CartoesPlanos } from '@/components/planos/CartoesPlanos';
 import { BotaoQueroPlano } from '@/components/planos/BotaoQueroPlano';
 import { AVISO_PLANOS, LINHAS_PLANOS, PLANOS, type Celula } from '@/lib/planos';
 
@@ -40,7 +41,11 @@ export default function PaginaPlanos() {
             Comece grátis. Quando precisar de mais buscas e editais por dia, de alertas e de editais salvos, escolha o Basic ou o Pro.
           </p>
         </div>
-        <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+        {PLANOS.filter((p) => p.id !== 'gratis').map((p) => (
+          <span key={p.id} id={p.id} aria-hidden="true" className="-mb-6 block h-0 scroll-mt-24" />
+        ))}
+        <CartoesPlanos />
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[640px] border-separate border-spacing-0 overflow-hidden rounded-lg border border-line bg-raised text-[14px]">
             <caption className="sr-only">Comparação dos planos Grátis, Basic e Pro</caption>
             <thead>
@@ -49,7 +54,7 @@ export default function PaginaPlanos() {
                   Recurso
                 </th>
                 {PLANOS.map((p) => (
-                  <th key={p.id} id={p.id} scope="col" className={`scroll-mt-24 border-b border-line p-4 text-center align-bottom ${p.id === 'pro' ? 'bg-pin-soft' : ''}`}>
+                  <th key={p.id} scope="col" className={`border-b border-line p-4 text-center align-bottom ${p.id === 'pro' ? 'bg-pin-soft' : ''}`}>
                     <span className="block text-[17px] font-bold">{p.nome}</span>
                     <span className="mt-1 block font-mono text-[13px] font-medium text-ink-muted">{p.preco}</span>
                     <span className="mt-3 block">
