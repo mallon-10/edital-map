@@ -48,10 +48,10 @@ Aprovado pelo dono em 17/10/2026. Antecipa partes da spec de Planos (docs/superp
 - Banco: `registrar_uso` idempotente (mesma chave não conta duas vezes), 4ª chave diferente recusada, outro dia zera, concorrência (duas chamadas simultâneas não passam do limite).
 - Navegador (celular 390 px e computador 1440 px): barra inferior, Filtros (n), Lista em tela cheia, card abrindo o edital e voltar mantendo a busca, selo mudando, 4ª busca e 4º edital bloqueados com o cartão, `/planos` e a lista de espera.
 
-- [ ] 4ª busca diferente do dia e 4º edital diferente mostram o cartão dos planos; repetir não conta; interno sem limite.
-- [ ] Selo certo nos três estados (sobrando, falta 1, zerado).
-- [ ] `/planos` com a tabela e a lista de espera gravando.
-- [ ] Celular: barra inferior, Filtros (n), Lista em tela cheia, card abre o edital, voltar mantém a busca.
-- [ ] Busca na URL (ida e volta, compartilhável).
-- [ ] Eventos `limite_atingido` e `quer_recurso` (plano_basic/plano_pro) gravados.
-- [ ] Testes e typecheck passando; publicado.
+- [x] 4ª busca diferente do dia e 4º edital diferente mostram o cartão dos planos; repetir não conta; interno sem limite. — produção 17/10 (curl e navegador): 3 buscas 200, 4ª 402 em busca/mapa/exportar; luva de novo com prazo e página 200; 3 editais abertos, 4º com o cartão; interno 200.
+- [x] Selo certo nos três estados (sobrando, falta 1, zerado). — capturas "3 buscas · 3 editais" (sobrando) e "nenhuma busca · 2 editais" (zerado, laranja); "falta 1" (amarelo) coberto por teste de `tomSelo`.
+- [x] `/planos` com a tabela e a lista de espera gravando. — tabela no computador, cartões no celular (corrigido depois da 1ª publicação: a tabela vazava a 390 px); lista de espera 201 e linha gravada.
+- [x] Celular: barra inferior, Filtros (n), mapa em cima e lista rolando (desenho revisto pelo dono), card abre o edital, voltar mantém a busca. — capturas 390 px; o Voltar foi corrigido depois da 1ª publicação (`trocarEndereco`) e conferido em produção.
+- [x] Busca na URL (ida e volta, compartilhável). — `/?q=luva&uf=SC` restaurado ao voltar; endereço muda a cada busca no computador.
+- [x] Eventos `limite_atingido` e `quer_recurso` (plano_basic/plano_pro) gravados. — banco: limite_atingido busca 1 e edital 1 (visitante de teste); plano_basic interno 1; plano_pro de visitantes reais 4 no dia.
+- [x] Testes e typecheck passando; publicado. — 591 testes; publicado em 17/10.

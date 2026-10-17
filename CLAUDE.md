@@ -2,7 +2,7 @@
 
 Mapa de licitações públicas abertas no Brasil (dados do PNCP) para PMEs que vendem ao governo. Nicho de largada: EPI e uniformes.
 
-Fase atual: **3 · Brasil todo** (etapa da Fase 3 antes de Planos e Alertas). Site Next.js na Vercel em https://edital-map.vercel.app (domínio próprio pendente) sobre o espelho do PNCP (27 UFs) atualizado a cada 3 h.
+Fase atual: **3 · Brasil todo + limites do grátis** (etapa da Fase 3 antes de pagamento e Alertas). Site Next.js na Vercel em https://edital-map.vercel.app (domínio próprio pendente) sobre o espelho do PNCP (27 UFs) atualizado a cada 3 h.
 - Spec: docs/superpowers/specs/2026-10-15-fase-2-mapa-design.md
 - Plano: docs/superpowers/plans/2026-10-15-fase-2-mapa.md
 - Portão: docs/fase-2-portao.sql
@@ -11,6 +11,7 @@ Fase atual: **3 · Brasil todo** (etapa da Fase 3 antes de Planos e Alertas). Si
 - Mapa legível: spec docs/superpowers/specs/2026-10-17-mapa-legivel-design.md, plano docs/superpowers/plans/2026-10-17-mapa-legivel.md.
 - Planos (desenhado, implementação adiada até o domínio): docs/superpowers/specs/2026-10-16-fase-3-planos-design.md.
 - Recursos Pro (abertos por enquanto, cadeado quando os Planos ligarem): spec docs/superpowers/specs/2026-10-17-fase-3-recursos-pro-design.md, plano docs/superpowers/plans/2026-10-17-fase-3-recursos-pro.md, conferências docs/fase-3-recursos-pro.sql. Relacionados (`relacionados`, 0008), filtro por órgão (`/api/orgaos`, `orgaos_abertos`), raio em km (`municipios_no_raio`; com raio a UF não vale), exportar CSV (`/api/exportar`, até 2.000, 20/hora por IP, teto de 4 MB).
+- Limites do grátis, página Planos e celular: spec docs/superpowers/specs/2026-10-17-fase-3-limites-planos-celular-design.md, plano docs/superpowers/plans/2026-10-17-fase-3-limites-planos-celular.md, conferências docs/fase-3-limites.sql e `npx tsx scripts/conferir-limites.ts` (0009: `uso_diario`, `registrar_uso`, `uso_do_dia`, `lista_espera`, `limite_atingido`).
 
 Referências:
 - Estrutura do MVP (doc, nome antigo BidAtlas): https://claude.ai/code/artifact/33a5e4e7-9f62-4f3f-8312-9da344fe5c7c
@@ -43,7 +44,11 @@ Referências:
 - maplibre-gl 6 (só ESM): o worker vem do pacote via `setWorkerUrl` em components/Mapa.tsx (o Turbopack zera o import.meta.url).
 - Site: dados só pelo servidor (lib/servidor/*, `server-only`); cache de 5 min; `noindex` até a etapa de SEO; eventos e pedidos de alerta só pelas rotas /api.
 - Textos do PNCP só passam pela limpeza de lib/texto.ts (sem IA); siglas novas entram na lista SIGLAS. Título do edital = assunto() (sem a abertura burocrática).
-- Página inicial em três colunas a partir de lg (1024 px); abaixo, mapa em tela cheia e lista na gaveta.
+- Página inicial em três colunas a partir de lg (1024 px). Abaixo: uma página só que rola, com o mapa em cima (58svh) e a lista embaixo; barra fixa embaixo (Mapa · Lista · Alertas · Planos, components/BarraCelular.tsx, `--altura-barra`; a rolagem só acende o item, nunca escreve o endereço); busca compacta com "Filtros (n)" e folha de filtros (rascunho; "Ver N editais" por /api/contagem, que não conta). Tocar no card abre o edital. `ALTURA_GAVETA_RECOLHIDA` (0) continua exportada para o Mapa.
+- Limite do grátis: 3 buscas e 3 editais diferentes por dia (Brasília) por navegador (`em_visitante`, garantido pelo proxy.ts); interno sem limite e sem selo. Busca = termo (sem acento/maiúsculas/espaços) + UF + município + valor + modalidades + órgão + raio (prazo e página não contam; com raio a UF não entra; vazia não conta); chave = sha256 (lib/limites.ts, lib/servidor/uso.ts). Lista e mapa mandam os mesmos parâmetros (contam uma vez). Banco fora na contagem: libera.
+- Sinal de limite: HTTP 402 `{ erro, codigo: 'limite_diario', limite }` em /api/busca, /api/mapa e /api/exportar (429 é só limite por hora). Essas rotas e /api/uso respondem `private, no-store` (sem cache no CDN). A página do edital conta no servidor (só depois de achar o edital) e, bloqueada, troca tudo abaixo do cabeçalho pelo cartão dos planos (seção nova entra dentro desse bloco). Links para /edital e para `/?q=` sempre com `prefetch={false}`; sem loading.tsx no edital nem Cache Components.
+- Busca no endereço: a página inicial lê e escreve `/?q=&uf=&municipio=&valor=&modalidades=&orgao=&raio=&dias=7&tela=lista` (lib/urlBusca.ts) e guarda o estado ao sair (lib/cliente/volta.ts) para voltar do edital no mesmo lugar. Escrever o endereço só por `trocarEndereco` (lib/cliente/endereco.ts): `history.replaceState(null, …)` apaga o estado do Next e o Voltar deixa de funcionar.
+- /planos: tabela Grátis · Basic R$ 49,90 · Pro R$ 89,90 (lib/planos.ts; cartões abaixo de md), lista de espera (`lista_espera`, /api/lista-espera, 5 por hora por IP) e evento `quer_recurso` plano_basic/plano_pro. Pagamento e cadeado do "Abrir edital oficial" só com o Stripe.
 - Medição: ao trocar de domínio, remarcar /sobre?interno=1 em cada navegador do dono e fazer uma busca (o cookie em_interno é por domínio).
 - GitHub Actions em repositório privado: 2.000 min/mês; 8 rodadas/dia precisam ficar em média abaixo de ~8 min (≤ 66 min/dia).
 
