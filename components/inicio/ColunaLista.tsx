@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { moedaCurta, numero } from '@/lib/formato';
 import type { Painel } from '@/lib/painel';
 import type { Cidade, EditalResumo, ResultadoBusca } from '@/lib/tipos';
+import { BotaoExportar } from './BotaoExportar';
 import { CardCompacto } from './CardCompacto';
 
 type Props = {
@@ -23,6 +24,8 @@ type Props = {
   cidade: Cidade | null;
   /** Raio em km a partir da cidade (aparece na pílula do celular). */
   raio: number | null;
+  /** Parâmetros da busca atual (os mesmos de /api/busca), para o botão Exportar. */
+  parametrosBusca: string;
   aoTirarCidade: () => void;
   aoSelecionar: (e: EditalResumo) => void;
   aoMudarPrazo: (seteDias: boolean) => void;
@@ -35,6 +38,7 @@ export function ColunaLista(p: Props) {
   const { total, editais } = p.resultado;
   const painelPronto = p.painelPronto ?? true;
   const lista = useRef<HTMLDivElement>(null);
+  const [erroExportar, setErroExportar] = useState<string | null>(null);
   // Toda busca nova (inclusive a que traz o mesmo primeiro edital) volta ao topo; "carregar mais" não mexe em `carregandoLista`.
   useEffect(() => {
     if (p.carregandoLista) lista.current?.scrollTo({ top: 0 });
@@ -63,6 +67,10 @@ export function ColunaLista(p: Props) {
               </button>
             </span>
           ) : null}
+          {/* Some com a gaveta recolhida (altura fixa); o erro aparece na área rolável abaixo. */}
+          <span className={`ml-auto ${p.recolhida ? 'max-lg:hidden' : ''}`}>
+            <BotaoExportar parametros={p.parametrosBusca} total={total} aoErro={setErroExportar} />
+          </span>
         </div>
         <p className="mt-1 font-mono text-xs text-ink-muted">
           {painelPronto
@@ -93,6 +101,7 @@ export function ColunaLista(p: Props) {
           Editais abertos de todo o Brasil · o ponto é a sede do órgão, não o local de entrega
         </p>
         {p.erro ? <p role="alert" className="mb-3 shrink-0 rounded-sm bg-pin-soft px-3 py-2 text-sm text-pin-strong">{p.erro}</p> : null}
+        {erroExportar ? <p role="alert" className="mb-3 shrink-0 rounded-sm bg-pin-soft px-3 py-2 text-sm text-pin-strong">{erroExportar}</p> : null}
         <div
           ref={lista}
           aria-busy={p.carregandoLista}

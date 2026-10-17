@@ -198,6 +198,7 @@ export function Explorador({ inicial, agoraInicial, atualizadoEm }: Props) {
             recolhida={!gavetaAberta}
             cidade={filtros.cidade}
             raio={filtros.raio}
+            parametrosBusca={paraParametros(filtros).toString()}
             aoTirarCidade={() => aplicar({ ...filtros, cidade: null })}
             aoSelecionar={selecionar}
             aoMudarPrazo={(seteDias) => aplicar({ ...filtros, seteDias })}
