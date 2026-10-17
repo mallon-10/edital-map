@@ -78,7 +78,7 @@ export function decidirEdital(ctx: Contexto | null, slug: string): Promise<Decis
   return decidir(ctx, 'edital', slug, true);
 }
 
-/** Uso de hoje para o selo. Interno: sem consulta. Sem visitante ou banco fora: null (o selo não aparece). */
+/** Uso de hoje para a faixa do plano grátis. Interno: sem consulta. Sem visitante ou banco fora: null (a faixa não aparece). */
 export async function usoDoDia(ctx: Contexto | null): Promise<UsoHoje | null> {
   if (!ctx) return null;
   if (ctx.interno) return { interno: true, buscas: 0, editais: 0 };

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { lerFiltros } from './filtros';
 import {
   combinacaoBusca, CONVITE_PLANOS, corpoLimite, LIMITE_GRATIS, LimiteAtingido, lerLimite, mensagemLimite, STATUS_LIMITE,
-  textoSelo, textoSeloCompacto, tomSelo,
+  bolinhas, leituraFaixa, textoFaixa, tomSelo,
 } from './limites';
 
 const busca = (qs: string) => lerFiltros(new URLSearchParams(qs));
@@ -36,18 +36,26 @@ describe('combinacaoBusca (o que conta como uma busca no dia)', () => {
   });
 });
 
-describe('selo do plano grátis (recebe o que já foi usado hoje)', () => {
-  it('sobrando: plural e singular', () => {
-    expect(textoSelo({ buscas: 1, editais: 2 })).toBe('Grátis · restam 2 buscas e 1 edital hoje');
-    expect(textoSeloCompacto({ buscas: 1, editais: 2 })).toBe('2 buscas · 1 edital');
-    expect(textoSelo({ buscas: 0, editais: 0 })).toBe('Grátis · restam 3 buscas e 3 editais hoje');
-    expect(textoSelo({ buscas: 2, editais: 3 })).toBe('Grátis · restam 1 busca e nenhum edital hoje');
+describe('faixa do plano grátis (recebe o que já foi usado hoje)', () => {
+  it('bolinhas: cheias = restantes, vazias = usadas, sempre o máximo de bolinhas', () => {
+    expect(bolinhas(0, 3)).toEqual([true, true, true]);
+    expect(bolinhas(1, 3)).toEqual([true, true, false]);
+    expect(bolinhas(2, 3)).toEqual([true, false, false]);
+    expect(bolinhas(3, 3)).toEqual([false, false, false]);
+    expect(bolinhas(5, 3)).toEqual([false, false, false]);
+    expect(bolinhas(-1, 3)).toEqual([true, true, true]);
   });
-  it('zerado: "nenhuma busca" e "nenhum edital", sem número negativo', () => {
-    expect(textoSelo({ buscas: 3, editais: 1 })).toBe('Grátis · restam nenhuma busca e 2 editais hoje');
-    expect(textoSelo({ buscas: 3, editais: 3 })).toBe('Grátis · nenhuma busca e nenhum edital hoje');
-    expect(textoSeloCompacto({ buscas: 3, editais: 3 })).toBe('nenhuma busca · nenhum edital');
-    expect(textoSelo({ buscas: 5, editais: 0 })).toBe('Grátis · restam nenhuma busca e 3 editais hoje');
+  it('texto ao lado das bolinhas: "2 de 3"; zerado, "nenhuma busca" ou "nenhum edital"', () => {
+    expect(textoFaixa('busca', 1)).toBe('2 de 3');
+    expect(textoFaixa('edital', 2)).toBe('1 de 3');
+    expect(textoFaixa('busca', 3)).toBe('nenhuma busca');
+    expect(textoFaixa('edital', 4)).toBe('nenhum edital');
+  });
+  it('leitura para leitor de tela (as bolinhas ficam escondidas)', () => {
+    expect(leituraFaixa('busca', 1)).toBe('restam 2 de 3 buscas grátis hoje');
+    expect(leituraFaixa('edital', 2)).toBe('resta 1 de 3 editais grátis hoje');
+    expect(leituraFaixa('busca', 3)).toBe('nenhuma busca grátis restante hoje');
+    expect(leituraFaixa('edital', 3)).toBe('nenhum edital grátis restante hoje');
   });
   it('cor: amarelo quando falta 1 de qualquer um; laranja quando um zerou', () => {
     expect(tomSelo({ buscas: 0, editais: 1 })).toBe('normal');

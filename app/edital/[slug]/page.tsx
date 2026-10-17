@@ -67,7 +67,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const ctx = await contextoDaPagina();
   const decisao = await decidirEdital(ctx, e.slug);
   const todos = modoItens === 'todos';
-  // O selo lê o uso depois de contar este edital.
+  // A faixa do plano grátis lê o uso depois de contar este edital.
   const [atualizado, detalhes, uso] = await Promise.all([
     atualizadoEm(),
     decisao.permitido ? detalhesDoEdital(e, todos) : Promise.resolve(null),
