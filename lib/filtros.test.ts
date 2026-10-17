@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chaveFiltros, lerFiltros, lerTermoOrgao, normalizarTela, paraParametros, recursosUsados, ufIgnoradaPeloRaio, UFS_ORDENADAS } from './filtros';
+import { chaveFiltros, lerFiltros, filtrosAtivos, lerTermoOrgao, normalizarTela, paraParametros, recursosUsados, ufIgnoradaPeloRaio, UFS_ORDENADAS } from './filtros';
 import type { FiltrosTela } from './tipos';
 
 const ler = (s: string) => lerFiltros(new URLSearchParams(s));
@@ -162,5 +162,20 @@ describe('lerTermoOrgao', () => {
     expect(lerTermoOrgao('saúde%_\\')).toBe('saúde');
     expect(lerTermoOrgao('%%%')).toBeNull();
     expect(lerTermoOrgao('x'.repeat(100))).toHaveLength(60);
+  });
+});
+
+describe('filtrosAtivos (botão "Filtros (n)" do celular)', () => {
+  const nada: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
+  const cidade = { ibge: '4209102', nome: 'Joinville', uf: 'SC' };
+  it('conta UF, município, raio, valor, modalidades (uma vez), órgão e prazo; o termo não conta', () => {
+    expect(filtrosAtivos(nada)).toBe(0);
+    expect(filtrosAtivos({ ...nada, q: 'luva' })).toBe(0);
+    expect(
+      filtrosAtivos({ q: 'luva', uf: 'SC', cidade, valorMin: 50_000, modalidades: [6, 8], seteDias: true, orgao: { cnpj: '83102285000107', nome: 'X' }, raio: 100 }),
+    ).toBe(7);
+  });
+  it('raio sem município não vale', () => {
+    expect(filtrosAtivos({ ...nada, raio: 100 })).toBe(0);
   });
 });

@@ -95,3 +95,8 @@ export function lerTermoOrgao(q: string | null): string | null {
   const t = (q ?? '').replace(/[%_\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60).trim();
   return (t.match(/\p{L}/gu) ?? []).length >= 3 ? t : null;
 }
+
+/** Quantos filtros estão valendo (botão "Filtros (n)" do celular): UF, município, raio, valor, modalidade, órgão e prazo. O termo não conta. */
+export function filtrosAtivos(f: FiltrosTela): number {
+  return [f.uf, f.cidade, f.cidade && f.raio, f.valorMin, f.modalidades.length > 0, f.orgao, f.seteDias].filter(Boolean).length;
+}
