@@ -72,12 +72,12 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio }: Props) {
     let cancelado = false;
     void (async () => {
       // maplibre-gl 6 é só ESM: sem export default.
-      const maplibregl = await import('maplibre-gl');
+      // Biblioteca e estilo em paralelo.
+      const [maplibregl, estilo] = await Promise.all([import('maplibre-gl'), carregarEstilo()]);
       // O Turbopack reescreve import.meta.url do maplibre-gl e o worker padrão some (URL vazia):
       // aponta o worker para o arquivo do pacote, que o bundler publica como asset estático.
       maplibregl.setWorkerUrl(new URL('../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url).href);
-      // Fundo do OpenFreeMap ajustado, ou a reserva (fundo branco + nosso contorno) se ele não responder.
-      const estilo = await carregarEstilo();
+      // `estilo`: fundo do OpenFreeMap ajustado, ou a reserva (fundo branco + nosso contorno) se ele não responder.
       if (cancelado || !caixa.current) return;
       // Os nomes dos estados e o espaço das pílulas precisam das fontes do OpenFreeMap: na reserva ficam de fora.
       const comFontes = Boolean(estilo.glyphs);
@@ -134,6 +134,12 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio }: Props) {
 
       // Pílulas: um botão por grupo ou cidade visível, reaproveitado enquanto continuar na tela.
       const pilulas = new Map<string, ItemPilula>();
+      // Chave da pílula sob o mouse: só a remoção dela fecha a dica.
+      let sobMouse: string | null = null;
+      // Arrastar o mapa começando numa pílula termina no mesmo botão e o navegador dispara `click`: não pode virar ação.
+      let arrastou = false;
+      let apertou: { x: number; y: number } | null = null;
+      m.on('dragstart', () => { arrastou = true; });
 
       const aoClicar = async (chave: string) => {
         const item = pilulas.get(chave);
@@ -158,16 +164,33 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio }: Props) {
         botao.classList.add('pilula-mapa');
         const texto = document.createElement('span');
         botao.append(texto);
-        botao.addEventListener('click', () => void aoClicar(chave));
+        botao.addEventListener('pointerdown', (e) => {
+          apertou = { x: e.clientX, y: e.clientY };
+          arrastou = false;
+        });
+        // Soltou o mouse longe do botão (sem click) e depois usou o teclado: o toque antigo não vale.
+        botao.addEventListener('keydown', () => { apertou = null; });
+        botao.addEventListener('click', (e) => {
+          // Enter no teclado dispara `click` sem pointerdown: vale.
+          const antes = apertou;
+          apertou = null;
+          if (antes && (arrastou || Math.hypot(e.clientX - antes.x, e.clientY - antes.y) >= 3)) return;
+          void aoClicar(chave);
+        });
         botao.addEventListener('mouseenter', () => {
+          sobMouse = chave;
           const atual = pilulas.get(chave);
           if (atual) dica.setLngLat(atual.marcador.getLngLat()).setDOMContent(conteudo(linhasDica(atual.props))).addTo(m);
         });
-        botao.addEventListener('mouseleave', () => dica.remove());
+        botao.addEventListener('mouseleave', () => {
+          if (sobMouse === chave) sobMouse = null;
+          dica.remove();
+        });
         const marcador = new maplibregl.Marker({ element: botao, anchor: 'bottom' }).setLngLat(lngLat).addTo(m);
         return { marcador, botao, texto, props };
       };
 
+      const caixaMapa = m.getContainer();
       const atualizarPilulas = () => {
         const vistas = new Set<string>();
         for (const f of m.querySourceFeatures('editais')) {
@@ -183,17 +206,27 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio }: Props) {
           const atual = item.marcador.getLngLat();
           if (atual.lng !== coords[0] || atual.lat !== coords[1]) item.marcador.setLngLat(coords);
           item.props = props;
-          item.texto.textContent = p.texto;
-          item.botao.setAttribute('aria-label', p.rotulo);
+          // Só escreve no DOM o que mudou: isto roda a cada quadro.
+          if (item.texto.textContent !== p.texto) item.texto.textContent = p.texto;
+          if (item.botao.getAttribute('aria-label') !== p.rotulo) item.botao.setAttribute('aria-label', p.rotulo);
           // classList: o Marker põe as classes dele no mesmo elemento.
-          item.botao.classList.toggle('pilula-mapa-destaque', p.destaque);
-          item.botao.style.zIndex = p.destaque ? '2' : '1';
+          if (item.botao.classList.contains('pilula-mapa-destaque') !== p.destaque) item.botao.classList.toggle('pilula-mapa-destaque', p.destaque);
+          const z = p.destaque ? '2' : '1';
+          if (item.botao.style.zIndex !== z) item.botao.style.zIndex = z;
+          // querySourceFeatures devolve tiles inteiros: pílula fora da vista não pode receber foco (o Tab rolaria o mapa).
+          const ponto = m.project(coords);
+          const dentro = ponto.x >= 0 && ponto.y >= 0 && ponto.x <= caixaMapa.clientWidth && ponto.y <= caixaMapa.clientHeight;
+          const tab = dentro ? 0 : -1;
+          if (item.botao.tabIndex !== tab) item.botao.tabIndex = tab;
         }
         for (const [chave, item] of pilulas) {
           if (vistas.has(chave)) continue;
           item.marcador.remove();
-          // Sem pílula, o mouseleave não vem: a dica ficaria presa.
-          dica.remove();
+          // Sem pílula, o mouseleave não vem: a dica ficaria presa (só se era a pílula sob o mouse).
+          if (sobMouse === chave) {
+            sobMouse = null;
+            dica.remove();
+          }
           pilulas.delete(chave);
         }
       };

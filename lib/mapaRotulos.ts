@@ -67,9 +67,12 @@ export function ajustarEstilo(estilo: StyleSpecification): StyleSpecification {
   const layers: LayerSpecification[] = [];
   let comDivisas = false;
   for (const l of estilo.layers) {
-    if (l.type === 'symbol' && l.layout?.['text-field'] !== undefined) {
+    const campo = l.type === 'symbol' ? l.layout?.['text-field'] : undefined;
+    if (l.type === 'symbol' && campo !== undefined) {
       const esconder = l.id === 'label_state' ? { visibility: 'none' as const } : {};
-      layers.push({ ...l, layout: { ...l.layout, 'text-field': NOME_PT, ...esconder } });
+      // Só troca o que mostra nome (name, name_en...); placas de rodovia mostram `ref` e ficam como vieram.
+      const nome = JSON.stringify(campo).includes('"name') ? { 'text-field': NOME_PT } : {};
+      layers.push({ ...l, layout: { ...l.layout, ...nome, ...esconder } });
     } else {
       layers.push(l);
     }

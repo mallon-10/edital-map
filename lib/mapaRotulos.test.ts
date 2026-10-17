@@ -60,6 +60,14 @@ describe('ajustarEstilo', () => {
     const semFronteira = { ...ESTILO, layers: ESTILO.layers.filter((l) => l.id !== 'boundary_3') };
     expect(ids(ajustarEstilo(semFronteira).layers)).toEqual(['background', ID_DIVISAS, 'label_city', 'label_state']);
   });
+  it('placa de rodovia (ref, não nome) fica como veio', () => {
+    const placa: LayerSpecification = {
+      id: 'highway-shield-non-us', type: 'symbol', source: 'openmaptiles', 'source-layer': 'transportation_name',
+      layout: { 'text-field': ['to-string', ['get', 'ref']] },
+    };
+    const e = ajustarEstilo({ ...ESTILO, layers: [...ESTILO.layers, placa] });
+    expect(e.layers.find((l) => l.id === 'highway-shield-non-us')).toEqual(placa);
+  });
   it('não altera o estilo recebido', () => {
     const copia = JSON.parse(JSON.stringify(ESTILO));
     ajustarEstilo(ESTILO);
