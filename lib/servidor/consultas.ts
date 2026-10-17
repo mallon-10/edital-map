@@ -1,9 +1,12 @@
 import 'server-only';
 import type { ChaveCompra } from '@/worker/mapear';
 import { criarCache } from '../cache';
+import { MAX_EXPORTACAO } from '../csv';
 import { chaveFiltros } from '../filtros';
 import { nomeProprio } from '../texto';
-import type { Edital, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens } from '../tipos';
+import type {
+  Edital, EditalExportado, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens,
+} from '../tipos';
 import { itensDoPncp } from './itensPncp';
 import { supabaseServidor } from './supabase';
 
@@ -192,4 +195,24 @@ export function orgaosAbertos(q: string): Promise<OrgaoAberto[]> {
       (l): OrgaoAberto => ({ cnpj: String(l.cnpj), nome: nomeProprio(String(l.nome)), uf: String(l.uf), qtd: Number(l.qtd) }),
     );
   });
+}
+
+/**
+ * Linhas da planilha: a mesma busca da lista, desde o começo, até MAX_EXPORTACAO.
+ * Páginas de 1.000 (o teto do PostgREST por resposta). Sem cache: cada exportação conta no limite por IP.
+ */
+export async function exportarEditais(f: FiltrosBusca): Promise<EditalExportado[]> {
+  const editais: EditalExportado[] = [];
+  for (let de = 0; de < MAX_EXPORTACAO; de += 1000) {
+    const { data, error } = await supabaseServidor().rpc('buscar_editais', {
+      ...argumentosBusca(f),
+      p_limite: Math.min(1000, MAX_EXPORTACAO - de),
+      p_deslocamento: de,
+    });
+    if (error) throw new Error(`exportar: ${error.message}`);
+    const linhas = (data ?? []) as Linha[];
+    for (const l of linhas) editais.push({ ...paraResumo(l), link_origem: texto(l.link_origem) });
+    if (linhas.length < 1000) break;
+  }
+  return editais;
 }

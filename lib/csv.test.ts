@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { celula, COLUNAS, dataHoraPlanilha, dataPlanilha, gerarCsv, MAX_EXPORTACAO, nomeArquivo, valorPlanilha } from './csv';
+import { celula, COLUNAS, dataHoraPlanilha, dataPlanilha, gerarCsv, MAX_BYTES_CSV, MAX_EXPORTACAO, nomeArquivo, valorPlanilha } from './csv';
 import { assunto } from './texto';
 import type { EditalExportado } from './tipos';
 
@@ -88,5 +88,27 @@ describe('gerarCsv', () => {
   });
   it('link de origem quando existe; modalidade, valor e publicação ausentes', () => {
     expect(linhas[2].endsWith(';SC;;Valor não informado;20/10/2026 10:00;;https://compras.joinville.sc.gov.br/edital/77')).toBe(true);
+  });
+});
+
+describe('gerarCsv com teto de bytes', () => {
+  it('o teto padrão cabe na resposta da Vercel (4,5 MB)', () => {
+    expect(MAX_BYTES_CSV).toBe(4_000_000);
+  });
+  it('sem estourar o teto, não muda nada', () => {
+    expect(gerarCsv([EDITAL], 100_000)).toBe(gerarCsv([EDITAL]));
+  });
+  it('acima do teto, para de somar linhas e termina com o aviso de corte', () => {
+    const tamanho = (s: string) => Buffer.byteLength(s, 'utf8');
+    const um = tamanho(gerarCsv([EDITAL]));
+    const teto = um + Math.floor((um - tamanho(gerarCsv([]))) * 1.5) + 200;
+    const csv = gerarCsv([EDITAL, EDITAL, EDITAL, EDITAL, EDITAL], teto);
+    const linhas = csv.trimEnd().split('\r\n');
+    const ultima = linhas[linhas.length - 1];
+    expect(ultima).toMatch(/^"Arquivo cortado em \d+ editais por tamanho; refine a busca para exportar o resto."$/);
+    const n = Number(/cortado em (\d+)/.exec(ultima)![1]);
+    expect(n).toBeGreaterThanOrEqual(1);
+    expect(n).toBeLessThan(5);
+    expect(tamanho(csv)).toBeLessThanOrEqual(teto);
   });
 });

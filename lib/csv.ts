@@ -66,10 +66,34 @@ function linha(e: EditalExportado): string[] {
   ];
 }
 
-/** CSV para o Excel em português: BOM UTF-8, separador ";", fim de linha CRLF e cabeçalho na primeira linha. */
-export function gerarCsv(editais: EditalExportado[]): string {
-  const linhas: ReadonlyArray<readonly string[]> = [COLUNAS, ...editais.map(linha)];
-  return BOM + linhas.map((l) => l.map(celula).join(SEPARADOR)).join(FIM_DE_LINHA) + FIM_DE_LINHA;
+/** Teto do arquivo em bytes: a Vercel limita respostas sem streaming a ~4,5 MB. */
+export const MAX_BYTES_CSV = 4_000_000;
+
+const bytes = (t: string) => Buffer.byteLength(t, 'utf8');
+
+/**
+ * CSV para o Excel em português: BOM UTF-8, separador ";", fim de linha CRLF e cabeçalho na primeira linha.
+ * Passando de maxBytes, para de somar linhas e fecha com um aviso de corte.
+ */
+export function gerarCsv(editais: EditalExportado[], maxBytes: number = MAX_BYTES_CSV): string {
+  const montar = (l: readonly string[]) => l.map(celula).join(SEPARADOR) + FIM_DE_LINHA;
+  const aviso = (n: number) => montar([`Arquivo cortado em ${n} editais por tamanho; refine a busca para exportar o resto.`]);
+  const partesCsv: string[] = [BOM + montar(COLUNAS)];
+  let total = bytes(partesCsv[0]);
+  // Reserva o espaço do aviso (o maior possível: n com o mesmo número de dígitos do total).
+  const reserva = bytes(aviso(editais.length));
+  for (let i = 0; i < editais.length; i++) {
+    const l = montar(linha(editais[i]));
+    // A célula do aviso vai entre aspas (tem ";"). A última linha só precisa caber; as demais deixam a reserva do aviso.
+    const folga = i === editais.length - 1 ? 0 : reserva;
+    if (total + bytes(l) + folga > maxBytes) {
+      partesCsv.push(aviso(i));
+      return partesCsv.join('');
+    }
+    partesCsv.push(l);
+    total += bytes(l);
+  }
+  return partesCsv.join('');
 }
 
 /** "editais-2026-10-17.csv" (data de Brasília). */

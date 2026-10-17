@@ -48,6 +48,21 @@ export async function dentroDoLimite(tabela: 'eventos' | 'pedidos_alerta', ipHas
   return (count ?? 0) < limite;
 }
 
+/** Exportações deste IP na última hora (eventos usou_recurso/exportou gravados por /api/exportar) abaixo do limite. */
+export async function exportacaoDentroDoLimite(ipHash: string | null, limite: number): Promise<boolean> {
+  if (!ipHash) return true;
+  const desde = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count, error } = await supabaseServidor()
+    .from('eventos')
+    .select('id', { count: 'exact', head: true })
+    .eq('ip_hash', ipHash)
+    .eq('tipo', 'usou_recurso')
+    .eq('detalhe->>recurso', 'exportou')
+    .gte('criado_em', desde);
+  if (error) throw new Error(`limite de exportações: ${error.message}`);
+  return (count ?? 0) < limite;
+}
+
 export async function gravarEvento(ctx: Contexto, tipo: TipoEvento | 'pediu_alerta', detalhe: Detalhe): Promise<void> {
   const { error } = await supabaseServidor()
     .from('eventos')

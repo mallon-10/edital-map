@@ -25,7 +25,7 @@ vi.mock('./supabase', () => ({
   }),
 }));
 
-const { buscarEditais, itensDoEdital, orgaosAbertos, pontosDoMapa, relacionados, resumoItens } = await import('./consultas');
+const { buscarEditais, exportarEditais, itensDoEdital, orgaosAbertos, pontosDoMapa, relacionados, resumoItens } = await import('./consultas');
 
 const compra = (id: string) => ({ id, cnpj: '00394452000103', ano: 2026, sequencial: 21982 });
 const SEM_FILTRO: FiltrosBusca = {
@@ -213,6 +213,38 @@ describe('orgaosAbertos (0007)', () => {
   it('o cache ignora acento e maiúsculas do termo', async () => {
     await orgaosAbertos('São José');
     await orgaosAbertos('sao jose');
+    expect(chamadas).toHaveLength(1);
+  });
+});
+
+describe('exportarEditais (0007)', () => {
+  beforeEach(() => {
+    chamadas.length = 0;
+    respostaRpc = [];
+  });
+
+  const linha = (i: number) => ({
+    id: `E${i}`, slug: `83102244000102-2026-${i}`, objeto: 'Luvas', orgao_nome: 'X', unidade_nome: null, municipio_nome: 'Joinville',
+    uf: 'SC', codigo_ibge: '4209102', valor_estimado: null, encerramento_em: '2026-10-30T13:00:00+00:00', publicada_em: null,
+    modalidade_nome: null, srp: false, link_origem: i === 0 ? 'https://compras.joinville.sc.gov.br/1' : null, onde: 'objeto', total: 2500,
+  });
+
+  it('lê em páginas de 1.000 até 2.000, desde o começo, com os mesmos filtros da busca', async () => {
+    respostaRpc = (args: Record<string, unknown>) => Array.from({ length: 1000 }, (_, i) => linha(Number(args.p_deslocamento) + i));
+    const r = await exportarEditais({ ...SEM_FILTRO, q: 'luva', deslocamento: 50, orgao: '83102244000102' });
+    expect(r).toHaveLength(2000);
+    expect(chamadas.map((c) => [c.nome, c.args.p_limite, c.args.p_deslocamento])).toEqual([
+      ['buscar_editais', 1000, 0],
+      ['buscar_editais', 1000, 1000],
+    ]);
+    expect(chamadas[0].args).toMatchObject({ q: 'luva', p_orgao: '83102244000102', p_raio_km: null });
+    expect(r[0]).toMatchObject({ id: 'E0', slug: '83102244000102-2026-0', link_origem: 'https://compras.joinville.sc.gov.br/1' });
+    expect(r[1].link_origem).toBeNull();
+  });
+
+  it('para na primeira página incompleta', async () => {
+    respostaRpc = [linha(0)];
+    expect(await exportarEditais(SEM_FILTRO)).toHaveLength(1);
     expect(chamadas).toHaveLength(1);
   });
 });
