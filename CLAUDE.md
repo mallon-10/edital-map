@@ -9,6 +9,7 @@ Fase atual: **3 · Brasil todo** (etapa da Fase 3 antes de Planos e Alertas). Si
 - Iteração visual: spec docs/superpowers/specs/2026-10-15-fase-2-visual-design.md, plano docs/superpowers/plans/2026-10-15-fase-2-visual.md (mockup em docs/superpowers/specs/assets/).
 - Brasil todo: spec docs/superpowers/specs/2026-10-16-fase-3-brasil-todo-design.md, plano docs/superpowers/plans/2026-10-16-fase-3-brasil-todo.md, conferências docs/fase-3-conferencia.sql, métricas docs/fase-3-metricas.md.
 - Planos (desenhado, implementação adiada até o domínio): docs/superpowers/specs/2026-10-16-fase-3-planos-design.md.
+- Recursos Pro (abertos por enquanto, cadeado quando os Planos ligarem): spec docs/superpowers/specs/2026-10-17-fase-3-recursos-pro-design.md, plano docs/superpowers/plans/2026-10-17-fase-3-recursos-pro.md, conferências docs/fase-3-recursos-pro.sql. Relacionados (`relacionados`, 0008), filtro por órgão (`/api/orgaos`, `orgaos_abertos`), raio em km (`municipios_no_raio`; com raio a UF não vale), exportar CSV (`/api/exportar`, até 2.000, 20/hora por IP, teto de 4 MB).
 
 Referências:
 - Estrutura do MVP (doc, nome antigo BidAtlas): https://claude.ai/code/artifact/33a5e4e7-9f62-4f3f-8312-9da344fe5c7c

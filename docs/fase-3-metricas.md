@@ -38,3 +38,11 @@ O aumento em `contratacoes` são versões antigas das linhas (o `UPDATE` da 0005
 - Conferência nacional (docs/conferencias/2026-10-17.md): passou. Abertas por UF × modalidade em SP, BA e AM entre 100% e 108% do `/proposta`; amostra de 20 compras de 17 UFs sem divergência; idempotência 45.302 → 45.302.
 - Retenção: job `retencao-contratacoes` rodou em 17/10 04:45 UTC com sucesso.
 - Banco final (17/10 ~12:30 UTC): 163,0 MB (`contratacoes` 150,3 MB).
+
+## Recursos Pro (17/10/2026)
+
+- `mapa_editais(null)` antes da 0007: 814 ms (Sort externo de 11 MB; quase todo o tempo em `objeto_normalizado` — melhoria futura: coluna gerada).
+- 0007 aplicada; site no ar seguiu 200. `relacionados` com a 0007: 192 / 2.031 / 1.365 ms (EPI, objeto longo, BA), qualidade fraca (casava pelos itens e pela palavra "outros"). Com a 0008 (consulta da origem uma vez, só pelo objeto, top 60 antes de tirar duplicadas, palavras de 3+ letras): 4 / 18 / 58 ms, e os parecidos passaram a ser do mesmo assunto.
+- `orgaos_abertos('prefeitura')`: 115 ms. Raio de 100 km de Joinville: 59 municípios.
+- Produção: /api/busca?q=luva 1,5 s; busca com raio 1,2 s; mapa com raio 1,1 s; /api/orgaos 0,30 s; edital 0,34 s.
+- Exportação sem filtro: 3,1 s, 1.023.131 bytes, 2.000 linhas + aviso de corte (33.931 no total).

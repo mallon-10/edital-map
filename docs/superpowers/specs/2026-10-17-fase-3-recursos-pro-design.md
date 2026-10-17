@@ -47,9 +47,9 @@ O chip "Raio, órgão e recorrência · Pro" vira dois chips: "Órgão" e "Raio"
 - Banco: `relacionados` de um edital de EPI devolve outros de EPI; `buscar_editais` com `p_orgao` só traz aquele órgão; com raio de 100 km a partir de Joinville traz editais de municípios vizinhos (ex.: Blumenau) e não de Florianópolis se estiver fora; tempo medido.
 - Navegador: capturas da página do edital com o bloco, dos chips Órgão e Raio, e o CSV aberto conferido (acentos, colunas).
 
-- [ ] Relacionados na página do edital (até 6, mesmo UF primeiro, < 300 ms).
-- [ ] Filtro por órgão (busca de órgãos, lista e mapa filtrados, URL `orgao`).
-- [ ] Filtro por raio (50/100/200 km a partir do município, URL `raio`).
-- [ ] Exportar CSV da busca atual (até 2.000, abre certo no Excel).
-- [ ] Eventos `usou_recurso` gravados; portão mostra o uso.
-- [ ] Testes e typecheck passando; publicado.
+- [x] Relacionados na página do edital (até 6, mesmo UF primeiro, < 300 ms). — 0008: 4/18/58 ms (antes 192/2.031/1.365 com a 0007); EPI de Jundiaí → 6 de EPI/capacetes/luvas em SP (captura 17/10).
+- [x] Filtro por órgão (busca de órgãos, lista e mapa filtrados, URL `orgao`). — /api/orgaos?q=joinville → Município 14, Águas 12, Câmara 2 (0,30 s); q=ab → 400. Parâmetro na API (a página inicial não guarda filtros na URL).
+- [x] Filtro por raio (50/100/200 km a partir do município, URL `raio`). — 100 km de Joinville: 59 municípios, Blumenau sim, Florianópolis não, Rio Negro/PR entra; /api/busca e /api/mapa com raio 200.
+- [x] Exportar CSV da busca atual (até 2.000, abre certo no Excel). — sem filtro: 3,1 s, 1,0 MB, BOM UTF-8, `;`, aviso "Arquivo com 2.000 de 33.931 editais"; link completo em coluna própria (Excel não transforma URL de CSV em link).
+- [x] Eventos `usou_recurso` gravados; portão mostra o uso. — `exportou` gravado pela rota (interno); os eventos do navegador (filtro_orgao, filtro_raio, relacionados_clique) cobertos por testes, ainda sem uso real registrado.
+- [x] Testes e typecheck passando; publicado. — 447 testes; publicado em 17/10.
