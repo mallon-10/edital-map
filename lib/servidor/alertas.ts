@@ -77,8 +77,26 @@ export async function atualizarAlerta(usuario: Usuario, id: string, alerta: Aler
   return ((data ?? []) as unknown[]).length > 0;
 }
 
-/** Pausar (false) ou retomar (true). Pausar não apaga o alerta nem o que já foi enviado. */
+/** Ao retomar, a janela do job (ultimo_envio_em) volta no máximo até aqui: nada de mandar a semana de pausa de uma vez. */
+const RETOMADA_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Pausar (false) ou retomar (true). Pausar não apaga o alerta nem o que já foi enviado. Retomar um alerta pausado leva
+ * ultimo_envio_em para max(ultimo_envio_em, agora − 24 h), antes de ligá-lo (o job não pega a janela velha no meio);
+ * nulo fica nulo (o job já começa em 24 h).
+ */
 export async function mudarAtivoAlerta(usuario: Usuario, id: string, ativo: boolean, agora: Date = new Date()): Promise<boolean> {
+  if (ativo) {
+    const corte = new Date(agora.getTime() - RETOMADA_MS).toISOString();
+    const janela = await supabaseServidor()
+      .from('alertas')
+      .update({ ultimo_envio_em: corte })
+      .eq('user_id', usuario.id)
+      .eq('id', id)
+      .eq('ativo', false)
+      .lt('ultimo_envio_em', corte);
+    if (janela.error) throw new Error(`retomar alerta: ${janela.error.message}`);
+  }
   const { data, error } = await supabaseServidor()
     .from('alertas')
     .update({ ativo, atualizado_em: agora.toISOString() })

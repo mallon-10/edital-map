@@ -9,7 +9,7 @@ const m = vi.hoisted(() => ({ chamadas: [] as unknown[][], respostas: [] as Resp
 const proxima = () => Promise.resolve(m.respostas.shift() ?? { data: null, error: null });
 function consulta(tabela: string) {
   const c: Record<string, unknown> = {};
-  for (const metodo of ['select', 'eq', 'order', 'limit', 'insert', 'update', 'delete']) {
+  for (const metodo of ['select', 'eq', 'lt', 'order', 'limit', 'insert', 'update', 'delete']) {
     c[metodo] = (...a: unknown[]) => {
       m.chamadas.push([`${tabela}.${metodo}`, ...a]);
       return c;
@@ -85,6 +85,34 @@ describe('alertas.ts: tudo pelo usuário da sessão', () => {
     expect(await excluirAlerta(usuario, ID)).toBe(true);
     for (const t of ['alertas.update', 'alertas.delete']) expect(m.chamadas.some((c) => c[0] === t)).toBe(true);
     expect(m.chamadas.filter((c) => c[0] === 'alertas.eq' && c[1] === 'user_id').every((c) => c[2] === 'u-sessao')).toBe(true);
+  });
+  it('pausar não mexe na janela; retomar traz a janela para no máximo 24 h atrás (sem enxurrada de atrasados)', async () => {
+    const agora = new Date('2026-10-20T12:00:00Z');
+    m.respostas.push({ data: [{ id: ID }], error: null });
+    expect(await mudarAtivoAlerta(usuario, ID, false, agora)).toBe(true);
+    expect(m.chamadas.filter((c) => c[0] === 'alertas.update')).toEqual([['alertas.update', { ativo: false, atualizado_em: '2026-10-20T12:00:00.000Z' }]]);
+    expect(m.chamadas.some((c) => c[0] === 'alertas.lt')).toBe(false);
+
+    m.chamadas.length = 0;
+    m.respostas.push({ data: null, error: null }, { data: [{ id: ID }], error: null });
+    expect(await mudarAtivoAlerta(usuario, ID, true, agora)).toBe(true);
+    // 1º a janela (só se o alerta está pausado e a janela é mais velha que 24 h; nula fica nula), depois o ativo
+    expect(m.chamadas).toEqual([
+      ['alertas.update', { ultimo_envio_em: '2026-10-19T12:00:00.000Z' }],
+      ['alertas.eq', 'user_id', 'u-sessao'],
+      ['alertas.eq', 'id', ID],
+      ['alertas.eq', 'ativo', false],
+      ['alertas.lt', 'ultimo_envio_em', '2026-10-19T12:00:00.000Z'],
+      ['alertas.update', { ativo: true, atualizado_em: '2026-10-20T12:00:00.000Z' }],
+      ['alertas.eq', 'user_id', 'u-sessao'],
+      ['alertas.eq', 'id', ID],
+      ['alertas.select', 'id'],
+    ]);
+  });
+  it('retomar com o banco fora na janela: erro, sem ligar o alerta', async () => {
+    m.respostas.push({ data: null, error: { message: 'fora' } });
+    await expect(mudarAtivoAlerta(usuario, ID, true)).rejects.toThrow('retomar alerta: fora');
+    expect(m.chamadas.filter((c) => c[0] === 'alertas.update')).toHaveLength(1);
   });
   it('sem atribuição em massa: insert e update só levam as colunas do alerta (+ user_id da sessão / atualizado_em)', async () => {
     const sujo = { ...ALERTA, id: 'x', criado_em: 'c', ultimo_envio_em: 'u', ativo: false, user_id: 'outra' } as unknown as Alerta;
