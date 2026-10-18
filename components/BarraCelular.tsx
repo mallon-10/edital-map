@@ -14,14 +14,14 @@ const ICONE = 'size-[22px]';
 
 type Props = {
   ativo: ItemBarra | null;
-  /** Só na página inicial: Mapa e Lista rolam a própria página (Mapa ao topo, Lista ao início da lista). */
+  /** Só na página inicial: Mapa leva à vista Mapa (no topo); Lista, à vista Lista. */
   aoTrocarTela?: (t: Tela) => void;
 };
 
 /** Barra fixa do celular (abaixo de lg): Mapa · Lista · Alertas · Planos, com área de toque de 60 px e a área segura do iPhone. */
 export function BarraCelular({ ativo, aoTrocarTela }: Props) {
-  // Fora da página inicial, Mapa e Lista voltam para a última busca feita (guardada pela página inicial): Mapa no topo,
-  // Lista já rolada até a lista.
+  // Fora da página inicial, Mapa e Lista voltam para a última busca feita (guardada pela página inicial),
+  // na vista Mapa ou na vista Lista (comTela).
   const [busca, setBusca] = useState('/');
   useEffect(() => setBusca(lerUltimaBusca()), []);
   const estilo = (i: ItemBarra) => `${ITEM} ${ativo === i ? 'text-pin-strong' : 'text-ink-muted'}`;

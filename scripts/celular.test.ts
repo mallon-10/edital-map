@@ -145,4 +145,23 @@ describe('celular', () => {
   it('lista: contagem e Exportar quebram linha em vez de cortar o botão (coluna de 360 px, zoom alto)', () => {
     expect(ler('components/inicio/ColunaLista.tsx')).toContain('<div className="flex flex-wrap items-center gap-x-2 gap-y-2">');
   });
+
+  it('alternador Lista | Mapa no topo dos resultados; o mapa só existe na vista Mapa', () => {
+    const explorador = ler('components/Explorador.tsx');
+    expect(explorador).toContain('<AlternadorVista vista={vista} aoMudar={mudarVista} />');
+    expect(explorador).toMatch(/\{naLista \? null : \(\s*<section aria-label="Mapa"/);
+    expect(explorador).toContain("lg:grid-cols-[minmax(0,1fr)_300px]");
+    const alternador = ler('components/inicio/AlternadorVista.tsx');
+    expect(alternador.indexOf("'lista'")).toBeLessThan(alternador.indexOf("'mapa'"));
+    expect(alternador).toContain('aria-pressed');
+    expect(alternador).toContain('h-11');
+  });
+
+  it('vista, página e ordem só entram no endereço por trocarEndereco', () => {
+    for (const f of ['components/Explorador.tsx', 'components/inicio/ColunaLista.tsx', 'components/inicio/AlternadorVista.tsx', 'components/inicio/Paginacao.tsx']) {
+      expect(ler(f)).not.toContain('history.replaceState');
+      expect(ler(f)).not.toContain('history.pushState');
+    }
+    expect(ler('components/Explorador.tsx')).toContain('trocarEndereco(urlDaBusca(f, estadoAtual.current))');
+  });
 });
