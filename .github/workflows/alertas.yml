@@ -1,0 +1,64 @@
+name: Alertas por e-mail
+
+# Todo dia às 10:00 UTC (7h em Brasília) sai a rodada dos alertas; na segunda-feira, logo depois dela, sai o resumo
+# semanal do Pro. O GitHub pode atrasar o agendamento em alguns minutos.
+#
+# Por que a ordem importa (alertas ANTES do resumo, nunca em paralelo): o Resend tem um teto de 100 e-mails por dia na
+# conta, e esse teto também serve aos códigos de login. O resumo calcula o orçamento dele como 60 menos os e-mails de
+# alerta já aceitos hoje; se os dois rodassem ao mesmo tempo, esse número sairia errado e os dois estourariam o teto
+# juntos. Por isso é uma agenda só, um job só e dois passos em sequência (e o concurrency impede duas rodadas juntas).
+# O resumo roda mesmo se os alertas falharem (always), mas só na segunda (calculada em UTC: às 10:00 UTC já é o mesmo
+# dia em Brasília) ou quando escolhido à mão.
+#
+# Log público: os segredos entram só pelo ambiente de cada passo de envio e nada os imprime.
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'alertas (diário), resumo (semanal do Pro) ou ambos (alertas e depois o resumo)'
+        type: choice
+        options:
+          - alertas
+          - resumo
+          - ambos
+        default: alertas
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alertas-email
+  cancel-in-progress: false
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Dia da semana (UTC; 1 = segunda)
+        id: hoje
+        run: echo "dia_da_semana=$(date -u +%u)" >> "$GITHUB_OUTPUT"
+      - name: Alertas
+        if: github.event_name == 'schedule' || inputs.modo == 'alertas' || inputs.modo == 'ambos'
+        run: npm run worker:alertas
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERTAS_SEGREDO: ${{ secrets.ALERTAS_SEGREDO }}
+      - name: Resumo semanal
+        if: always() && ((github.event_name == 'schedule' && steps.hoje.outputs.dia_da_semana == '1') || inputs.modo == 'resumo' || inputs.modo == 'ambos')
+        run: npm run worker:resumo
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERTAS_SEGREDO: ${{ secrets.ALERTAS_SEGREDO }}
