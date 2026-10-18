@@ -22,8 +22,20 @@ export function gerarChave(aleatorio: (n: number) => Buffer = randomBytes): stri
 
 /** Como a pessoa digitou → formato gravado; null se não for uma chave possível. */
 export function normalizarChave(t: string): string | null {
-  const s = t.toUpperCase().replace(/[\s-]/g, '').replace(/^EM/, '');
+  const limpo = t.toUpperCase().replace(/[\s-]/g, '');
+  // O prefixo "EM" só sai quando veio junto (14 caracteres): uma chave sorteada pode começar com "EM".
+  const s = limpo.length === TAMANHO + 2 && limpo.startsWith('EM') ? limpo.slice(2) : limpo;
   if (s.length !== TAMANHO) return null;
   for (const ch of s) if (!ALFABETO_CHAVE.includes(ch)) return null;
   return comHifens(s);
+}
+
+const CHAVE_INVALIDA = 'Chave inválida. Confira e tente de novo.';
+
+/** Corpo de POST /api/assinatura/ativar. */
+export function lerPedidoChave(corpo: unknown): { ok: true; chave: string } | { ok: false; erro: string } {
+  const bruto = typeof corpo === 'object' && corpo !== null ? (corpo as { chave?: unknown }).chave : undefined;
+  if (typeof bruto !== 'string' || bruto.length > 40) return { ok: false, erro: CHAVE_INVALIDA };
+  const chave = normalizarChave(bruto);
+  return chave ? { ok: true, chave } : { ok: false, erro: CHAVE_INVALIDA };
 }

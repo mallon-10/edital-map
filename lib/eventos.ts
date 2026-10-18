@@ -13,9 +13,9 @@ export type Recurso = (typeof RECURSOS)[number];
 const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro', 'plano_basic'];
 
 /** Uso dos recursos Pro (evento usou_recurso). */
-export const RECURSOS_USADOS = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento'] as const;
+export const RECURSOS_USADOS = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'ativou_chave'] as const;
 export type RecursoUsado = (typeof RECURSOS_USADOS)[number];
-/** O navegador manda estes; `exportou` é gravado pela própria rota /api/exportar (que conta o limite por IP). */
+/** O navegador manda estes; `exportou` e `ativou_chave` são gravados pelas próprias rotas (que contam o limite por IP). */
 const USOS_DO_NAVEGADOR: readonly string[] = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'baixou_documento'];
 
 export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
@@ -32,7 +32,7 @@ export function ufsIniciaisAlerta(uf: string | undefined): string[] {
   return uf && UFS_BRASIL.includes(uf) ? [uf] : [];
 }
 
-export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5, exportacoesPorHora: 20, listaEsperaPorHora: 5 } as const;
+export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5, exportacoesPorHora: 20, listaEsperaPorHora: 5, ativacoesPorHora: 10 } as const;
 export const SLUG_EDITAL = /^[0-9A-Z]{12}\d{2}-\d{4}-\d{1,7}$/;
 
 export type Detalhe = Record<string, string | number | null>;

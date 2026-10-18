@@ -66,8 +66,11 @@ describe('validarEvento', () => {
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'resumo_ia', edital: SLUG } }).ok).toBe(false);
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: {} }).ok).toBe(false);
   });
-  it('os cinco usos medidos e o limite de exportações por hora', () => {
-    expect(RECURSOS_USADOS).toEqual(['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento']);
+  it('os seis usos medidos e o limite de exportações por hora', () => {
+    expect(RECURSOS_USADOS).toEqual(['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'ativou_chave']);
+    // ativou_chave é gravado só pela rota /api/assinatura/ativar (que conta as tentativas por IP).
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'ativou_chave' } }).ok).toBe(false);
+    expect(LIMITES.ativacoesPorHora).toBe(10);
     expect(TIPOS_EVENTO).toContain('usou_recurso');
     expect(LIMITES.exportacoesPorHora).toBe(20);
   });
