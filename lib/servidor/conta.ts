@@ -1,6 +1,9 @@
 import 'server-only';
 import type { IdPlano } from '../planos';
+import { lerPlano, maiorPlano, type PlanoConta } from '../limitesConta';
 import { linhaDoRadar, radarDaLinha, type Radar } from '../radar';
+import { planoDoNavegador } from './planoNavegador';
+import type { Contexto } from './registro';
 import type { Usuario } from './sessao';
 import { supabaseServidor } from './supabase';
 
@@ -19,6 +22,34 @@ export async function perfilDaConta(usuario: Usuario): Promise<Perfil> {
   const linha = (data ?? {}) as { plano?: unknown; ultima_visita_radar?: unknown };
   const plano: IdPlano = linha.plano === 'basic' || linha.plano === 'pro' ? linha.plano : 'gratis';
   return { plano, ultimaVisitaRadar: linha.ultima_visita_radar ? String(linha.ultima_visita_radar) : null };
+}
+
+/**
+ * Plano da conta (Fase 4, §1): Pro se plano_da_conta (perfis.plano manual ou assinatura válida com o e-mail da conta,
+ * 0016) ou, quando há navegador, o plano dele (planoAtual: dono confiável, assinatura do navegador) for Pro. Banco fora:
+ * a parte da conta vale grátis. Os envios por e-mail (sem navegador) usam só a parte da conta.
+ */
+export async function planoDaConta(usuario: Usuario, ctx: Contexto | null = null): Promise<PlanoConta> {
+  const [conta, navegador] = await Promise.all([
+    supabaseServidor().rpc('plano_da_conta', { p_user: usuario.id }),
+    ctx ? planoDoNavegador(ctx) : Promise.resolve('gratis'),
+  ]);
+  if (conta.error) console.error(`plano_da_conta: ${conta.error.message}`);
+  const daConta = conta.error ? 'gratis' : lerPlano(conta.data);
+  const doNavegador = lerPlano(navegador);
+  return { plano: maiorPlano(daConta, doNavegador), daConta, doNavegador };
+}
+
+/** Resumo semanal do Pro ligado nesta conta? Sem perfil: ligado (o padrão da coluna). */
+export async function resumoSemanalLigado(usuario: Usuario): Promise<boolean> {
+  const { data, error } = await supabaseServidor().from('perfis').select('resumo_semanal').eq('id', usuario.id).maybeSingle();
+  if (error) throw new Error(`resumo semanal: ${error.message}`);
+  return (data as { resumo_semanal?: unknown } | null)?.resumo_semanal !== false;
+}
+
+export async function mudarResumoSemanal(usuario: Usuario, ligado: boolean): Promise<void> {
+  const { error } = await supabaseServidor().from('perfis').update({ resumo_semanal: ligado }).eq('id', usuario.id);
+  if (error) throw new Error(`mudar resumo semanal: ${error.message}`);
 }
 
 export async function lerRadar(usuario: Usuario): Promise<Radar | null> {
