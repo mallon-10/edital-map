@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { TIPOS_EVENTO, TIPOS_EVENTO_CONTA, TIPOS_EVENTO_OPORTUNIDADES, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';
+import { ERRO_TETO_ALERTAS } from '../lib/alertas/regras';
 import { ORDENS } from '../lib/filtros';
+import { LIMITES_CONTA } from '../lib/limitesConta';
 import { PESOS } from '../lib/relevancia/pontuacao';
 import { SITUACOES_FORA_DAS_ABERTAS } from '../lib/situacao';
 
@@ -750,5 +752,29 @@ describe('migração 0015 (pagamento pela Cakto)', () => {
     }
     expect(sql).toContain("where encerramento_em is null or encerramento_em < now() - interval '7 days'");
     expect(sql).toContain("delete from public.checkouts where criado_em < now() - interval '30 days';");
+  });
+});
+
+describe('migração 0018 (teto de alertas por conta)', () => {
+  const sql = ler('supabase/migrations/0018_alertas_teto.sql').replace(/\r\n/g, '\n');
+  it('trava por conta (advisory lock na transação) antes de contar', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql).toContain("perform pg_advisory_xact_lock(hashtext('alertas:' || new.user_id::text));");
+    expect(sql.indexOf('pg_advisory_xact_lock')).toBeLessThan(sql.indexOf('select count(*)'));
+    expect(sql).toContain('from public.alertas a where a.user_id = new.user_id');
+  });
+  it(`recusa a partir de ${LIMITES_CONTA.pro.alertas} (o teto do Pro) com a mensagem que o site reconhece`, () => {
+    expect(sql).toContain(`if v_qtd >= ${LIMITES_CONTA.pro.alertas} then`);
+    expect(sql).toContain(`raise exception '${ERRO_TETO_ALERTAS}' using errcode = 'P0001';`);
+  });
+  it('gatilho antes do insert em public.alertas; função security definer, search_path fixo, sem execute para o público', () => {
+    expect(sql).toContain('create or replace function public.alertas_teto()');
+    expect(sql).toContain("returns trigger language plpgsql security definer set search_path = '' as $$");
+    expect(sql).toContain('before insert on public.alertas');
+    expect(sql).toContain('for each row execute function public.alertas_teto();');
+    expect(sql).toContain('revoke execute on function public.alertas_teto() from public, anon, authenticated;');
+  });
+  it('não mexe na 0016 (já aplicada)', () => {
+    expect(sql).not.toMatch(/drop table|alter table public\.alertas/);
   });
 });

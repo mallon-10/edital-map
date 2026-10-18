@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { data, hora } from '../formato';
 import { MENSAGENS_RADAR } from '../radar';
 import {
-  alertaDaLinha, envioIndisponivel, lerIdAlerta, linhaDoAlerta, MENSAGENS_ALERTA, nomePadrao, textoUltimoEnvio, validarAlerta, validarMudancaAlerta,
+  alertaDaLinha, envioIndisponivel, ERRO_TETO_ALERTAS, lerIdAlerta, TetoDeAlertas, linhaDoAlerta, MENSAGENS_ALERTA, nomePadrao, textoUltimoEnvio, validarAlerta, validarMudancaAlerta,
 } from './regras';
 
 const CORPO = { nome: '  Uniformes   no Sul ', termos: ['uniforme'], ufs: ['SC', 'PR'] };
@@ -20,6 +20,21 @@ describe('validação do alerta', () => {
     expect(validarAlerta({ ...CORPO, nome: 'a'.repeat(61) })).toEqual({ ok: false, erro: MENSAGENS_ALERTA.nome });
     expect(validarAlerta({ ...CORPO, nome: 5 })).toEqual({ ok: false, erro: MENSAGENS_ALERTA.nome });
   });
+  it('nome com caractere de controle: 400 com a mensagem do nome (não chega ao banco)', () => {
+    for (const nome of ['EPI\u0000', 'EPI\u0007 Sul', '\u001bEPI', 'EPI\u007f']) {
+      expect(validarAlerta({ ...CORPO, nome })).toEqual({ ok: false, erro: MENSAGENS_ALERTA.nome });
+    }
+    expect(validarAlerta({ ...CORPO, nome: 'EPI\t\nSul' })).toMatchObject({ ok: true, valor: { nome: 'EPI Sul' } });
+  });
+  it('campos de fora do alerta no corpo não passam (id, criado_em, ultimo_envio_em, ativo, user_id)', () => {
+    const v = validarAlerta({ ...CORPO, id: 'x', criado_em: 'c', ultimo_envio_em: 'u', ativo: false, user_id: 'outra' });
+    expect(v.ok && Object.keys(v.valor).sort()).toEqual(['modalidades', 'municipios', 'nome', 'soMeEpp', 'termos', 'termosExcluir', 'ufs', 'valorMax', 'valorMin']);
+  });
+  it('teto do banco (0018) tem erro próprio', () => {
+    expect(new TetoDeAlertas()).toBeInstanceOf(Error);
+    expect(new TetoDeAlertas().message).toBe(ERRO_TETO_ALERTAS);
+    expect(ERRO_TETO_ALERTAS).toBe('alertas_teto');
+  });
   it('erros do radar valem para o alerta', () => {
     expect(validarAlerta({ ...CORPO, termos: [] })).toEqual({ ok: false, erro: MENSAGENS_RADAR.semTermo });
     expect(validarAlerta({ ...CORPO, municipios: ['4209102'] })).toEqual({ ok: false, erro: MENSAGENS_RADAR.local });
@@ -28,7 +43,9 @@ describe('validação do alerta', () => {
   it('mudança: { ativo } pausa ou retoma; o resto é edição completa', () => {
     expect(validarMudancaAlerta({ ativo: false })).toEqual({ ok: true, valor: { tipo: 'ativo', ativo: false } });
     expect(validarMudancaAlerta(CORPO)).toMatchObject({ ok: true, valor: { tipo: 'alerta', alerta: { nome: 'Uniformes no Sul' } } });
-    expect(validarMudancaAlerta({ ativo: 'sim' })).toEqual({ ok: false, erro: MENSAGENS_ALERTA.nome });
+    expect(validarMudancaAlerta({ ativo: 'sim' })).toEqual({ ok: false, erro: MENSAGENS_ALERTA.formulario });
+    expect(validarMudancaAlerta({ ativo: null })).toEqual({ ok: false, erro: MENSAGENS_ALERTA.formulario });
+    expect(validarMudancaAlerta({ ...CORPO, ativo: false })).toMatchObject({ ok: true, valor: { tipo: 'alerta' } });
   });
   it('nome sugerido pelos produtos, até 60', () => {
     expect(nomePadrao(['uniforme', 'luva'])).toBe('uniforme, luva');

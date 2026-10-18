@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MENSAGENS_ALERTA } from '@/lib/alertas/regras';
+import { MENSAGENS_ALERTA, TetoDeAlertas } from '@/lib/alertas/regras';
 import { MENSAGENS_LIMITE_CONTA } from '@/lib/limitesConta';
 
 vi.mock('server-only', () => ({}));
@@ -91,6 +91,17 @@ describe('POST /api/alertas', () => {
     expect(alerta).not.toHaveProperty('user_id');
     expect(m.gravarEvento).toHaveBeenCalledWith(expect.anything(), 'alerta_criado', { termos: 1, ufs: 1, municipios: 0, origem: 'radar', plano: 'pro' });
   });
+  it('corrida: o teto do banco (0018) responde o mesmo 402 limite da conferência de antes', async () => {
+    m.qtd = 5;
+    const antes = await (await POST(req('/api/alertas', 'POST', CORPO))).json();
+    m.qtd = 4;
+    m.criarAlerta.mockRejectedValue(new TetoDeAlertas());
+    const r = await POST(req('/api/alertas', 'POST', CORPO));
+    expect(r.status).toBe(402);
+    expect(await r.json()).toEqual(antes);
+    expect(antes.codigo).toBe('limite');
+    expect(m.gravarEvento).not.toHaveBeenCalled();
+  });
   it('evento fora do ar não derruba a criação', async () => {
     m.gravarEvento.mockRejectedValueOnce(new Error('fora'));
     expect((await POST(req('/api/alertas', 'POST', CORPO))).status).toBe(201);
@@ -116,6 +127,20 @@ describe('PATCH e DELETE /api/alertas/{id}', () => {
     expect(usuario.id).toBe('u-sessao');
     expect(id).toBe(ID);
     expect(alerta).toMatchObject({ nome: 'Uniformes', termos: ['uniforme'] });
+  });
+  it('editar não deixa passar id, user_id, criado_em, ultimo_envio_em nem ativo do corpo', async () => {
+    const corpo = { ...CORPO, ultimo_envio_em: '2020-01-01T00:00:00Z', id: 'outro', user_id: 'outra', criado_em: 'c', ativo: false };
+    expect((await porId.PATCH(req(`/api/alertas/${ID}`, 'PATCH', corpo), params(ID))).status).toBe(200);
+    const [usuario, id, alerta] = m.atualizarAlerta.mock.calls[0] as [{ id: string }, string, Record<string, unknown>];
+    expect(usuario.id).toBe('u-sessao');
+    expect(id).toBe(ID);
+    for (const campo of ['ultimo_envio_em', 'id', 'user_id', 'criado_em', 'ativo']) expect(alerta).not.toHaveProperty(campo);
+    expect(m.mudarAtivoAlerta).not.toHaveBeenCalled();
+  });
+  it('{ ativo } que não é booleano: 400 formulário inválido', async () => {
+    const r = await porId.PATCH(req(`/api/alertas/${ID}`, 'PATCH', { ativo: 'sim' }), params(ID));
+    expect(r.status).toBe(400);
+    expect(await r.json()).toEqual({ erro: MENSAGENS_ALERTA.formulario });
   });
   it('corpo inválido 400; banco fora 502', async () => {
     expect((await porId.PATCH(req(`/api/alertas/${ID}`, 'PATCH', { ativo: 'sim' }), params(ID))).status).toBe(400);

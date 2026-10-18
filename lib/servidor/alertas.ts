@@ -1,5 +1,5 @@
 import 'server-only';
-import { alertaDaLinha, linhaDoAlerta, STATUS_ENVIO, type Alerta, type AlertaDaConta, type StatusEnvio, type UltimoEnvio } from '../alertas/regras';
+import { alertaDaLinha, ERRO_TETO_ALERTAS, linhaDoAlerta, STATUS_ENVIO, TetoDeAlertas, type Alerta, type AlertaDaConta, type StatusEnvio, type UltimoEnvio } from '../alertas/regras';
 import type { Usuario } from './sessao';
 import { supabaseServidor } from './supabase';
 
@@ -18,22 +18,29 @@ export async function alertasDaConta(usuario: Usuario): Promise<AlertaComEnvio[]
   if (error) throw new Error(`alertas: ${error.message}`);
   const alertas = ((data ?? []) as Array<Record<string, unknown>>).map(alertaDaLinha);
   if (alertas.length === 0) return [];
-  const envios = await sb
+  const ultimos = await Promise.all(alertas.map((a) => ultimoEnvio(usuario, a.id)));
+  return alertas.map((a, i) => ({ ...a, ultimoEnvio: ultimos[i] }));
+}
+
+/**
+ * Último envio de um alerta (no máximo 5 por conta, um por consulta): alerta_id + iniciado_em desc usa
+ * envios_alerta_alerta_idx e não depende de quantas linhas a conta tem no histórico. user_id da sessão também filtra.
+ */
+async function ultimoEnvio(usuario: Usuario, alertaId: string): Promise<UltimoEnvio | null> {
+  const { data, error } = await supabaseServidor()
     .from('envios_alerta')
     .select('alerta_id, status, iniciado_em, qtd_editais')
     .eq('user_id', usuario.id)
+    .eq('alerta_id', alertaId)
     .order('iniciado_em', { ascending: false })
-    .limit(100);
-  if (envios.error) throw new Error(`envios dos alertas: ${envios.error.message}`);
-  const ultimo = new Map<string, UltimoEnvio>();
-  for (const l of (envios.data ?? []) as Array<Record<string, unknown>>) {
-    const id = String(l.alerta_id);
-    const status = String(l.status);
-    if (!ultimo.has(id) && (STATUS_ENVIO as readonly string[]).includes(status)) {
-      ultimo.set(id, { status: status as StatusEnvio, em: String(l.iniciado_em), qtd: Number(l.qtd_editais ?? 0) });
-    }
-  }
-  return alertas.map((a) => ({ ...a, ultimoEnvio: ultimo.get(a.id) ?? null }));
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`envios do alerta: ${error.message}`);
+  if (!data) return null;
+  const l = data as Record<string, unknown>;
+  const status = String(l.status);
+  if (!(STATUS_ENVIO as readonly string[]).includes(status)) return null;
+  return { status: status as StatusEnvio, em: String(l.iniciado_em), qtd: Number(l.qtd_editais ?? 0) };
 }
 
 export async function lerAlerta(usuario: Usuario, id: string): Promise<AlertaDaConta | null> {
@@ -55,7 +62,7 @@ export async function criarAlerta(usuario: Usuario, alerta: Alerta): Promise<str
     .insert({ ...linhaDoAlerta(alerta), user_id: usuario.id })
     .select('id')
     .single();
-  if (error) throw new Error(`criar alerta: ${error.message}`);
+  if (error) throw error.message?.includes(ERRO_TETO_ALERTAS) ? new TetoDeAlertas() : new Error(`criar alerta: ${error.message}`);
   return String((data as { id: unknown }).id);
 }
 

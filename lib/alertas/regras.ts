@@ -27,7 +27,20 @@ export const MENSAGENS_ALERTA = {
 
 export const AVISO_ENVIO_INDISPONIVEL = 'Envio indisponível agora. Tentamos de novo amanhã às 7h.';
 
+/** Mensagem do gatilho da 0018 (alertas_teto): a conta já tem o máximo de alertas (corrida entre dois pedidos). */
+export const ERRO_TETO_ALERTAS = 'alertas_teto';
+
+/** O banco recusou o alerta pelo teto (0018); a rota responde o mesmo 402 `limite` da conferência de antes. */
+export class TetoDeAlertas extends Error {
+  constructor() {
+    super(ERRO_TETO_ALERTAS);
+    this.name = 'TetoDeAlertas';
+  }
+}
+
 const objeto = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+// Tab e quebra de linha viram espaço antes (\s); o resto (NUL, ESC, DEL...) o Postgres recusaria ou ninguém digita.
+const CONTROLE = /[\u0000-\u001f\u007f]/;
 
 /** Nome sugerido: os produtos separados por vírgula, até 60 caracteres. */
 export function nomePadrao(termos: readonly string[]): string {
@@ -39,7 +52,7 @@ export function nomePadrao(termos: readonly string[]): string {
 export function validarAlerta(corpo: unknown): Resultado<Alerta> {
   if (!objeto(corpo)) return { ok: false, erro: MENSAGENS_ALERTA.formulario };
   const nome = typeof corpo.nome === 'string' ? corpo.nome.trim().replace(/\s+/g, ' ') : '';
-  if (!nome || nome.length > MAX_NOME_ALERTA) return { ok: false, erro: MENSAGENS_ALERTA.nome };
+  if (!nome || nome.length > MAX_NOME_ALERTA || CONTROLE.test(nome)) return { ok: false, erro: MENSAGENS_ALERTA.nome };
   const radar = validarRadar(corpo);
   if (!radar.ok) return radar;
   return { ok: true, valor: { ...radar.valor, nome } };
@@ -47,10 +60,12 @@ export function validarAlerta(corpo: unknown): Resultado<Alerta> {
 
 export type MudancaAlerta = { tipo: 'ativo'; ativo: boolean } | { tipo: 'alerta'; alerta: Alerta };
 
-/** PATCH: só { ativo: boolean } pausa ou retoma; qualquer outro corpo é a edição completa. */
+/** PATCH: só { ativo: boolean } pausa ou retoma (só `ativo` e não booleano: formulário inválido); o resto é a edição completa. */
 export function validarMudancaAlerta(corpo: unknown): Resultado<MudancaAlerta> {
-  if (objeto(corpo) && Object.keys(corpo).length === 1 && typeof corpo.ativo === 'boolean') {
-    return { ok: true, valor: { tipo: 'ativo', ativo: corpo.ativo } };
+  if (objeto(corpo) && Object.keys(corpo).length === 1 && 'ativo' in corpo) {
+    return typeof corpo.ativo === 'boolean'
+      ? { ok: true, valor: { tipo: 'ativo', ativo: corpo.ativo } }
+      : { ok: false, erro: MENSAGENS_ALERTA.formulario };
   }
   const v = validarAlerta(corpo);
   return v.ok ? { ok: true, valor: { tipo: 'alerta', alerta: v.valor } } : v;
