@@ -25,7 +25,10 @@ vi.mock('./supabase', () => ({
   }),
 }));
 
-const { buscarEditais, exportarEditais, itensDoEdital, orgaosAbertos, pontosDoMapa, relacionados, resumoItens } = await import('./consultas');
+const {
+  abertosPorUf, buscarEditais, editaisAbertosSitemap, exportarEditais, itensDoEdital, orgaosAbertos, pontosDoMapa, relacionados,
+  resumoItens, totalEditaisAbertos,
+} = await import('./consultas');
 
 const compra = (id: string) => ({ id, cnpj: '00394452000103', ano: 2026, sequencial: 21982 });
 const SEM_FILTRO: FiltrosBusca = {
@@ -297,5 +300,51 @@ describe('exportarEditais (0007)', () => {
     expect(r.editais).toHaveLength(1);
     expect(r.total).toBe(2500);
     expect(chamadas).toHaveLength(1);
+  });
+});
+
+describe('SEO (0012)', () => {
+  beforeEach(() => {
+    chamadas.length = 0;
+  });
+
+  it('abertosPorUf manda os termos do assunto e devolve UF → total', async () => {
+    respostaRpc = [{ uf: 'SP', total: 12 }, { uf: 'BA', total: 3 }];
+    expect(await abertosPorUf('EPI')).toEqual({ SP: 12, BA: 3 });
+    const c = chamadas.at(-1)!;
+    expect(c.nome).toBe('abertos_por_uf');
+    expect(chaves(c.args)).toEqual(['p_excluir', 'p_relacionados', 'p_termos']);
+    expect(c.args.p_termos).toEqual(['EPI']);
+    expect((c.args.p_relacionados as string[]).length).toBeGreaterThan(0);
+  });
+
+  it('abertosPorUf sem assunto conta todos', async () => {
+    respostaRpc = [{ uf: 'SP', total: 900 }];
+    await abertosPorUf(null);
+    expect(chamadas.at(-1)!.args).toEqual({ p_termos: [], p_relacionados: [], p_excluir: [] });
+  });
+
+  it('sitemap lê em páginas de 1.000 (teto do PostgREST) a partir do deslocamento, até o limite', async () => {
+    respostaRpc = (a: Record<string, unknown>) => {
+      const de = Number(a.p_deslocamento);
+      // 2.500 abertos a partir de 40.000: duas páginas cheias e uma de 500.
+      const n = Math.max(0, Math.min(Number(a.p_limite), 42500 - de));
+      return Array.from({ length: n }, (_, i) => ({ slug: `s-${de + i}`, atualizada_pncp_em: '2026-10-18T10:00:00Z' }));
+    };
+    const linhas = await editaisAbertosSitemap(40000, 40000);
+    expect(linhas).toHaveLength(2500);
+    expect(linhas[0]).toEqual({ slug: 's-40000', atualizada_pncp_em: '2026-10-18T10:00:00Z' });
+    expect(chamadas.map((c) => c.args)).toEqual([
+      { p_limite: 1000, p_deslocamento: 40000 },
+      { p_limite: 1000, p_deslocamento: 41000 },
+      { p_limite: 1000, p_deslocamento: 42000 },
+    ]);
+    expect(chamadas[0].nome).toBe('editais_abertos_sitemap');
+  });
+
+  it('total de abertos', async () => {
+    respostaRpc = 81234;
+    expect(await totalEditaisAbertos()).toBe(81234);
+    expect(chamadas.at(-1)!.nome).toBe('total_editais_abertos');
   });
 });

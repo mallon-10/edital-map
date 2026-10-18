@@ -261,3 +261,43 @@ export async function exportarEditais(f: FiltrosBusca): Promise<{ editais: Edita
   }
   return { editais, total };
 }
+
+/** Editais abertos por UF para um termo de assunto (com os relacionados, como a busca); sem termo, todos. */
+export function abertosPorUf(q: string | null): Promise<Record<string, number>> {
+  return cache(`uf:${q ?? ''}`, async () => {
+    const b = interpretarBusca(q);
+    const { data, error } = await supabaseServidor().rpc('abertos_por_uf', {
+      p_termos: b.digitados,
+      p_relacionados: b.relacionados.map((r) => r.termo),
+      p_excluir: b.excluidos,
+    });
+    if (error) throw new Error(`abertos_por_uf: ${error.message}`);
+    return Object.fromEntries(((data ?? []) as Linha[]).map((l) => [String(l.uf), Number(l.total)]));
+  });
+}
+
+export function totalEditaisAbertos(): Promise<number> {
+  return cache('total-abertos', async () => {
+    const { data, error } = await supabaseServidor().rpc('total_editais_abertos', {});
+    if (error) throw new Error(`total_editais_abertos: ${error.message}`);
+    return Number(data ?? 0);
+  });
+}
+
+/** Slugs abertos do sitemap, de `deslocamento` até `limite` linhas, em páginas de 1.000 (o teto do PostgREST por resposta). */
+export function editaisAbertosSitemap(limite: number, deslocamento: number): Promise<Array<{ slug: string; atualizada_pncp_em: string }>> {
+  return cache(`sitemap:${limite}:${deslocamento}`, async () => {
+    const editais: Array<{ slug: string; atualizada_pncp_em: string }> = [];
+    for (let de = 0; de < limite; de += 1000) {
+      const { data, error } = await supabaseServidor().rpc('editais_abertos_sitemap', {
+        p_limite: Math.min(1000, limite - de),
+        p_deslocamento: deslocamento + de,
+      });
+      if (error) throw new Error(`editais_abertos_sitemap: ${error.message}`);
+      const linhas = (data ?? []) as Linha[];
+      for (const l of linhas) editais.push({ slug: String(l.slug), atualizada_pncp_em: String(l.atualizada_pncp_em) });
+      if (linhas.length < 1000) break;
+    }
+    return editais;
+  });
+}
