@@ -3,6 +3,8 @@
  * Consent Mode v2: tudo começa negado; só a escolha "aceito" no aviso libera cookies de anúncio.
  */
 export const ID_GOOGLE_ADS = 'AW-18520543547';
+/** Propriedade GA4 (compra pelo servidor). Vazio = sem GA4. */
+export const ID_GA4 = process.env.NEXT_PUBLIC_GA4_ID ?? '';
 
 export const CONVERSOES = {
   /** Principal: assinatura do Pro confirmada (/obrigado), com valor. */

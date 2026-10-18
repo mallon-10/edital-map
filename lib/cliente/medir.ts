@@ -1,4 +1,4 @@
-import { type Consentimento, CHAVE_CONSENTIMENTO, type Conversao, eventoConversao, jaMedido, marcarMedido } from '../medicao';
+import { type Consentimento, CHAVE_CONSENTIMENTO, type Conversao, ID_GA4, lerConsentimento, eventoConversao, jaMedido, marcarMedido } from '../medicao';
 
 declare global {
   interface Window {
@@ -36,4 +36,27 @@ export function escolherConsentimento(v: Consentimento): void {
   window.gtag?.('consent', 'update', {
     ad_storage: estado, ad_user_data: estado, ad_personalization: estado, analytics_storage: estado,
   });
+}
+
+/** client_id e session_id do GA4 e o consentimento, para a compra ir ao GA4 pelo servidor. Sem GA4 ou sem tag: vazio. */
+export async function dadosGa4(): Promise<{ cliente: string | null; sessao: string | null; consentimento: boolean }> {
+  const consentimento = (() => {
+    try {
+      return lerConsentimento(window.localStorage) === 'aceito';
+    } catch {
+      return false;
+    }
+  })();
+  const gtag = window.gtag;
+  if (!ID_GA4 || typeof gtag !== 'function') return { cliente: null, sessao: null, consentimento };
+  const pegar = (campo: string) =>
+    new Promise<string | null>((ok) => {
+      const t = window.setTimeout(() => ok(null), 1000);
+      gtag('get', ID_GA4, campo, (v: unknown) => {
+        window.clearTimeout(t);
+        ok(v === undefined || v === null ? null : String(v));
+      });
+    });
+  const [cliente, sessao] = await Promise.all([pegar('client_id'), pegar('session_id')]);
+  return { cliente, sessao, consentimento };
 }

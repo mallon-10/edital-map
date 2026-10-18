@@ -53,7 +53,7 @@ describe('POST /api/assinar', () => {
     expect(corpo).toMatchObject({ paymentMethod: 'pix_auto', items: [{ offerId: 'iuy9gzb' }], metadata: { sck: CODIGO } });
     expect(corpo.customer.fingerprint).toBe('6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b');
     expect(idem).toBe(`${CODIGO}-pix`);
-    expect(m.criarCheckout).toHaveBeenCalledWith(expect.anything(), 'pro', 'anual');
+    expect(m.criarCheckout).toHaveBeenCalledWith(expect.anything(), 'pro', 'anual', { cliente: null, sessao: null, consentimento: false });
   });
   it('cartão aprovado e cartão recusado', async () => {
     const cartao = { token: 'tok', threeDSecure: { cavv: 'c' }, antifraude: 'af' };

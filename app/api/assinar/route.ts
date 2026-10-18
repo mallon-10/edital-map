@@ -1,4 +1,5 @@
 import { LIMITES } from '@/lib/eventos';
+import { lerDadosGa4 } from '@/lib/pagamento/ga4';
 import { corpoCartao, corpoPix, lerCobranca, lerDadosCartao } from '@/lib/pagamento/cobranca';
 import { validarComprador } from '@/lib/pagamento/comprador';
 import { configPagamento, ofertaPara } from '@/lib/pagamento/config';
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       return responder({ erro: 'Muitas tentativas. Tente de novo daqui a uma hora.' }, 429);
     }
     await gravarEvento(ctx, 'usou_recurso', { recurso: 'tentou_assinar' }).catch((e: unknown) => console.error(e));
-    const codigo = await criarCheckout(ctx, 'pro', periodo);
+    const codigo = await criarCheckout(ctx, 'pro', periodo, lerDadosGa4(corpo.ga));
     if (!codigo) return responder({ erro: 'Ative os cookies do navegador para assinar.' }, 400);
     const oferta = ofertaPara(cfg, periodo);
     // O visitante (cookie de 1 ano) é o identificador estável do aparelho que a Cakto pede.

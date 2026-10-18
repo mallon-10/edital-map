@@ -4,7 +4,10 @@ import type { PlanoPago } from '../eventos';
 import { gerarChave } from '../pagamento/chave';
 import { type ConfigPagamento, planoDaOferta } from '../pagamento/config';
 import { type Assinatura, efeitoDoEvento, type StatusAssinatura } from '../pagamento/efeitos';
+import { corpoCompraGa4, type DadosGa4 } from '../pagamento/ga4';
 import type { PedidoCakto } from '../pagamento/webhook';
+import { PLANOS } from '../planos';
+import { enviarGa4 } from './ga4';
 import type { Periodo } from '../planos';
 import type { Contexto } from './registro';
 import { supabaseServidor } from './supabase';
@@ -70,10 +73,12 @@ export async function assinaturaDoVisitante(visitante: string, agora = new Date(
 }
 
 /** Código do `?callback=` da Cakto, ligado a este navegador. Sem visitante (robô, cookie bloqueado): null. */
-export async function criarCheckout(ctx: Contexto | null, plano: PlanoPago, periodo: Periodo): Promise<string | null> {
+export async function criarCheckout(ctx: Contexto | null, plano: PlanoPago, periodo: Periodo, ga?: DadosGa4): Promise<string | null> {
   if (!ctx) return null;
   const codigo = randomBytes(16).toString('hex');
-  const { error } = await supabaseServidor().from('checkouts').insert({ codigo, visitante: ctx.visitante, plano, periodo });
+  const { error } = await supabaseServidor()
+    .from('checkouts')
+    .insert({ codigo, visitante: ctx.visitante, plano, periodo, ga_cliente: ga?.cliente ?? null, ga_sessao: ga?.sessao ?? null, consentimento: ga?.consentimento ?? false });
   if (error) throw new Error(`criar checkout: ${error.message}`);
   return codigo;
 }
@@ -138,11 +143,20 @@ async function atualizar(id: string, valores: Record<string, unknown>, agora: Da
 }
 
 /** Navegador do checkout (código do `?callback=`), para ligar o plano nele. */
-async function visitanteDoCheckout(callback: string | null): Promise<string | null> {
+async function checkoutDoPedido(callback: string | null): Promise<{ visitante: string; ga: DadosGa4 } | null> {
   if (!callback || !CODIGO.test(callback)) return null;
-  const { data, error } = await supabaseServidor().from('checkouts').select('visitante').eq('codigo', callback).maybeSingle();
+  const { data, error } = await supabaseServidor()
+    .from('checkouts')
+    .select('visitante, ga_cliente, ga_sessao, consentimento')
+    .eq('codigo', callback)
+    .maybeSingle();
   if (error) throw new Error(`checkout do pedido: ${error.message}`);
-  return data ? String((data as Linha).visitante) : null;
+  if (!data) return null;
+  const l = data as Linha;
+  return {
+    visitante: String(l.visitante),
+    ga: { cliente: typeof l.ga_cliente === 'string' ? l.ga_cliente : null, sessao: typeof l.ga_sessao === 'string' ? l.ga_sessao : null, consentimento: l.consentimento === true },
+  };
 }
 
 /** Visitante usado no evento `assinou` quando a compra não veio de um checkout do site. */
@@ -172,7 +186,8 @@ export async function aplicarPedido(p: PedidoCakto, cfg: ConfigPagamento, agora:
   } else if (efeito.tipo === 'estornar' && atual) {
     await atualizar(atual.id, { status: 'estornada', valido_ate: efeito.validoAte }, agora);
   }
-  const visitante = id ? await visitanteDoCheckout(p.callback) : null;
+  const checkout = id ? await checkoutDoPedido(p.callback) : null;
+  const visitante = checkout?.visitante ?? null;
   if (id && visitante) {
     const r = await supabaseServidor().rpc('ligar_navegador', { p_assinatura: id, p_visitante: visitante });
     if (r.error) throw new Error(`ligar navegador do checkout: ${r.error.message}`);
@@ -183,6 +198,16 @@ export async function aplicarPedido(p: PedidoCakto, cfg: ConfigPagamento, agora:
       detalhe: { plano: efeito.plano, periodo: efeito.periodo, valor: p.valorCentavos },
     });
     if (error) console.error(`evento assinou: ${error.message}`);
+    // Compra no GA4 pelo servidor (vale mesmo sem a volta ao /obrigado); só com o aceite dos cookies.
+    if (checkout?.ga.consentimento && checkout.ga.cliente && p.callback) {
+      const pro = PLANOS.find((x) => x.id === 'pro')!;
+      await enviarGa4(
+        corpoCompraGa4({
+          cliente: checkout.ga.cliente, sessao: checkout.ga.sessao, codigo: p.callback, periodo: efeito.periodo,
+          valorCentavos: efeito.periodo === 'anual' ? pro.centavosAno : pro.centavosMes,
+        }),
+      );
+    }
   }
   return efeito.tipo === 'nada' ? 'ignorado' : 'aplicado';
 }

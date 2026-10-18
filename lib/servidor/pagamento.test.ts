@@ -4,6 +4,8 @@ import { criarSupabaseFalso } from './supabaseFalso';
 vi.mock('server-only', () => ({}));
 const falso = vi.hoisted(() => ({ atual: null as ReturnType<typeof import('./supabaseFalso').criarSupabaseFalso> | null }));
 vi.mock('./supabase', () => ({ supabaseServidor: () => falso.atual!.cliente }));
+const ga = vi.hoisted(() => ({ enviar: vi.fn(async (_c: unknown) => true) }));
+vi.mock('./ga4', () => ({ enviarGa4: ga.enviar }));
 
 const { aplicarPedido, criarCheckout, estadoDoCheckout } = await import('./pagamento');
 
@@ -86,6 +88,22 @@ describe('aplicarPedido (webhook)', () => {
     expect(String(nova.chave)).toMatch(/^EM-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     expect(f.operacoes.find((o) => o.alvo === 'rpc:ligar_navegador')?.valores).toEqual({ p_assinatura: 'a1', p_visitante: VISITANTE });
     expect(inserts('eventos')[0].valores).toMatchObject({ visitante: VISITANTE, tipo: 'assinou', detalhe: { plano: 'pro', periodo: 'mensal', valor: 8990 } });
+  });
+
+  it('com o aceite dos cookies, a compra vai ao GA4 pelo servidor (sem aceite, não)', async () => {
+    ga.enviar.mockClear();
+    f.responder('assinaturas', { data: null, error: null }, { data: { id: 'a1' }, error: null });
+    f.responder('checkouts', { data: { visitante: VISITANTE, ga_cliente: '123.456', ga_sessao: '99', consentimento: true }, error: null });
+    await aplicarPedido(pedido(), CFG, AGORA);
+    expect(ga.enviar).toHaveBeenCalledWith({
+      client_id: '123.456',
+      events: [expect.objectContaining({ name: 'purchase', params: expect.objectContaining({ transaction_id: 'c'.repeat(32), value: 37.9, session_id: '99' }) })],
+    });
+    ga.enviar.mockClear();
+    f.responder('assinaturas', { data: null, error: null }, { data: { id: 'a2' }, error: null });
+    f.responder('checkouts', { data: { visitante: VISITANTE, ga_cliente: '123.456', ga_sessao: null, consentimento: false }, error: null });
+    await aplicarPedido(pedido({ pedido: 'ped-9' }), CFG, AGORA);
+    expect(ga.enviar).not.toHaveBeenCalled();
   });
 
   it('evento repetido (mesmo pedido e evento): não faz nada', async () => {

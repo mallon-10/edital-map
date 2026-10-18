@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { sdkCakto, type CartaoDigitado, type Endereco } from '@/lib/cliente/caktoSdk';
-import { medir } from '@/lib/cliente/medir';
+import { dadosGa4, medir } from '@/lib/cliente/medir';
 import { validarComprador } from '@/lib/pagamento/comprador';
 import { type Periodo, PLANOS, precoDoPlano } from '@/lib/planos';
 
@@ -81,7 +81,7 @@ export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; 
     const r = await fetch('/api/assinar', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ periodo, metodo, comprador: dados, ...corpo }),
+      body: JSON.stringify({ periodo, metodo, comprador: dados, ga: await dadosGa4(), ...corpo }),
     });
     const j = (await r.json().catch(() => ({}))) as {
       codigo?: string; estado?: string; qrCode?: string; expiraEm?: string | null; erro?: string; erros?: Partial<Record<Campo, string>>;

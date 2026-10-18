@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { useEffect, useState } from 'react';
 import { escolherConsentimento } from '@/lib/cliente/medir';
-import { CHAVE_CONSENTIMENTO, ID_GOOGLE_ADS, lerConsentimento } from '@/lib/medicao';
+import { CHAVE_CONSENTIMENTO, ID_GA4, ID_GOOGLE_ADS, lerConsentimento } from '@/lib/medicao';
 
 /**
  * Tag do Google com Consent Mode v2: o padrão negado roda antes da tag; a escolha guardada (aceito/recusado) é aplicada
@@ -13,7 +13,7 @@ import { CHAVE_CONSENTIMENTO, ID_GOOGLE_ADS, lerConsentimento } from '@/lib/medi
 const PADRAO = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;
 gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});
 try{var c=localStorage.getItem('${CHAVE_CONSENTIMENTO}');if(c==='aceito'){gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});}}catch(e){}
-gtag('js',new Date());gtag('config','${ID_GOOGLE_ADS}');`;
+gtag('js',new Date());gtag('config','${ID_GOOGLE_ADS}');${ID_GA4 ? `gtag('config','${ID_GA4}');` : ''}`;
 
 export function TagGoogle() {
   const [mostrar, setMostrar] = useState(false);
