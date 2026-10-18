@@ -17,7 +17,7 @@ export type AssinaturaVisivel = {
   periodo: Periodo;
   status: StatusAssinatura;
   validoAte: string;
-  chave: string;
+  email: string | null;
 };
 
 const CODIGO = /^[0-9a-f]{32}$/;
@@ -30,7 +30,7 @@ function paraAssinatura(l: Linha): AssinaturaVisivel {
     periodo: l.periodo === 'anual' ? 'anual' : 'mensal',
     status: l.status === 'cancelada' || l.status === 'estornada' ? l.status : 'ativa',
     validoAte: String(l.valido_ate),
-    chave: String(l.chave),
+    email: typeof l.email === 'string' ? l.email : null,
   };
 }
 
@@ -40,7 +40,7 @@ const valida = (a: AssinaturaVisivel, agora: Date) => a.status !== 'estornada' &
 async function assinaturasDoVisitante(visitante: string, agora: Date): Promise<AssinaturaVisivel[]> {
   const { data, error } = await supabaseServidor()
     .from('assinatura_navegadores')
-    .select('assinaturas(id, plano, periodo, status, valido_ate, chave)')
+    .select('assinaturas(id, plano, periodo, status, valido_ate, email)')
     .eq('visitante', visitante);
   if (error) throw new Error(`assinaturas do visitante: ${error.message}`);
   return ((data ?? []) as Array<{ assinaturas: Linha | Linha[] | null }>)
@@ -48,6 +48,21 @@ async function assinaturasDoVisitante(visitante: string, agora: Date): Promise<A
     .map(paraAssinatura)
     .filter((a) => valida(a, agora))
     .sort((a, b) => Number(b.plano === 'pro') - Number(a.plano === 'pro'));
+}
+
+/** A maior assinatura válida com este e-mail (conta logada, em qualquer aparelho). */
+export async function assinaturaDoEmail(email: string, agora = new Date()): Promise<AssinaturaVisivel | null> {
+  const { data, error } = await supabaseServidor()
+    .from('assinaturas')
+    .select('id, plano, periodo, status, valido_ate, email')
+    .eq('email', email.toLowerCase())
+    .neq('status', 'estornada')
+    .gt('valido_ate', agora.toISOString())
+    .order('valido_ate', { ascending: false })
+    .limit(1);
+  if (error) throw new Error(`assinatura do e-mail: ${error.message}`);
+  const l = (data ?? [])[0] as Linha | undefined;
+  return l ? paraAssinatura(l) : null;
 }
 
 export async function assinaturaDoVisitante(visitante: string, agora = new Date()): Promise<AssinaturaVisivel | null> {
@@ -64,11 +79,11 @@ export async function criarCheckout(ctx: Contexto | null, plano: PlanoPago, peri
 }
 
 export type EstadoCheckout =
-  | { estado: 'pago'; plano: PlanoPago; periodo: Periodo; validoAte: string; status: StatusAssinatura; chave: string | null }
+  | { estado: 'pago'; plano: PlanoPago; periodo: Periodo; validoAte: string; status: StatusAssinatura; email: string | null }
   | { estado: 'esperando' }
   | { estado: 'desconhecido' };
 
-/** Situação de um checkout para /obrigado. A chave só aparece no navegador que fez o checkout. */
+/** Situação de um checkout para /obrigado. O e-mail da compra só aparece no navegador que fez o checkout. */
 export async function estadoDoCheckout(codigo: string, visitante: string | null, agora = new Date()): Promise<EstadoCheckout> {
   if (!CODIGO.test(codigo)) return { estado: 'desconhecido' };
   const { data, error } = await supabaseServidor().from('checkouts').select('visitante, plano, periodo').eq('codigo', codigo).maybeSingle();
@@ -83,18 +98,8 @@ export async function estadoDoCheckout(codigo: string, visitante: string | null,
     periodo: comprada.periodo,
     validoAte: comprada.validoAte,
     status: comprada.status,
-    chave: visitante === c.visitante ? comprada.chave : null,
+    email: visitante === c.visitante ? comprada.email : null,
   };
-}
-
-/** Liga este navegador à assinatura da chave (até 3 navegadores). */
-export async function ativarChave(chave: string, visitante: string): Promise<'ok' | 'cheia' | 'invalida'> {
-  const { data, error } = await supabaseServidor().from('assinaturas').select('id').eq('chave', chave).maybeSingle();
-  if (error) throw new Error(`chave: ${error.message}`);
-  if (!data) return 'invalida';
-  const r = await supabaseServidor().rpc('ligar_navegador', { p_assinatura: String((data as Linha).id), p_visitante: visitante });
-  if (r.error) throw new Error(`ligar_navegador: ${r.error.message}`);
-  return r.data === 'ok' ? 'ok' : r.data === 'cheia' ? 'cheia' : 'invalida';
 }
 
 /** Assinatura atual do pedido: pela assinatura da Cakto; sem ela (pedido avulso), pelo e-mail + plano (a mais recente). */
@@ -106,7 +111,7 @@ async function assinaturaDoPedido(p: PedidoCakto, plano: PlanoPago): Promise<(As
   else return null;
   if (r.error) throw new Error(`assinatura do pedido: ${r.error.message}`);
   if (!r.data) return null;
-  const a = paraAssinatura({ ...(r.data as Linha), chave: '' });
+  const a = paraAssinatura(r.data as Linha);
   return { id: a.id, plano: a.plano, periodo: a.periodo, status: a.status, validoAte: a.validoAte };
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALFABETO_CHAVE, gerarChave, lerPedidoChave, normalizarChave } from './chave';
+import { ALFABETO_CHAVE, gerarChave, normalizarChave } from './chave';
 
 describe('gerarChave', () => {
   it('formato EM-XXXX-XXXX-XXXX no alfabeto sem 0/O/1/I/L', () => {
@@ -32,17 +32,5 @@ describe('normalizarChave', () => {
     expect(normalizarChave('EM-ABC0-EFGH-JKMN')).toBeNull();
     expect(normalizarChave('EM-ABCD-EFGH')).toBeNull();
     expect(normalizarChave('')).toBeNull();
-  });
-});
-
-describe('lerPedidoChave', () => {
-  it('aceita { chave } e normaliza', () => {
-    expect(lerPedidoChave({ chave: ' em-abcd-efgh-jkmn' })).toEqual({ ok: true, chave: 'EM-ABCD-EFGH-JKMN' });
-  });
-  it('recusa corpo sem chave, com tipo errado ou chave impossível', () => {
-    expect(lerPedidoChave(null)).toEqual({ ok: false, erro: 'Chave inválida. Confira e tente de novo.' });
-    expect(lerPedidoChave({ chave: 123 })).toMatchObject({ ok: false });
-    expect(lerPedidoChave({ chave: 'x'.repeat(500) })).toMatchObject({ ok: false });
-    expect(lerPedidoChave({ chave: 'EM-0000-0000-0000' })).toMatchObject({ ok: false });
   });
 });
