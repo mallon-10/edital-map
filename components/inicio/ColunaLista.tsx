@@ -93,7 +93,7 @@ export function ColunaLista(p: Props) {
   return (
     <>
       <div className="shrink-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
           <p aria-live="polite" className="flex shrink-0 items-baseline gap-2">
             <span className="font-mono text-[26px] font-semibold leading-none tracking-[-0.02em] lg:text-[34px]">
               {p.carregandoLista && editais.length === 0 ? '…' : numero(total)}

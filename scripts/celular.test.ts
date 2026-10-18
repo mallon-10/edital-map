@@ -141,4 +141,8 @@ describe('celular', () => {
     expect(ler('components/BarraCelular.tsx')).toContain('pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]');
     expect(ler('app/edital/[slug]/page.tsx')).toContain('pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))]');
   });
+
+  it('lista: contagem e Exportar quebram linha em vez de cortar o botão (coluna de 360 px, zoom alto)', () => {
+    expect(ler('components/inicio/ColunaLista.tsx')).toContain('<div className="flex flex-wrap items-center gap-x-2 gap-y-2">');
+  });
 });
