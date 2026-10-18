@@ -3,7 +3,11 @@ import { Cabecalho } from '@/components/Cabecalho';
 import { MarcarInterno } from '@/components/MarcarInterno';
 import { FONTE_COBERTURA } from '@/lib/cobertura';
 
-export const metadata: Metadata = { title: 'Sobre' };
+export const metadata: Metadata = {
+  title: 'Sobre',
+  description: 'Como o Edital Map reúne as licitações abertas do PNCP no mapa, de onde vêm os dados e com que frequência são atualizados.',
+  alternates: { canonical: '/sobre' },
+};
 
 type Props = { searchParams: Promise<{ interno?: string }> };
 

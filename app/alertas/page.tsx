@@ -3,7 +3,11 @@ import { Cabecalho } from '@/components/Cabecalho';
 import { FormAlerta } from '@/components/FormAlerta';
 import { ufsIniciaisAlerta } from '@/lib/eventos';
 
-export const metadata: Metadata = { title: 'Criar alerta' };
+export const metadata: Metadata = {
+  title: 'Criar alerta',
+  description: 'Receba por e-mail as licitações novas do que sua empresa vende, na sua região.',
+  alternates: { canonical: '/alertas' },
+};
 
 type Props = { searchParams: Promise<{ uf?: string }> };
 

@@ -3,7 +3,11 @@ import { Cabecalho } from '@/components/Cabecalho';
 import { PlanosVista } from '@/components/planos/PlanosVista';
 import { AVISO_PLANOS, PLANOS } from '@/lib/planos';
 
-export const metadata: Metadata = { title: 'Planos' };
+export const metadata: Metadata = {
+  title: 'Planos',
+  description: 'Planos do Edital Map: grátis com 3 buscas por dia, Basic e Pro para buscar e abrir mais editais por dia.',
+  alternates: { canonical: '/planos' },
+};
 
 export default function PaginaPlanos() {
   return (

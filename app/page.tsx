@@ -1,7 +1,9 @@
+import type { Metadata } from 'next';
 import { connection } from 'next/server';
 import { Cabecalho } from '@/components/Cabecalho';
 import { Explorador } from '@/components/Explorador';
 import { lerFiltros, paraParametros } from '@/lib/filtros';
+import { temBusca } from '@/lib/seo/textos';
 import { atualizadoEm, buscarEditais } from '@/lib/servidor/consultas';
 import { municipioPorIbge, orgaoPorCnpj } from '@/lib/servidor/nomes';
 import { contextoDaPagina } from '@/lib/servidor/registro';
@@ -9,6 +11,15 @@ import { decidirBusca, usoDoDia } from '@/lib/servidor/uso';
 import { lerBuscaDaUrl, montarTela, paraUrlSearchParams, urlDaBusca } from '@/lib/urlBusca';
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+/** Página inicial limpa indexa; com busca no endereço, fica fora do índice (busca infinita) e aponta para /. */
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const busca = temBusca(await searchParams);
+  return {
+    alternates: { canonical: '/' },
+    robots: busca ? { index: false, follow: true } : undefined,
+  };
+}
 
 /** Página inicial. A busca vem do endereço (/?q=luva&uf=SC&…) e conta no limite do dia como a de /api/busca. */
 export default async function Inicio({ searchParams }: Props) {

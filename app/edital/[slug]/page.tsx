@@ -18,7 +18,9 @@ import { TAG_PRAZO, TEXTO_PRAZO } from '@/components/estilosPrazo';
 import { FaixaCobertura } from '@/components/FaixaCobertura';
 import { RegistrarAbertura } from '@/components/RegistrarAbertura';
 import { VitrineEmBreve } from '@/components/VitrineEmBreve';
+import { NOMES_UF } from '@/lib/estados';
 import { SLUG_EDITAL } from '@/lib/eventos';
+import { descricaoDoEdital, editalAberto, jsonLdMigalhas } from '@/lib/seo/textos';
 import { linkOficial, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
 import { resumoOportunidade } from '@/lib/resumoEdital';
@@ -37,7 +39,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const e = await edital(slug);
   if (!e) return { title: 'Edital não encontrado' };
   const t = assunto(e.objeto).titulo;
-  return { title: t.length > 70 ? `${t.slice(0, 69)}…` : t };
+  const titulo = t.length > 70 ? `${t.slice(0, 69)}…` : t;
+  const descricao = descricaoDoEdital(e);
+  return {
+    title: titulo,
+    description: descricao,
+    alternates: { canonical: `/edital/${e.slug}` },
+    openGraph: { title: titulo, description: descricao, url: `/edital/${e.slug}` },
+    // Encerrado, revogado ou anulado sai do índice; apagado pela retenção já é 404.
+    robots: editalAberto(e, new Date()) ? undefined : { index: false, follow: true },
+  };
 }
 
 const ETIQUETA = 'rounded-xs bg-sunken px-2 py-0.5 text-xs font-semibold text-ink-muted';
@@ -83,6 +94,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const p = prazo(e.encerramento_em, agora);
   const titulo = assunto(e.objeto);
   const local = `${e.municipio_nome ?? '—'}/${e.uf}`;
+  const nomeUf = NOMES_UF[e.uf] ?? e.uf;
   const lotes = e.info_complementar ? lotesDaInfo(e.info_complementar) : null;
   const textoInfo = e.info_complementar && !lotes ? paragrafos(e.info_complementar) : [];
   const exclusivoTotal = detalhes !== null && detalhes.resumo.total > 0 && detalhes.resumo.exclusivos === detalhes.resumo.total;
@@ -96,10 +108,25 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
       <Cabecalho uso={uso} />
       <FaixaCobertura atualizadoEm={atualizado} />
       {detalhes ? <RegistrarAbertura slug={e.slug} /> : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            jsonLdMigalhas([
+              { nome: 'Início', caminho: '/' },
+              { nome: 'Licitações', caminho: '/licitacoes' },
+              { nome: nomeUf, caminho: `/licitacoes/${e.uf.toLowerCase()}` },
+              { nome: titulo.titulo, caminho: `/edital/${e.slug}` },
+            ]),
+          ).replace(/</g, '\\u003c'),
+        }}
+      />
       {/* Celular: espaço no fim para a barra fixa do "Abrir edital oficial" (a de navegação já tem o dela). */}
       <main className="mx-auto flex max-w-[1280px] flex-col gap-6 px-4 pb-28 pt-6 md:px-6 lg:pb-6">
         <nav aria-label="Caminho" className="flex flex-wrap gap-2 text-[13px] text-ink-muted">
           <Link href="/" className="hover:underline">Início</Link>
+          <span aria-hidden="true">/</span>
+          <Link href={`/licitacoes/${e.uf.toLowerCase()}`} prefetch={false} className="hover:underline">{nomeUf}</Link>
           <span aria-hidden="true">/</span>
           <span>{local}</span>
         </nav>
