@@ -157,7 +157,7 @@ export function ColunaLista(p: Props) {
           <SeletorOrdem ordem={p.ordem} temTermo={p.temTermo} aoMudar={p.aoMudarOrdem} />
         </div>
       </div>
-      <div className="mt-3 flex flex-col lg:min-h-0 lg:flex-1">
+      <div className="mt-3 flex flex-col">
         {vista === 'mapa' ? (
           <p className="mb-3 shrink-0 font-mono text-[11px] text-ink-muted lg:hidden">
             O ponto é a sede do órgão, não o local de entrega
@@ -169,7 +169,7 @@ export function ColunaLista(p: Props) {
           ref={p.listaRef}
           onScroll={(e) => p.aoRolar(e.currentTarget.scrollTop)}
           aria-busy={p.carregandoLista}
-          className={`flex flex-col ${vista === 'lista' ? 'gap-3' : 'gap-2.5'} p-1 transition-opacity lg:min-h-0 lg:flex-1 lg:overflow-y-auto ${p.carregandoLista ? 'opacity-60' : ''}`}
+          className={`flex flex-col ${vista === 'lista' ? 'gap-3' : 'gap-2.5'} p-1 transition-opacity ${p.carregandoLista ? 'opacity-60' : ''}`}
         >
           {vazia && total > 0 ? (
             <div className="flex flex-col items-start gap-2 px-2 py-6">

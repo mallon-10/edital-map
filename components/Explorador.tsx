@@ -467,10 +467,10 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         </div>
       </div>
       {/* Celular: uma página que rola, com o mapa (altura fixa) em cima e a lista embaixo, no fluxo.
-          Computador: três colunas (lista, mapa, resumo) na altura da tela, cada uma rolando por dentro.
+          Computador: três colunas (lista, mapa, resumo); a página rola inteira e o mapa e o resumo ficam presos na tela.
           Vista Lista: sem o mapa; no computador, a lista larga e o resumo à direita. */}
       <main
-        className={`flex flex-col pt-3 lg:grid lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] lg:gap-5 lg:px-6 lg:pb-6 lg:pt-4 ${
+        className={`flex flex-col pt-3 lg:grid lg:items-start lg:gap-5 lg:px-6 lg:pb-6 lg:pt-4 ${
           naLista ? 'lg:grid-cols-[minmax(0,1fr)_300px]' : 'lg:grid-cols-[360px_minmax(0,1fr)_300px]'
         }`}
       >
@@ -479,7 +479,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
           aria-label="Lista de editais"
           id="lista-editais"
           ref={inicioLista}
-          className="flex scroll-mt-3 flex-col px-4 pb-4 pt-4 lg:min-h-0 lg:overflow-hidden lg:p-0"
+          className="flex scroll-mt-3 flex-col px-4 pb-4 pt-4 lg:p-0"
         >
           <ColunaLista
             resultado={resultado}
@@ -512,7 +512,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         </section>
         {/* Vista Mapa. Celular: primeiro na página, com 58svh (pinça e um dedo mexem no mapa; fora dele, arrastar rola a página). */}
         {naLista ? null : (
-          <section aria-label="Mapa" className="relative order-first h-[58svh] min-h-0 shrink-0 overflow-hidden bg-raised lg:order-none lg:h-auto lg:rounded-lg lg:border lg:border-line">
+          <section aria-label="Mapa" className="relative order-first h-[58svh] min-h-0 shrink-0 overflow-hidden bg-raised lg:sticky lg:top-4 lg:order-none lg:h-[calc(100dvh-2rem)] lg:rounded-lg lg:border lg:border-line">
             <Mapa pontos={pontos} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} raio={raioMapa} sede={sedeMapa} animarFoco={animarFoco} />
             {/* No celular a observação fica embaixo do mapa, no começo da lista. */}
             <p className="pointer-events-none absolute bottom-2 left-2 z-10 hidden rounded-sm bg-raised/85 px-2 py-1 text-xs text-ink-muted lg:block">
@@ -525,7 +525,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
             ) : null}
           </section>
         )}
-        <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
+        <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100dvh-2rem)]">
           {!naLista && selecionado ? <CartaoSelecionado edital={selecionado} agora={agora} /> : null}
           <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
         </aside>

@@ -60,14 +60,14 @@ describe('celular', () => {
   });
 
   it('página inicial no celular: uma página que rola, mapa de altura fixa em cima e a lista no fluxo embaixo', () => {
-    // Altura da tela só a partir de lg (três colunas); abaixo a página cresce com a lista.
+    // A página cresce com a lista em todas as larguras (no computador o mapa e o resumo ficam presos, sticky).
     const pagina = ler('app/page.tsx');
-    expect(pagina).toContain('className="flex flex-col lg:h-dvh"');
-    expect(pagina).not.toMatch(/className="[^"]*(?<!lg:)h-dvh/);
+    expect(pagina).toContain('className="flex flex-col"');
+    expect(pagina).not.toMatch(/h-dvh/);
     const explorador = ler('components/Explorador.tsx');
     // O mapa vem primeiro no celular, com 58svh; no computador volta à coluna do meio, na altura da grade.
     expect(explorador).toMatch(/aria-label="Mapa" className="[^"]*\border-first\b[^"]*\blg:order-none\b/);
-    expect(explorador).toMatch(/aria-label="Mapa" className="[^"]*\bh-\[58svh\][^"]*\blg:h-auto\b/);
+    expect(explorador).toMatch(/aria-label="Mapa" className="[^"]*\bh-\[58svh\][^"]*\blg:sticky\b[^"]*\blg:h-\[calc\(100dvh-2rem\)\]/);
     // A lista não cobre o mapa (nada de painel fixo ou absoluto) e é o alvo do botão Lista.
     const lista = explorador.match(/<section\s+aria-label="Lista de editais"[^>]*>/)?.[0] ?? '';
     expect(lista).not.toBe('');

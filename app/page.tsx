@@ -54,7 +54,7 @@ export default async function Inicio({ searchParams }: Props) {
   // A chave muda a cada desenho do servidor: o logo ou "Mapa" (href="/") com uma busca na tela recomeça o Explorador
   // (com a mesma chave o React manteria o estado da busca anterior sob o endereço novo). Mesmo endereço: a volta restaura.
   return (
-    <div className="flex flex-col lg:h-dvh">
+    <div className="flex flex-col">
       <Cabecalho uso={uso} />
       {inicial && busca.q?.trim() ? <Medir conversao="buscou" chave="dia" /> : null}
       <AtalhoRadar />
