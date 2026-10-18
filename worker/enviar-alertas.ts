@@ -10,7 +10,7 @@ import { criarSupabase } from './banco';
 import { lerSupabase } from './config';
 
 /**
- * Envios por e-mail (GitHub Actions, 10:00 UTC = 7h em Brasília): `--modo alertas` (padrão) todo dia; `--modo resumo`
+ * Envios por e-mail (GitHub Actions, 10:07 UTC = 7h07 em Brasília): `--modo alertas` (padrão) todo dia; `--modo resumo`
  * na segunda, depois dos alertas (resumo semanal do Pro, com o teto que os alertas deixaram). Sai com código 1 se houve
  * falha ou se o envio está sem chave/segredo; teto ou cota (contas adiadas) viram anotação do GitHub, sem mudar o código
  * de saída. Log público: só contagens (limparLog tira e-mail, token, uuid completo e os segredos abaixo, que nunca são

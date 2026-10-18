@@ -19,8 +19,11 @@ describe('workflow dos envios por e-mail', () => {
   const comentarios = linhas.filter((l) => l.trim().startsWith('#')).join('\n');
   const semComentarios = linhas.filter((l) => !l.trim().startsWith('#')).join('\n');
 
-  it('uma só agenda diária às 10:00 UTC (7h em Brasília) e disparo à mão com o modo', () => {
-    expect([...semComentarios.matchAll(/- cron: '([^']+)'/g)].map((m) => m[1])).toEqual(['0 10 * * *']);
+  it('uma só agenda diária às 10:07 UTC (7h07 em Brasília, fora da hora cheia) e disparo à mão com o modo', () => {
+    // O GitHub atrasa ou perde agendamentos na hora cheia; alguns minutos depois das 7h é mais confiável.
+    expect([...semComentarios.matchAll(/- cron: '([^']+)'/g)].map((m) => m[1])).toEqual(['7 10 * * *']);
+    expect(comentarios).toMatch(/10:07 UTC/);
+    expect(comentarios).toMatch(/hora cheia/);
     expect(wf).toContain('workflow_dispatch:');
     expect(wf).toMatch(/modo:\r?\n\s+description: .+\r?\n\s+type: choice\r?\n\s+options:\r?\n\s+- alertas\r?\n\s+- resumo\r?\n\s+- ambos\r?\n\s+default: alertas/);
   });
@@ -33,7 +36,7 @@ describe('workflow dos envios por e-mail', () => {
     const iResumo = semComentarios.indexOf('npm run worker:resumo');
     expect(iAlertas).toBeGreaterThan(0);
     expect(iResumo).toBeGreaterThan(iAlertas);
-    // a segunda é calculada num passo anterior, em UTC (10:00 UTC é o mesmo dia em Brasília)
+    // a segunda é calculada num passo anterior, em UTC (10:07 UTC é o mesmo dia em Brasília)
     const iSegunda = semComentarios.indexOf('date -u +%u');
     expect(iSegunda).toBeGreaterThan(0);
     expect(iSegunda).toBeLessThan(iAlertas);

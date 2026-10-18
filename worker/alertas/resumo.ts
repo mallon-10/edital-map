@@ -17,7 +17,7 @@ import {
 import { curto, limparLog } from './log';
 
 /**
- * Resumo semanal do Pro (segunda, 10:00 UTC = 7h em Brasília, depois dos alertas): para cada conta Pro (plano da conta
+ * Resumo semanal do Pro (segunda, 10:07 UTC = 7h07 em Brasília, depois dos alertas): para cada conta Pro (plano da conta
  * no momento do envio) com Meu Radar e o resumo ligado, que não recebeu resumo nos últimos 6 dias (contas_para_resumo,
  * 0016), o resumo da semana; sem novidade não manda (sem_novidades). Histórico em envios_resumo; descadastro pelo link
  * (token "r"). Cota do Resend (100/dia, dividida com os códigos de login): o resumo usa no máximo 60 menos os e-mails

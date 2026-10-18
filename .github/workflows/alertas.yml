@@ -1,19 +1,21 @@
 name: Alertas por e-mail
 
-# Todo dia às 10:00 UTC (7h em Brasília) sai a rodada dos alertas; na segunda-feira, logo depois dela, sai o resumo
-# semanal do Pro. O GitHub pode atrasar o agendamento em alguns minutos.
+# Todo dia às 10:07 UTC (7h em Brasília, alguns minutos depois) sai a rodada dos alertas; na segunda-feira, logo depois
+# dela, sai o resumo semanal do Pro. Fora da hora cheia de propósito: o GitHub costuma atrasar ou perder os agendamentos
+# marcados na hora cheia, e mesmo assim pode atrasar alguns minutos.
 #
 # Por que a ordem importa (alertas ANTES do resumo, nunca em paralelo): o Resend tem um teto de 100 e-mails por dia na
-# conta, e esse teto também serve aos códigos de login. O resumo calcula o orçamento dele como 60 menos os e-mails de
-# alerta já aceitos hoje; se os dois rodassem ao mesmo tempo, esse número sairia errado e os dois estourariam o teto
-# juntos. Por isso é uma agenda só, um job só e dois passos em sequência (e o concurrency impede duas rodadas juntas).
-# O resumo roda mesmo se os alertas falharem (!cancelled: só não roda se a rodada for cancelada à mão), mas só na segunda (calculada em UTC: às 10:00 UTC já é o mesmo
-# dia em Brasília) ou quando escolhido à mão.
+# conta, e esse teto também serve aos códigos de login. Alertas e resumo calculam o orçamento como 60 menos os e-mails de
+# alerta já aceitos hoje (uma rodada de alertas refeita à mão também desconta); se os dois rodassem ao mesmo tempo, esse
+# número sairia errado e os dois estourariam o teto juntos. Por isso é uma agenda só, um job só e dois passos em
+# sequência (e o concurrency impede duas rodadas juntas).
+# O resumo roda mesmo se os alertas falharem (!cancelled: só não roda se a rodada for cancelada à mão), mas só na
+# segunda (calculada em UTC: às 10:07 UTC já é o mesmo dia em Brasília) ou quando escolhido à mão.
 #
 # Log público: os segredos entram só pelo ambiente de cada passo de envio e nada os imprime.
 on:
   schedule:
-    - cron: '0 10 * * *'
+    - cron: '7 10 * * *'
   workflow_dispatch:
     inputs:
       modo:
