@@ -1,13 +1,25 @@
 import 'server-only';
 import { createHash, randomUUID } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
+import { ehDono, segredoDoEndereco, valorCookieDono } from '../dono';
 import type { Detalhe, PedidoAlerta, PedidoListaEspera, TipoEvento, TipoEventoConta, TipoEventoServidor } from '../eventos';
-import { COOKIE_INTERNO, COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie, visitanteValido } from '../visitante';
+import { COOKIE_DONO, COOKIE_INTERNO, COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie, visitanteValido } from '../visitante';
 import { supabaseServidor } from './supabase';
 
 export { COOKIE_INTERNO, COOKIE_VISITANTE };
 
-export type Contexto = { visitante: string; interno: boolean; ipHash: string | null };
+/**
+ * `interno`: fora das métricas (cookie em_interno, ou o dono). `dono`: o dono confiável (cookie em_dono assinado com
+ * INTERNO_SEGREDO, lib/dono.ts): sem limites e com o Pro. O em_interno sozinho não libera nada com o pagamento ligado.
+ */
+export type Contexto = { visitante: string; interno: boolean; dono: boolean; ipHash: string | null };
+
+type LeitorCookies = { get(nome: string): { value: string } | undefined };
+
+function marcas(c: LeitorCookies): { interno: boolean; dono: boolean } {
+  const dono = ehDono(c.get(COOKIE_DONO)?.value, process.env.INTERNO_SEGREDO);
+  return { interno: dono || c.get(COOKIE_INTERNO)?.value === '1', dono };
+}
 
 /** Hash do IP com o sal do servidor (IP_SAL). Sem sal ou sem IP: null (os limites por IP não valem). */
 export function hashDoIp(h: { get(nome: string): string | null }): string | null {
@@ -21,7 +33,7 @@ export async function contexto(): Promise<Contexto> {
   const c = await cookies();
   const { visitante, novo } = visitanteDoCookie(c.get(COOKIE_VISITANTE)?.value, randomUUID);
   if (novo) c.set(COOKIE_VISITANTE, visitante, OPCOES_COOKIE);
-  return { visitante, interno: c.get(COOKIE_INTERNO)?.value === '1', ipHash: hashDoIp(await headers()) };
+  return { visitante, ...marcas(c), ipHash: hashDoIp(await headers()) };
 }
 
 /**
@@ -32,11 +44,20 @@ export async function contextoDaPagina(): Promise<Contexto | null> {
   const c = await cookies();
   const visitante = c.get(COOKIE_VISITANTE)?.value;
   if (!visitanteValido(visitante)) return null;
-  return { visitante, interno: c.get(COOKIE_INTERNO)?.value === '1', ipHash: hashDoIp(await headers()) };
+  return { visitante, ...marcas(c), ipHash: hashDoIp(await headers()) };
 }
 
-export async function marcarInterno(): Promise<void> {
-  (await cookies()).set(COOKIE_INTERNO, '1', OPCOES_COOKIE);
+/**
+ * Marca o navegador como interno (fora das métricas). Com o segredo do dono (`/sobre#dono=<segredo>`, que nunca vai no
+ * endereço pedido ao servidor), grava também o cookie do dono. Devolve se o navegador virou dono.
+ */
+export async function marcarInterno(valor?: string): Promise<boolean> {
+  const c = await cookies();
+  c.set(COOKIE_INTERNO, '1', OPCOES_COOKIE);
+  const segredo = process.env.INTERNO_SEGREDO;
+  if (!segredoDoEndereco(valor, segredo)) return false;
+  c.set(COOKIE_DONO, valorCookieDono(segredo as string), OPCOES_COOKIE);
+  return true;
 }
 
 export async function dentroDoLimite(tabela: 'eventos' | 'pedidos_alerta' | 'lista_espera', ipHash: string | null, limite: number): Promise<boolean> {

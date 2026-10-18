@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   try {
     const decisao = await decidirBusca(await contexto(), filtros, { avisar: true });
     if (!decisao.permitido) {
-      return Response.json(corpoLimite('busca', decisao.limite.usados), { status: STATUS_LIMITE, headers: SEM_CACHE });
+      return Response.json(corpoLimite('busca', decisao.limite.usados, decisao.plano), { status: STATUS_LIMITE, headers: SEM_CACHE });
     }
     const resposta: RespostaBusca = { ...(await buscarEditais(filtros)), buscasUsadas: decisao.usados };
     return Response.json(resposta, { headers: SEM_CACHE });

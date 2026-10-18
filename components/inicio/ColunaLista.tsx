@@ -4,7 +4,7 @@ import { useEffect, useState, type RefObject } from 'react';
 import { CartaoLimite } from '@/components/CartaoLimite';
 import { FONTE_COBERTURA } from '@/lib/cobertura';
 import { moedaCurta, numero } from '@/lib/formato';
-import type { Limite } from '@/lib/limites';
+import { planoDoLimite, type Limite } from '@/lib/limites';
 import type { Painel } from '@/lib/painel';
 import type { Cidade, EditalResumo, FiltrosTela, Ordem, ResultadoBusca } from '@/lib/tipos';
 import type { Vista } from '@/lib/urlBusca';
@@ -97,7 +97,7 @@ export function ColunaLista(p: Props) {
             <PilulaCidade cidade={cidade} raio={raio} aoTirar={p.aoTirarCidade} />
           </div>
         ) : null}
-        <CartaoLimite tipo={p.limite.tipo} />
+        <CartaoLimite tipo={p.limite.tipo} plano={planoDoLimite(p.limite)} />
       </div>
     );
   }

@@ -17,6 +17,8 @@ const m = vi.hoisted(() => ({
   filtrosEventos: [] as Array<[string, unknown]>,
   eventosHoje: 0,
   gravarEvento: vi.fn(async (..._a: unknown[]) => undefined),
+  plano: 'gratis' as 'gratis' | 'basic' | 'pro',
+  ligado: true,
 }));
 
 vi.mock('./supabase', () => ({
@@ -42,10 +44,14 @@ vi.mock('./supabase', () => ({
   }),
 }));
 vi.mock('./registro', () => ({ gravarEvento: m.gravarEvento }));
+vi.mock('./plano', () => ({
+  planoAtual: async (ctx: { dono: boolean } | null) => (ctx?.dono ? 'pro' : m.plano),
+  pagamentoLigado: () => m.ligado,
+}));
 
 const { avisarLimite, chaveDaBusca, decidirBusca, decidirEdital, inicioDoDiaDeBrasilia, usoDoDia } = await import('./uso');
 
-const CTX = { visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, ipHash: null };
+const CTX = { visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, dono: false, ipHash: null };
 const SLUG = '00394452000103-2026-21982';
 const busca = (qs: string) => lerFiltros(new URLSearchParams(qs));
 const chave = (qs: string) => chaveDaBusca(combinacaoBusca(busca(qs)) as string);
@@ -56,6 +62,8 @@ beforeEach(() => {
   m.eventosHoje = 0;
   m.gravarEvento.mockClear();
   m.resposta = { data: { permitido: true, usados: 1 }, error: null };
+  m.plano = 'gratis';
+  m.ligado = true;
 });
 
 describe('chaveDaBusca', () => {
@@ -79,16 +87,16 @@ describe('decidirBusca', () => {
     await decidirBusca(CTX, busca('q=luva&ibge=4209102&dias=7&pagina=3&ordem=maior_valor'), { avisar: false });
     expect(m.rpcs[0].args.p_chave).toBe(m.rpcs[1].args.p_chave);
   });
-  it('não conta: página inicial vazia, navegador interno, sem visitante', async () => {
+  it('não conta: página inicial vazia, dono, sem visitante', async () => {
     expect(await decidirBusca(CTX, busca(''), { avisar: true })).toEqual({ permitido: true, usados: null });
-    expect(await decidirBusca({ ...CTX, interno: true }, busca('q=luva'), { avisar: true })).toEqual({ permitido: true, usados: null });
+    expect(await decidirBusca({ ...CTX, interno: true, dono: true }, busca('q=luva'), { avisar: true })).toEqual({ permitido: true, usados: null });
     expect(await decidirBusca(null, busca('q=luva'), { avisar: true })).toEqual({ permitido: true, usados: null });
     expect(m.rpcs).toEqual([]);
   });
   it('4ª busca nova: recusada com o limite; limite_atingido só na primeira vez do dia', async () => {
     m.resposta = { data: { permitido: false, usados: 3 }, error: null };
     expect(await decidirBusca(CTX, busca('q=botina'), { avisar: true })).toEqual({
-      permitido: false, limite: { tipo: 'busca', usados: 3, maximo: 3 },
+      permitido: false, limite: { tipo: 'busca', usados: 3, maximo: 3 }, plano: 'gratis',
     });
     expect(m.filtrosEventos).toContainEqual(['eventos.visitante', CTX.visitante]);
     expect(m.filtrosEventos).toContainEqual(['eventos.tipo', 'limite_atingido']);
@@ -120,23 +128,48 @@ describe('decidirEdital', () => {
   });
   it('4º edital: recusado e avisa', async () => {
     m.resposta = { data: { permitido: false, usados: 3 }, error: null };
-    expect(await decidirEdital(CTX, SLUG)).toEqual({ permitido: false, limite: { tipo: 'edital', usados: 3, maximo: 3 } });
+    expect(await decidirEdital(CTX, SLUG)).toEqual({ permitido: false, limite: { tipo: 'edital', usados: 3, maximo: 3 }, plano: 'gratis' });
     expect(m.gravarEvento).toHaveBeenCalledWith(CTX, 'limite_atingido', { tipo: 'edital' });
   });
-  it('interno abre sem limite e sem consulta', async () => {
+  it('dono abre sem limite e sem consulta', async () => {
+    expect(await decidirEdital({ ...CTX, interno: true, dono: true }, SLUG)).toEqual({ permitido: true, usados: null });
+    expect(m.rpcs).toEqual([]);
+  });
+  it('com o pagamento ligado, o em_interno sozinho é contado como qualquer um', async () => {
+    await decidirEdital({ ...CTX, interno: true }, SLUG);
+    expect(m.rpcs).toHaveLength(1);
+  });
+  it('com o pagamento desligado, o interno continua livre (como antes da cobrança)', async () => {
+    m.ligado = false;
     expect(await decidirEdital({ ...CTX, interno: true }, SLUG)).toEqual({ permitido: true, usados: null });
     expect(m.rpcs).toEqual([]);
+  });
+  it('Basic: limite 15; recusa traz o plano', async () => {
+    m.plano = 'basic';
+    m.resposta = { data: { permitido: false, usados: 15 }, error: null };
+    expect(await decidirEdital(CTX, SLUG)).toEqual({ permitido: false, limite: { tipo: 'edital', usados: 15, maximo: 15 }, plano: 'basic' });
+    expect(m.rpcs[0].args.p_limite).toBe(15);
+  });
+  it('Pro: uso justo de 300', async () => {
+    m.plano = 'pro';
+    await decidirBusca(CTX, busca('q=luva'), { avisar: true });
+    expect(m.rpcs[0].args.p_limite).toBe(300);
   });
 });
 
 describe('usoDoDia', () => {
   it('lê buscas e editais de hoje', async () => {
     m.resposta = { data: { buscas: 2, editais: 1 }, error: null };
-    expect(await usoDoDia(CTX)).toEqual({ interno: false, buscas: 2, editais: 1 });
+    expect(await usoDoDia(CTX)).toEqual({ interno: false, plano: 'gratis', buscas: 2, editais: 1 });
     expect(m.rpcs).toEqual([{ nome: 'uso_do_dia', args: { p_visitante: CTX.visitante } }]);
   });
-  it('interno: sem consulta; sem visitante: null; banco fora: null', async () => {
-    expect(await usoDoDia({ ...CTX, interno: true })).toEqual({ interno: true, buscas: 0, editais: 0 });
+  it('Basic: o plano vem junto', async () => {
+    m.plano = 'basic';
+    m.resposta = { data: { buscas: 4, editais: 0 }, error: null };
+    expect(await usoDoDia(CTX)).toEqual({ interno: false, plano: 'basic', buscas: 4, editais: 0 });
+  });
+  it('dono: sem consulta; sem visitante: null; banco fora: null', async () => {
+    expect(await usoDoDia({ ...CTX, interno: true, dono: true })).toEqual({ interno: true, plano: 'pro', buscas: 0, editais: 0 });
     expect(await usoDoDia(null)).toBeNull();
     expect(m.rpcs).toEqual([]);
     const erro = vi.spyOn(console, 'error').mockImplementation(() => undefined);

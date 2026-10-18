@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     // A exportação usa a busca da tela (já contada); combinação nova além do limite do dia não exporta.
     const decisao = await decidirBusca(ctx, filtros, { avisar: false });
     if (!decisao.permitido) {
-      return Response.json(corpoLimite('busca', decisao.limite.usados), { status: STATUS_LIMITE, headers: SEM_CACHE });
+      return Response.json(corpoLimite('busca', decisao.limite.usados, decisao.plano), { status: STATUS_LIMITE, headers: SEM_CACHE });
     }
     if (!(await exportacaoDentroDoLimite(ctx.ipHash, LIMITES.exportacoesPorHora))) {
       return Response.json(

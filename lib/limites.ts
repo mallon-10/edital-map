@@ -92,6 +92,12 @@ export function tomSelo(uso: Usados & { plano?: Plano }): TomSelo {
   return 'normal';
 }
 
+/** Plano de um limite que chegou ao navegador (o 402 traz só o máximo): 15 = Basic, 300 = Pro, o resto = grátis. */
+export function planoDoLimite(l: Pick<Limite, 'tipo' | 'maximo'>): Plano {
+  if (l.maximo === LIMITES_PLANO.pro[l.tipo]) return 'pro';
+  return l.maximo === LIMITES_PLANO.basic[l.tipo] ? 'basic' : 'gratis';
+}
+
 export function mensagemLimite(tipo: TipoUso, plano: Plano = 'gratis'): string {
   const max = LIMITES_PLANO[plano][tipo];
   if (plano === 'pro') return `Você chegou ao uso justo de hoje do plano Pro (${max} ${PALAVRAS[tipo].varios}). Volta amanhã às 0h.`;

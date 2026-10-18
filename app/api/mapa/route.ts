@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   try {
     const decisao = await decidirBusca(await contexto(), filtros, { avisar: false });
     if (!decisao.permitido) {
-      return Response.json(corpoLimite('busca', decisao.limite.usados), { status: STATUS_LIMITE, headers: SEM_CACHE });
+      return Response.json(corpoLimite('busca', decisao.limite.usados, decisao.plano), { status: STATUS_LIMITE, headers: SEM_CACHE });
     }
     return Response.json(await pontosDoMapa(filtros), { headers: SEM_CACHE });
   } catch (erro) {

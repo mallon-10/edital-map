@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { lerFiltros } from './filtros';
 import {
   combinacaoBusca, CONVITE_PLANOS, corpoLimite, LIMITE_GRATIS, LimiteAtingido, lerLimite, mensagemLimite, STATUS_LIMITE,
-  bolinhas, leituraFaixa, LIMITES_PLANO, textoFaixa, tomSelo,
+  bolinhas, leituraFaixa, LIMITES_PLANO, planoDoLimite, textoFaixa, tomSelo,
 } from './limites';
 
 const busca = (qs: string) => lerFiltros(new URLSearchParams(qs));
@@ -116,4 +116,10 @@ describe('limites por plano', () => {
   it('sem plano informado vale o grátis', () => {
     expect(tomSelo({ buscas: 3, editais: 0 })).toBe('esgotado');
   });
+});
+
+it('planoDoLimite pelo máximo do 402', () => {
+  expect(planoDoLimite({ tipo: 'busca', maximo: 3 })).toBe('gratis');
+  expect(planoDoLimite({ tipo: 'edital', maximo: 15 })).toBe('basic');
+  expect(planoDoLimite({ tipo: 'busca', maximo: 300 })).toBe('pro');
 });

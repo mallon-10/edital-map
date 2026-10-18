@@ -1,13 +1,14 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
 import { hojeBrasilia, inicioDoDia } from '@/worker/datas';
-import { combinacaoBusca, LIMITE_GRATIS, type Limite, type TipoUso, type UsoHoje } from '../limites';
+import { combinacaoBusca, LIMITES_PLANO, type Limite, type Plano, type TipoUso, type UsoHoje } from '../limites';
 import type { FiltrosBusca } from '../tipos';
+import { pagamentoLigado, planoAtual } from './plano';
 import { gravarEvento, type Contexto } from './registro';
 import { supabaseServidor } from './supabase';
 
 /** Decisão do uso. `usados` = quantos deste tipo hoje; null quando não contou (busca vazia, interno, sem visitante, banco fora). */
-export type Decisao = { permitido: true; usados: number | null } | { permitido: false; limite: Limite };
+export type Decisao = { permitido: true; usados: number | null } | { permitido: false; limite: Limite; plano: Plano };
 
 const LIBERADO: Decisao = { permitido: true, usados: null };
 
@@ -21,15 +22,21 @@ export function inicioDoDiaDeBrasilia(agora: Date): string {
   return inicioDoDia(hojeBrasilia(agora));
 }
 
-async function registrar(ctx: Contexto, tipo: TipoUso, chave: string): Promise<Decisao> {
+/** Sem limite: o dono; e o interno enquanto o pagamento está desligado (como antes da cobrança). */
+export function semLimite(ctx: Contexto): boolean {
+  return ctx.dono || (ctx.interno && !pagamentoLigado());
+}
+
+async function registrar(ctx: Contexto, tipo: TipoUso, chave: string, plano: Plano): Promise<Decisao> {
+  const maximo = LIMITES_PLANO[plano][tipo];
   const { data, error } = await supabaseServidor()
-    .rpc('registrar_uso', { p_visitante: ctx.visitante, p_tipo: tipo, p_chave: chave, p_limite: LIMITE_GRATIS[tipo] })
+    .rpc('registrar_uso', { p_visitante: ctx.visitante, p_tipo: tipo, p_chave: chave, p_limite: maximo })
     .single();
   if (error) throw new Error(`registrar_uso: ${error.message}`);
   const linha = (data ?? {}) as { permitido?: unknown; usados?: unknown };
   const usados = Number(linha.usados ?? 0);
   return linha.permitido === false
-    ? { permitido: false, limite: { tipo, usados, maximo: LIMITE_GRATIS[tipo] } }
+    ? { permitido: false, limite: { tipo, usados, maximo }, plano }
     : { permitido: true, usados };
 }
 
@@ -51,10 +58,10 @@ export async function avisarLimite(ctx: Contexto, tipo: TipoUso, agora: Date = n
 }
 
 async function decidir(ctx: Contexto | null, tipo: TipoUso, chave: string | null, avisar: boolean): Promise<Decisao> {
-  if (!ctx || ctx.interno || chave === null) return LIBERADO;
+  if (!ctx || chave === null || semLimite(ctx)) return LIBERADO;
   let decisao: Decisao;
   try {
-    decisao = await registrar(ctx, tipo, chave);
+    decisao = await registrar(ctx, tipo, chave, await planoAtual(ctx));
   } catch (erro) {
     // O limite é um lembrete: com o banco fora, libera (e a consulta da própria busca provavelmente falha logo depois).
     console.error(erro);
@@ -81,12 +88,15 @@ export function decidirEdital(ctx: Contexto | null, slug: string): Promise<Decis
 /** Uso de hoje para a faixa do plano grátis. Interno: sem consulta. Sem visitante ou banco fora: null (a faixa não aparece). */
 export async function usoDoDia(ctx: Contexto | null): Promise<UsoHoje | null> {
   if (!ctx) return null;
-  if (ctx.interno) return { interno: true, buscas: 0, editais: 0 };
-  const { data, error } = await supabaseServidor().rpc('uso_do_dia', { p_visitante: ctx.visitante }).single();
+  if (semLimite(ctx)) return { interno: true, plano: ctx.dono ? 'pro' : 'gratis', buscas: 0, editais: 0 };
+  const [{ data, error }, plano] = await Promise.all([
+    supabaseServidor().rpc('uso_do_dia', { p_visitante: ctx.visitante }).single(),
+    planoAtual(ctx),
+  ]);
   if (error) {
     console.error(`uso_do_dia: ${error.message}`);
     return null;
   }
   const linha = (data ?? {}) as { buscas?: unknown; editais?: unknown };
-  return { interno: false, buscas: Number(linha.buscas ?? 0), editais: Number(linha.editais ?? 0) };
+  return { interno: false, plano, buscas: Number(linha.buscas ?? 0), editais: Number(linha.editais ?? 0) };
 }

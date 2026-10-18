@@ -229,7 +229,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             </div>
           </>
         ) : (
-          <CartaoLimite tipo="edital" />
+          <CartaoLimite tipo="edital" plano={decisao.permitido ? undefined : decisao.plano} />
         )}
       </main>
     </>
