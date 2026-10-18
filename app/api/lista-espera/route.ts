@@ -1,7 +1,7 @@
 import { LIMITES, validarListaEspera } from '@/lib/eventos';
 import { contexto, dentroDoLimite, gravarListaEspera } from '@/lib/servidor/registro';
 
-/** "Quero o Basic" / "Quero o Pro": guarda o e-mail para avisar quando o pagamento abrir. */
+/** "Quero o Pro" (pagamento desligado): guarda o e-mail para avisar quando o pagamento abrir. */
 export async function POST(request: Request) {
   let corpo: unknown;
   try {

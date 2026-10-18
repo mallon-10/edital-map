@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { registrar } from '@/lib/cliente/registrar';
 
-/** Cadeado dos recursos Pro (raio, órgão, exportação) para quem não tem o plano: leva à tabela do Pro. */
+/** Cadeado dos recursos Pro (raio, órgão, exportação) para quem não tem o plano: leva ao checkout do Pro. */
 export function LinkPro({ rotulo, className }: { rotulo: string; className: string }) {
   return (
     <Link
-      href="/planos#pro"
+      href="/assinar"
       prefetch={false}
       onClick={() => registrar('quer_recurso', { recurso: 'filtros_pro' })}
       className={className}

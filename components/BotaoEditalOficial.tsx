@@ -12,21 +12,21 @@ const VARIANTE = {
 
 type Props = { href: string; slug: string; variante?: keyof typeof VARIANTE; bloqueado?: boolean };
 
-/** Link para o edital no portal de origem. No grátis, com o pagamento ligado, vira o cadeado do Basic (leva aos planos). */
+/** Link para o edital no portal de origem. No grátis, com o pagamento ligado, vira o cadeado do Pro (leva ao checkout). */
 export function BotaoEditalOficial({ href, slug, variante = 'cabecalho', bloqueado = false }: Props) {
   if (bloqueado) {
     return (
       <Link
-        href="/planos#basic"
+        href="/assinar"
         prefetch={false}
-        onClick={() => registrar('quer_recurso', { recurso: 'plano_basic' })}
+        onClick={() => registrar('quer_recurso', { recurso: 'plano_pro' })}
         className={`${VARIANTE[variante]} h-11 items-center gap-2 rounded-sm bg-ink px-4 text-sm font-semibold text-surface hover:bg-[#1b3a63]`}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <rect x="5" y="11" width="14" height="10" rx="2" />
           <path d="M8 11V7a4 4 0 0 1 8 0v4" />
         </svg>
-        Abrir edital oficial · Basic
+        Abrir edital oficial · Pro
       </Link>
     );
   }

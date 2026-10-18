@@ -145,7 +145,7 @@ function PainelMunicipio({ ordenados, cidade, aoEscolher }: { ordenados: { p: Po
 }
 
 export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha = false }: Props) {
-  // Grátis e Basic com o pagamento ligado: órgão e raio viram cadeado (o servidor também barra).
+  // Grátis com o pagamento ligado: órgão e raio viram cadeado (o servidor também barra).
   const bloqueado = cadeadoPro(useUso());
   // Mais editais primeiro, depois ordem alfabética; a chave normalizada é calculada uma vez por lista de pontos.
   const ordenados = useMemo(

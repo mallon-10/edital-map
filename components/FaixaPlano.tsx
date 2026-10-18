@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, type ComponentType } from 'react';
 import { publicarInicial, publicarUso, usoAtual, useUso } from '@/lib/cliente/uso';
 import {
-  bolinhas, LIMITE_GRATIS, LIMITES_PLANO, leituraFaixa, textoFaixa, tomSelo, type TipoUso, type TomSelo, type UsoHoje,
+  bolinhas, LIMITE_GRATIS, leituraFaixa, textoFaixa, tomSelo, type TipoUso, type TomSelo, type UsoHoje,
 } from '@/lib/limites';
 import { IconeDocumento, Lupa, SetaDireita } from './inicio/Icones';
 
@@ -73,8 +73,8 @@ export function FaixaPlano({ inicial }: { inicial?: UsoHoje | null }) {
     };
   }, [inicial]);
   const uso = daLoja ?? inicial ?? null;
-  if (!uso || uso.interno || uso.plano === 'pro') return null;
-  if (uso.plano === 'basic') return <FaixaBasic uso={uso} />;
+  // Pro (e o valor antigo 'basic'): sem faixa, é uso justo.
+  if (!uso || uso.interno || uso.plano === 'pro' || uso.plano === 'basic') return null;
   const tom = tomSelo(uso);
   const zerados = CONTADOR.filter((c) => usadosDe(uso, c.tipo) >= LIMITE_GRATIS[c.tipo]).length;
   return (
@@ -134,30 +134,6 @@ export function FaixaPlano({ inicial }: { inicial?: UsoHoje | null }) {
           <SetaDireita className="size-5" />
         </span>
       </Link>
-    </aside>
-  );
-}
-
-/** Basic: 15 buscas e 15 editais por dia, em texto ("12 de 15"); 15 bolinhas não caberiam. */
-function FaixaBasic({ uso }: { uso: UsoHoje }) {
-  const tom = tomSelo(uso);
-  const max = LIMITES_PLANO.basic;
-  return (
-    <aside aria-label="Plano Basic" title="Limites do plano Basic por dia (zeram à 0h, horário de Brasília)" className={`shrink-0 border-b ${FAIXA[tom]}`}>
-      <p aria-live="polite" className="sr-only">
-        Plano Basic: {CONTADOR.map((c) => leituraFaixa(c.tipo, usadosDe(uso, c.tipo), max[c.tipo])).join('; ')}. Renova à 0h, horário de Brasília.
-      </p>
-      <div aria-hidden="true" className="flex min-h-11 flex-wrap items-center gap-x-5 gap-y-1 px-3 py-1.5 text-[13px] lg:px-6 lg:text-sm">
-        <span className={`rounded-xs px-2 py-1 text-[11px] font-bold uppercase leading-none tracking-[0.1em] ${ETIQUETA[tom]}`}>Plano Basic</span>
-        {CONTADOR.map(({ tipo, rotulo, Icone }) => (
-          <span key={tipo} className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <Icone className="size-4" />
-            <span className="font-semibold">{rotulo}</span>
-            <span className="font-bold tabular-nums">{textoFaixa(tipo, usadosDe(uso, tipo), max[tipo])}</span>
-          </span>
-        ))}
-        <span className="hidden lg:inline">Renova à 0h</span>
-      </div>
     </aside>
   );
 }

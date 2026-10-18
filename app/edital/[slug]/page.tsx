@@ -204,7 +204,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
                   editais={gratisComCadeado ? detalhes.parecidos.slice(0, PARECIDOS_GRATIS) : detalhes.parecidos}
                   origem={e.slug}
                   agora={agora}
-                  maisNoBasic={gratisComCadeado && detalhes.parecidos.length > PARECIDOS_GRATIS}
+                  maisNoPro={gratisComCadeado && detalhes.parecidos.length > PARECIDOS_GRATIS}
                 />
                 <section className="rounded-lg border border-line bg-raised p-5">
                   <h2 className="mb-2 text-[17px] font-bold">Informações complementares</h2>
