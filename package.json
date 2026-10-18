@@ -13,6 +13,7 @@
     "worker:sync": "tsx worker/sync.ts",
     "worker:conferir": "tsx worker/conferir.ts",
     "worker:reler-itens": "tsx worker/reler-itens.ts",
+    "worker:alertas": "tsx worker/enviar-alertas.ts",
     "db:aplicar": "tsx scripts/aplicar-migracao.ts",
     "db:medir": "tsx scripts/medir-banco.ts",
     "dev": "next dev",
