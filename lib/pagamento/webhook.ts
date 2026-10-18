@@ -71,7 +71,8 @@ export function lerPedidos(corpo: unknown): PedidoCakto[] {
       email: texto(objeto(d.customer)?.email)?.toLowerCase() ?? null,
       valorCentavos: Number.isFinite(valor) ? Math.round(valor * 100) : null,
       pagoEm: texto(d.paidAt),
-      callback: texto(d.callback),
+      // Checkout próprio: o código vai no metadata.sck da cobrança e volta em data.sck; checkout hospedado: ?callback=.
+      callback: texto(d.sck) ?? texto(d.callback),
     });
   }
   return pedidos;

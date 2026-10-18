@@ -63,6 +63,10 @@ describe('lerPedidos', () => {
     expect(lerPedidos(null)).toEqual([]);
     expect(lerPedidos({ data: pedido() })).toEqual([]);
   });
+  it('código do checkout próprio vem no sck (prioridade sobre o callback)', () => {
+    const [p] = lerPedidos({ event: 'purchase_approved', data: pedido({ sck: 'b'.repeat(32), callback: 'abc123' }) });
+    expect(p.callback).toBe('b'.repeat(32));
+  });
   it('callback e valor ausentes viram null', () => {
     const [p] = lerPedidos({ event: 'refund', data: pedido({ callback: null, amount: null, paidAt: null }) });
     expect([p.callback, p.valorCentavos, p.pagoEm]).toEqual([null, null, null]);

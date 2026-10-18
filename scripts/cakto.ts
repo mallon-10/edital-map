@@ -157,6 +157,17 @@ async function desativarProduto(access: string, produtoId: string) {
   }
 }
 
+/** Manda um corpo incompleto para /payments/ e mostra os campos que a Cakto exige (400 sem criar pedido). */
+async function sondarPagamento(access: string, metodo: string) {
+  const r = await fetch(`${BASE}/payments/`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${access}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': `sonda-${Date.now()}` },
+    body: JSON.stringify({ paymentMethod: metodo, items: [{ offerId: 'irpv92e' }], customer: {} }),
+  });
+  console.log(`HTTP ${r.status}`);
+  console.log((await r.text()).slice(0, 2500));
+}
+
 const comando = process.argv[2];
 const { access, escopos } = await token();
 console.log(`escopos: ${escopos}`);
@@ -165,6 +176,7 @@ else if (comando === 'criar-produto') await criarProduto(access, process.argv[3]
 else if (comando === 'ajustar') await ajustar(access, process.argv[3], Number(process.argv[4]), Number(process.argv[5]));
 else if (comando === 'preco-oferta') await precoOferta(access, process.argv[3], Number(process.argv[4]));
 else if (comando === 'desativar-produto') await desativarProduto(access, process.argv[3]);
+else if (comando === 'sondar-pagamento') await sondarPagamento(access, process.argv[3]);
 else if (comando === 'criar-webhook') await criarWebhook(access, process.argv[3], process.argv.slice(4));
 else if (comando === 'gravar-ofertas') {
   const [bm, ba, pm, pa] = process.argv.slice(3);
