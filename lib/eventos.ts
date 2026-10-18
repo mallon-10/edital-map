@@ -36,7 +36,7 @@ export type Detalhe = Record<string, string | number | null>;
 export type PedidoAlerta = { email: string; termos: string[]; ufs: string[] };
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; erro: string; silencioso?: boolean };
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function objeto(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);

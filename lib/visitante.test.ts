@@ -24,7 +24,7 @@ describe('cookie do visitante', () => {
   });
   it('o proxy roda nas páginas que contam e nas rotas da API', () => {
     const proxy = readFileSync(new URL('../proxy.ts', import.meta.url), 'utf8');
-    expect(proxy).toContain('export function proxy(');
+    expect(proxy).toContain('export async function proxy(');
     for (const caminho of ["'/'", "'/edital/:path*'", "'/planos'", "'/api/:path*'"]) expect(proxy).toContain(caminho);
   });
 });
