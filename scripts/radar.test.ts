@@ -48,6 +48,50 @@ describe('onboarding', () => {
     expect(pagina).toContain("gravarEventoUmaVez(ctx, 'onboarding_iniciado'");
     expect(pagina).not.toContain("gravarEvento(ctx, 'onboarding_iniciado'");
   });
+  it('página: exige conta, quem já tem radar vai ao Meu Radar, fora do Google, tela única', () => {
+    const pagina = ler('app/radar/comecar/page.tsx');
+    expect(pagina).toContain("redirect('/entrar?voltar=/radar/comecar')");
+    expect(pagina).toContain("redirect('/radar')");
+    expect(pagina).toContain('robots: { index: false, follow: false }');
+    expect(pagina).toContain('<OnboardingRadar');
+    expect(pagina).not.toContain('<FormRadar');
+  });
+  const tela = () => ler('components/radar/OnboardingRadar.tsx');
+  it('um campo só, com rótulo, para o que vende ou o CNPJ', () => {
+    expect(tela()).toContain('O que sua empresa vende? Ou digite o CNPJ');
+    expect(tela()).toMatch(/<label htmlFor=/);
+    expect(tela()).toContain('normalizarCnpj(');
+    expect(tela()).toContain('consultarCnpj(');
+  });
+  it('CNPJ: só na UF da sede por padrão, ou todo o Brasil', () => {
+    expect(tela()).toContain('localPadraoDoCnpj(');
+    expect(tela()).toContain('Só em ${');
+    expect(tela()).toContain('Todo o Brasil');
+  });
+  it('um botão "Criar meu radar" que salva pela mesma rota e vai ao Meu Radar', () => {
+    expect(tela()).toContain('Criar meu radar');
+    expect(tela()).toContain("fetch('/api/radar'");
+    expect(tela()).toContain("'content-type': 'application/json'");
+    expect(tela()).toContain("router.push('/radar')");
+    expect(tela()).toContain('/entrar?voltar=');
+  });
+  it('resultados e erros anunciados; link para ajustar o resto depois', () => {
+    expect(tela()).toContain('role="status"');
+    expect(tela()).toContain('role="alert"');
+    expect(tela()).toContain('Prefere ajustar valor, modalidades e palavras para excluir?');
+    expect(tela()).toMatch(/href="\/radar\/editar"\s+prefetch=\{false\}/);
+    expect(tela()).toContain('Ajustar meu radar');
+  });
+  it('alvos de toque de 44 px', () => {
+    expect(tela()).toContain('h-11');
+    expect(tela()).not.toMatch(/\bh-(8|9|10)\b/);
+  });
+  it('o FormRadar não tem mais o modo de 3 etapas', () => {
+    const form = ler('components/radar/FormRadar.tsx');
+    expect(form).not.toContain("'comecar'");
+    expect(form).not.toContain('Etapa {etapa} de 3');
+    expect(form).not.toContain('Pular');
+  });
 });
 
 describe('editar radar', () => {

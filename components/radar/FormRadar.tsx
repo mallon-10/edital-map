@@ -2,55 +2,41 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { corpoDoRascunho, erroDaEtapa, LIMITES_RADAR, sugestoesTermos, type RascunhoRadar } from '@/lib/radar';
 import { CampoLocal } from './CampoLocal';
 import { CampoTermos } from './CampoTermos';
 import { CamposOportunidade } from './CamposOportunidade';
 
-type Etapa = 1 | 2 | 3;
-type Props = { modo: 'comecar' | 'editar'; inicial: RascunhoRadar };
+type Secao = 1 | 2 | 3;
+type Props = { modo: 'editar'; inicial: RascunhoRadar };
 
-const TITULOS: Record<Etapa, string> = { 1: 'O que sua empresa vende?', 2: 'Onde sua empresa atende?', 3: 'Que tipo de oportunidade procura?' };
+const TITULOS: Record<Secao, string> = { 1: 'O que sua empresa vende?', 2: 'Onde sua empresa atende?', 3: 'Que tipo de oportunidade procura?' };
 const PRINCIPAL = 'inline-flex h-12 items-center justify-center rounded-sm bg-pin px-6 text-[15px] font-semibold text-on-pin aria-disabled:opacity-60';
 const SECUNDARIO = 'inline-flex h-12 items-center justify-center rounded-sm border border-line-strong bg-raised px-5 text-[15px] font-semibold hover:bg-sunken';
 const FALHA = 'Não foi possível salvar agora. Tente de novo.';
 
 /**
- * Radar da conta. "comecar": 3 etapas (produtos → onde atende → tipo de oportunidade, com "Pular" na 3ª).
- * "editar": as mesmas seções numa página só. Salvar (POST /api/radar, JSON do próprio site) leva ao Meu Radar.
+ * Editar o radar da conta: produtos, onde atende e tipo de oportunidade numa página só. Salvar (POST /api/radar, JSON
+ * do próprio site) leva ao Meu Radar. O primeiro radar é criado em /radar/comecar (OnboardingRadar, tela única).
  */
-export function FormRadar({ modo, inicial }: Props) {
+export function FormRadar({ inicial }: Props) {
   const router = useRouter();
   const [d, setD] = useState<RascunhoRadar>(inicial);
-  const [etapa, setEtapa] = useState<Etapa>(1);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const titulo = useRef<HTMLHeadingElement>(null);
-  const primeira = useRef(true);
-
-  // Troca de etapa: o foco vai para o título novo (leitor de tela anuncia; no celular, a tela volta ao topo).
-  useEffect(() => {
-    if (primeira.current) {
-      primeira.current = false;
-      return;
-    }
-    titulo.current?.focus();
-  }, [etapa]);
 
   const mudar = (parte: Partial<RascunhoRadar>) => {
     setD((x) => ({ ...x, ...parte }));
     setErro(null);
   };
 
-  async function salvar(pular: boolean) {
+  async function salvar() {
     if (salvando) return;
-    const etapas: Etapa[] = pular ? [1, 2] : [1, 2, 3];
-    for (const e of etapas) {
+    for (const e of [1, 2, 3] as const) {
       const msg = erroDaEtapa(d, e);
       if (msg) {
         setErro(msg);
-        if (modo === 'comecar') setEtapa(e);
         return;
       }
     }
@@ -59,10 +45,10 @@ export function FormRadar({ modo, inicial }: Props) {
       const r = await fetch('/api/radar', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(corpoDoRascunho(d, { pular })),
+        body: JSON.stringify(corpoDoRascunho(d, { pular: false })),
       });
       if (r.status === 401) {
-        window.location.assign(`/entrar?voltar=${encodeURIComponent(modo === 'editar' ? '/radar/editar' : '/radar/comecar')}`);
+        window.location.assign(`/entrar?voltar=${encodeURIComponent('/radar/editar')}`);
         return;
       }
       const dados = (await r.json().catch(() => ({}))) as { erro?: unknown };
@@ -76,16 +62,6 @@ export function FormRadar({ modo, inicial }: Props) {
       setErro(FALHA);
       setSalvando(false);
     }
-  }
-
-  function avancar() {
-    const msg = erroDaEtapa(d, etapa);
-    if (msg) {
-      setErro(msg);
-      return;
-    }
-    setErro(null);
-    setEtapa((e) => (e + 1) as Etapa);
   }
 
   const produtos = (
@@ -108,73 +84,30 @@ export function FormRadar({ modo, inicial }: Props) {
     </p>
   );
 
-  if (modo === 'editar') {
-    return (
-      <form
-        onSubmit={(e: FormEvent) => {
-          e.preventDefault();
-          void salvar(false);
-        }}
-        className="flex flex-col gap-8"
-        noValidate
-      >
-        <h1 className="text-[28px] font-bold leading-tight tracking-[-0.015em]">Editar meu radar</h1>
-        {([1, 2, 3] as const).map((n) => (
-          <section key={n} className="flex flex-col gap-4 rounded-md border border-line bg-raised p-4">
-            <h2 className="text-lg font-bold">{TITULOS[n]}</h2>
-            {n === 1 ? produtos : n === 2 ? local : oportunidade}
-          </section>
-        ))}
-        {aviso}
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" aria-disabled={salvando || undefined} className={PRINCIPAL}>
-            {salvando ? 'Salvando…' : 'Salvar alterações'}
-          </button>
-          <Link href="/radar" prefetch={false} className={SECUNDARIO}>
-            Cancelar
-          </Link>
-        </div>
-      </form>
-    );
-  }
-
   return (
     <form
       onSubmit={(e: FormEvent) => {
         e.preventDefault();
-        if (etapa < 3) avancar();
-        else void salvar(false);
+        void salvar();
       }}
-      className="flex flex-col gap-6"
+      className="flex flex-col gap-8"
       noValidate
     >
-      <p className="font-mono text-xs font-semibold uppercase tracking-wider text-ink-muted">Etapa {etapa} de 3</p>
-      <h1 ref={titulo} tabIndex={-1} className="text-[28px] font-bold leading-tight tracking-[-0.015em] focus:outline-none">
-        {TITULOS[etapa]}
-      </h1>
-      {etapa === 1 ? produtos : etapa === 2 ? local : oportunidade}
+      <h1 className="text-[28px] font-bold leading-tight tracking-[-0.015em]">Editar meu radar</h1>
+      {([1, 2, 3] as const).map((n) => (
+        <section key={n} className="flex flex-col gap-4 rounded-md border border-line bg-raised p-4">
+          <h2 className="text-lg font-bold">{TITULOS[n]}</h2>
+          {n === 1 ? produtos : n === 2 ? local : oportunidade}
+        </section>
+      ))}
       {aviso}
       <div className="flex flex-wrap gap-2">
-        {etapa > 1 ? (
-          <button
-            type="button"
-            onClick={() => {
-              setErro(null);
-              setEtapa((e) => (e - 1) as Etapa);
-            }}
-            className={SECUNDARIO}
-          >
-            Voltar
-          </button>
-        ) : null}
         <button type="submit" aria-disabled={salvando || undefined} className={PRINCIPAL}>
-          {etapa < 3 ? 'Continuar' : salvando ? 'Salvando…' : 'Salvar meu radar'}
+          {salvando ? 'Salvando…' : 'Salvar alterações'}
         </button>
-        {etapa === 3 ? (
-          <button type="button" onClick={() => void salvar(true)} aria-disabled={salvando || undefined} className={`${SECUNDARIO} aria-disabled:opacity-60`}>
-            Pular
-          </button>
-        ) : null}
+        <Link href="/radar" prefetch={false} className={SECUNDARIO}>
+          Cancelar
+        </Link>
       </div>
     </form>
   );
