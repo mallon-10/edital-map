@@ -8,7 +8,7 @@ const EDITAL: EditalExportado = {
   objeto: 'Aquisição de luvas de vaqueta; tamanho "G"\npara a Defesa Civil',
   orgao_nome: 'MUNICIPIO DE JOINVILLE', unidade_nome: null, municipio_nome: 'Joinville', uf: 'SC', codigo_ibge: '4209102',
   valor_estimado: 1234.5, encerramento_em: '2026-10-20T13:00:00Z', publicada_em: '2026-10-15T02:30:00Z',
-  modalidade_nome: 'Pregão - Eletrônico', srp: false, onde: 'objeto', link_origem: null,
+  modalidade_nome: 'Pregão - Eletrônico', srp: false, onde: 'objeto', link_origem: null, situacao_id: null, relevancia: null, destaques: [],
 };
 
 describe('celula', () => {

@@ -113,7 +113,7 @@ describe('/api/contagem', () => {
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({ total: 42 });
     expect(r.headers.get('cache-control')).toContain('s-maxage=300');
-    expect(m.buscarEditais).toHaveBeenCalledWith(expect.objectContaining({ q: 'luva', pagina: 1 }));
+    expect(m.buscarEditais).toHaveBeenCalledWith(expect.objectContaining({ q: 'luva', pagina: 1, ordem: 'prazo' }));
     expect(m.decidirBusca).not.toHaveBeenCalled();
   });
 });

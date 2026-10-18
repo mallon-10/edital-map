@@ -71,8 +71,13 @@ describe('contrato com as funções SQL (0007)', () => {
     respostaRpc = [];
   });
 
-  const ARGS_BUSCA = ['q', 'p_ufs', 'p_ibge', 'p_dias', 'p_valor_min', 'p_modalidades', 'p_limite', 'p_deslocamento', 'p_orgao', 'p_raio_km'].sort();
-  const ARGS_MAPA = ['q', 'p_ufs', 'p_dias', 'p_valor_min', 'p_modalidades', 'p_orgao', 'p_ibge', 'p_raio_km'].sort();
+  const ARGS_BUSCA = [
+    'q', 'p_ufs', 'p_ibge', 'p_dias', 'p_valor_min', 'p_modalidades', 'p_limite', 'p_deslocamento', 'p_orgao', 'p_raio_km',
+    'p_termos', 'p_relacionados', 'p_excluir', 'p_ordem',
+  ].sort();
+  const ARGS_MAPA = [
+    'q', 'p_ufs', 'p_dias', 'p_valor_min', 'p_modalidades', 'p_orgao', 'p_ibge', 'p_raio_km', 'p_termos', 'p_relacionados', 'p_excluir',
+  ].sort();
 
   it('buscarEditais chama buscar_editais com os argumentos da 0007', async () => {
     await buscarEditais({
@@ -91,7 +96,10 @@ describe('contrato com as funções SQL (0007)', () => {
     await buscarEditais(SEM_FILTRO);
     expect(chamadas[0].nome).toBe('buscar_editais');
     expect(chaves(chamadas[0].args)).toEqual(ARGS_BUSCA);
-    expect(chamadas[0].args).toMatchObject({ q: null, p_ufs: null, p_valor_min: null, p_modalidades: null, p_orgao: null, p_raio_km: null });
+    expect(chamadas[0].args).toMatchObject({
+      q: null, p_ufs: null, p_valor_min: null, p_modalidades: null, p_orgao: null, p_raio_km: null,
+      p_termos: [], p_relacionados: [], p_excluir: [], p_ordem: 'prazo',
+    });
   });
 
   it('pontosDoMapa chama mapa_editais com os argumentos da 0007; a cidade sozinha não vai ao mapa', async () => {
@@ -139,13 +147,14 @@ describe('contrato com as funções SQL (0007)', () => {
     expect(r).toEqual({ total: 12, materiais: 10, servicos: 2, comBeneficio: 9, exclusivos: 6, cota: 3, criterios: ['Menor preço'] });
   });
 
-  it('buscarEditais mapeia as colunas da 0007 (link_origem fica de fora do card)', async () => {
+  it('buscarEditais mapeia as colunas da 0011 com a relevância e os destaques (link_origem fica de fora do card)', async () => {
     respostaRpc = [
       {
         id: 'C1', slug: '00394452000103-2026-1', objeto: 'Luvas', orgao_nome: 'Município de Joinville', unidade_nome: null,
         municipio_nome: 'Joinville', uf: 'SC', codigo_ibge: '4209102', valor_estimado: '1000.50',
         encerramento_em: '2026-10-20T13:00:00+00:00', publicada_em: null, modalidade_nome: 'Pregão - Eletrônico', srp: false,
         link_origem: 'https://compras.joinville.sc.gov.br/1', onde: 'itens', total: 1,
+        situacao_id: 4, pontuacao: 35, termos_objeto: [], termos_itens: ['nitrilica'], frase: false,
       },
     ];
     const r = await buscarEditais({ ...SEM_FILTRO, q: 'nitrilica' });
@@ -156,10 +165,49 @@ describe('contrato com as funções SQL (0007)', () => {
           id: 'C1', slug: '00394452000103-2026-1', objeto: 'Luvas', orgao_nome: 'Município de Joinville', unidade_nome: null,
           municipio_nome: 'Joinville', uf: 'SC', codigo_ibge: '4209102', valor_estimado: 1000.5,
           encerramento_em: '2026-10-20T13:00:00+00:00', publicada_em: null, modalidade_nome: 'Pregão - Eletrônico', srp: false,
-          onde: 'itens',
+          onde: 'itens', situacao_id: 4,
+          relevancia: { pontos: 35, nivel: 'Baixa', explicacao: 'Menciona nitrilica nos itens.' },
+          destaques: [],
         },
       ],
     });
+  });
+
+  it('busca com termo: digitados, relacionados, excluídos e a ordem padrão (relevância) vão separados', async () => {
+    await buscarEditais({ ...SEM_FILTRO, q: 'uniformes -escolar' });
+    const a = chamadas[0].args;
+    expect(a).toMatchObject({ q: 'uniformes', p_termos: ['uniformes'], p_excluir: ['escolar'], p_ordem: 'relevancia' });
+    expect(a.p_relacionados).toContain('fardamento');
+  });
+
+  it('ordem pedida vai como veio; relevância sem termo vira prazo', async () => {
+    await buscarEditais({ ...SEM_FILTRO, q: 'luva', ordem: 'maior_valor' });
+    await buscarEditais({ ...SEM_FILTRO, ordem: 'relevancia' });
+    expect(chamadas.map((c) => c.args.p_ordem)).toEqual(['maior_valor', 'prazo']);
+  });
+
+  it('pontuação do banco diferente da do site vai para o log (a ordem é do banco, o número é do site)', async () => {
+    const aviso = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    respostaRpc = [
+      {
+        id: 'C2', slug: '00394452000103-2026-2', objeto: 'Uniformes', orgao_nome: 'X', unidade_nome: null, municipio_nome: null, uf: 'SC',
+        codigo_ibge: null, valor_estimado: null, encerramento_em: '2026-10-20T13:00:00+00:00', publicada_em: null,
+        modalidade_nome: null, srp: false, link_origem: null, onde: 'objeto', total: 1,
+        situacao_id: 1, pontuacao: 10, termos_objeto: ['uniformes'], termos_itens: [], frase: true,
+      },
+    ];
+    const r = await buscarEditais({ ...SEM_FILTRO, q: 'uniformes' });
+    expect(r.editais[0].relevancia?.pontos).toBe(75);
+    expect(r.editais[0].destaques).toEqual(['uniformes']);
+    expect(aviso).toHaveBeenCalledOnce();
+    aviso.mockRestore();
+  });
+
+  it('o mapa recebe os mesmos termos da lista', async () => {
+    await pontosDoMapa({ ...SEM_FILTRO, q: 'uniformes -escolar' });
+    expect(chamadas[0].nome).toBe('mapa_editais');
+    expect(chamadas[0].args).toMatchObject({ q: 'uniformes', p_termos: ['uniformes'], p_excluir: ['escolar'] });
+    expect(chamadas[0].args.p_relacionados).toContain('fardamento');
   });
 });
 

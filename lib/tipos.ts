@@ -1,3 +1,4 @@
+import type { Relevancia } from './relevancia/pontuacao';
 export type Cidade = { ibge: string; nome: string; uf: string };
 
 /** Ordem da lista (buscar_editais, 0011). Relevância só faz sentido com termo (sem termo vale "prazo"). */
@@ -51,6 +52,12 @@ export type EditalResumo = {
   modalidade_nome: string | null;
   srp: boolean;
   onde: 'objeto' | 'itens';
+  /** Situação oficial no PNCP (4 = Suspensa: o card mostra a etiqueta). */
+  situacao_id: number | null;
+  /** Só com termo de busca: pontuação 0–100, nível e explicação (lib/relevancia/pontuacao.ts). */
+  relevancia: Relevancia | null;
+  /** Termos (digitados e relacionados) que bateram no objeto: destaque do título. */
+  destaques: string[];
 };
 
 export type ResultadoBusca = { total: number; editais: EditalResumo[] };
@@ -81,6 +88,7 @@ export type Edital = {
   codigo_ibge: string | null;
   modalidade_nome: string | null;
   situacao_nome: string | null;
+  situacao_id: number | null;
   esfera: string | null;
   srp: boolean;
   valor_estimado: number | null;
@@ -88,6 +96,8 @@ export type Edital = {
   abertura_em: string | null;
   encerramento_em: string | null;
   link_origem: string | null;
+  /** Última alteração da contratação no PNCP. */
+  atualizada_pncp_em: string | null;
 };
 
 export type ItemEdital = {

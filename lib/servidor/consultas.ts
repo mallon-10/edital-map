@@ -2,7 +2,9 @@ import 'server-only';
 import type { ChaveCompra } from '@/worker/mapear';
 import { criarCache } from '../cache';
 import { MAX_EXPORTACAO } from '../csv';
-import { chaveFiltros, POR_PAGINA } from '../filtros';
+import { chaveFiltros, ordemEfetiva, POR_PAGINA } from '../filtros';
+import { relevancia, type Acertos } from '../relevancia/pontuacao';
+import { interpretarBusca, type Busca } from '../relevancia/termos';
 import { nomeProprio } from '../texto';
 import type {
   ArquivoEdital, Edital, EditalExportado, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens,
@@ -19,23 +21,37 @@ type Linha = Record<string, unknown>;
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 const texto = (v: unknown): string | null => (v === null || v === undefined ? null : String(v));
 
-/** Argumentos de buscar_editais (0007), sem a página. */
-function argumentosBusca(f: FiltrosBusca) {
+/** Argumentos de buscar_editais (0011), sem a página: os termos vão separados (digitados, relacionados, excluídos). */
+function argumentosBusca(f: FiltrosBusca, b: Busca) {
   return {
-    q: f.q,
+    // Texto sem os excluídos. Com p_termos o banco usa os termos; q fica para a chamada antiga.
+    q: b.positivo,
     // Com raio a UF não filtra: o raio atravessa a divisa de estado.
-          p_ufs: f.uf && !f.raio ? [f.uf] : null,
+    p_ufs: f.uf && !f.raio ? [f.uf] : null,
     p_ibge: f.ibge,
     p_dias: f.dias,
     p_valor_min: f.valorMin,
     p_modalidades: f.modalidades,
     p_orgao: f.orgao,
     p_raio_km: f.raio,
+    p_termos: b.digitados,
+    p_relacionados: b.relacionados.map((r) => r.termo),
+    p_excluir: b.excluidos,
+    p_ordem: ordemEfetiva(f.ordem, b.digitados.length > 0),
   };
 }
 
-/** Uma linha de buscar_editais → card da lista. */
-function paraResumo(l: Linha): EditalResumo {
+const lista = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
+
+/** Uma linha de buscar_editais → card da lista, com a relevância (número e explicação calculados aqui, pela busca). */
+function paraResumo(l: Linha, b: Busca): EditalResumo {
+  const acertos: Acertos = { termosObjeto: lista(l.termos_objeto), termosItens: lista(l.termos_itens), frase: l.frase === true };
+  const rel = relevancia(acertos, b);
+  // A ordem vem do banco (pontuacao_busca) e o número do card vem daqui (pontuar), com os mesmos pesos.
+  const doBanco = num(l.pontuacao);
+  if (rel && doBanco !== null && doBanco !== rel.pontos) {
+    console.warn(`relevância diferente no edital ${String(l.id)}: banco ${doBanco}, site ${rel.pontos}`);
+  }
   return {
     id: String(l.id),
     slug: String(l.slug),
@@ -51,19 +67,23 @@ function paraResumo(l: Linha): EditalResumo {
     modalidade_nome: texto(l.modalidade_nome),
     srp: Boolean(l.srp),
     onde: l.onde === 'itens' ? 'itens' : 'objeto',
+    situacao_id: num(l.situacao_id),
+    relevancia: rel,
+    destaques: acertos.termosObjeto,
   };
 }
 
 export function buscarEditais(f: FiltrosBusca): Promise<ResultadoBusca> {
   return cache(`busca:${chaveFiltros(f)}`, async () => {
+    const b = interpretarBusca(f.q);
     const { data, error } = await supabaseServidor().rpc('buscar_editais', {
-      ...argumentosBusca(f),
+      ...argumentosBusca(f, b),
       p_limite: POR_PAGINA,
       p_deslocamento: (f.pagina - 1) * POR_PAGINA,
     });
     if (error) throw new Error(`buscar_editais: ${error.message}`);
     const linhas = (data ?? []) as Linha[];
-    return { total: Number(linhas[0]?.total ?? 0), editais: linhas.map(paraResumo) };
+    return { total: Number(linhas[0]?.total ?? 0), editais: linhas.map((l) => paraResumo(l, b)) };
   });
 }
 
@@ -74,11 +94,15 @@ export function buscarEditais(f: FiltrosBusca): Promise<ResultadoBusca> {
 export function pontosDoMapa(f: FiltrosBusca): Promise<PontoMapa[]> {
   const ibge = f.raio ? f.ibge : null;
   return cache(`mapa:${chaveFiltros({ ...f, ibge, pagina: 1, ordem: null })}`, async () => {
+    const b = interpretarBusca(f.q);
     const pontos: PontoMapa[] = [];
     for (let de = 0; ; de += 1000) {
       const { data, error } = await supabaseServidor()
         .rpc('mapa_editais', {
-          q: f.q,
+          q: b.positivo,
+          p_termos: b.digitados,
+          p_relacionados: b.relacionados.map((r) => r.termo),
+          p_excluir: b.excluidos,
           // Com raio a UF não filtra: o raio atravessa a divisa de estado.
           p_ufs: f.uf && !f.raio ? [f.uf] : null,
           p_dias: f.dias,
@@ -113,12 +137,12 @@ export function edital(slug: string): Promise<Edital | null> {
     const { data, error } = await supabaseServidor()
       .from('contratacoes')
       .select(
-        'id, slug, cnpj, ano, sequencial, objeto, info_complementar, orgao_nome, unidade_nome, esfera, municipio_nome, uf, codigo_ibge, modalidade_nome, situacao_nome, srp, valor_estimado, publicada_em, abertura_em, encerramento_em, link_origem',
+        'id, slug, cnpj, ano, sequencial, objeto, info_complementar, orgao_nome, unidade_nome, esfera, municipio_nome, uf, codigo_ibge, modalidade_nome, situacao_id, situacao_nome, srp, valor_estimado, publicada_em, abertura_em, encerramento_em, link_origem, atualizada_pncp_em',
       )
       .eq('slug', slug)
       .maybeSingle();
     if (error) throw new Error(`edital: ${error.message}`);
-    return data ? ({ ...data, valor_estimado: num(data.valor_estimado) } as Edital) : null;
+    return data ? ({ ...data, valor_estimado: num(data.valor_estimado), situacao_id: num(data.situacao_id) } as Edital) : null;
   });
 }
 
@@ -210,18 +234,19 @@ export function orgaosAbertos(q: string): Promise<OrgaoAberto[]> {
  * Páginas de 1.000 (o teto do PostgREST por resposta). Sem cache: cada exportação conta no limite por IP.
  */
 export async function exportarEditais(f: FiltrosBusca): Promise<{ editais: EditalExportado[]; total: number }> {
+  const b = interpretarBusca(f.q);
   const editais: EditalExportado[] = [];
   let total = 0;
   for (let de = 0; de < MAX_EXPORTACAO; de += 1000) {
     const { data, error } = await supabaseServidor().rpc('buscar_editais', {
-      ...argumentosBusca(f),
+      ...argumentosBusca(f, b),
       p_limite: Math.min(1000, MAX_EXPORTACAO - de),
       p_deslocamento: de,
     });
     if (error) throw new Error(`exportar: ${error.message}`);
     const linhas = (data ?? []) as Linha[];
     if (de === 0) total = Number(linhas[0]?.total ?? 0);
-    for (const l of linhas) editais.push({ ...paraResumo(l), link_origem: texto(l.link_origem) });
+    for (const l of linhas) editais.push({ ...paraResumo(l, b), link_origem: texto(l.link_origem) });
     if (linhas.length < 1000) break;
   }
   return { editais, total };
