@@ -47,6 +47,15 @@ describe('comPreposicao', () => {
     expect(comPreposicao('Secretaria de Estado da Saúde')).toBe('da Secretaria de Estado da Saúde');
     expect(comPreposicao('Fundacao Hospitalar')).toBe('da Fundacao Hospitalar');
     expect(comPreposicao('Fundo Municipal de Saúde')).toBe('do Fundo Municipal de Saúde');
+    expect(comPreposicao('Associação Beneficente X')).toBe('da Associação Beneficente X');
+    expect(comPreposicao('Administração Regional')).toBe('da Administração Regional');
+    expect(comPreposicao('Cooperativa Agrícola')).toBe('da Cooperativa Agrícola');
+    expect(comPreposicao('Delegacia de Polícia')).toBe('da Delegacia de Polícia');
+    expect(comPreposicao('Santa Casa de Misericórdia')).toBe('da Santa Casa de Misericórdia');
+    expect(comPreposicao('Comunidade Terapêutica')).toBe('da Comunidade Terapêutica');
+  });
+  it('nome desconhecido: forma neutra "de"', () => {
+    expect(comPreposicao('Xyz Abc')).toBe('de Xyz Abc');
   });
 });
 

@@ -25,7 +25,7 @@ import { resumoOportunidade } from '@/lib/resumoEdital';
 import { arquivosDoEdital, atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
 import { contextoDaPagina } from '@/lib/servidor/registro';
 import { decidirEdital, usoDoDia } from '@/lib/servidor/uso';
-import { avisoSituacao } from '@/lib/situacao';
+import { avisoSituacao, rotuloSituacao } from '@/lib/situacao';
 import { assunto, lotesDaInfo, nomeProprio, paragrafos } from '@/lib/texto';
 import type { Edital, EditalRelacionado, ResumoItens } from '@/lib/tipos';
 
@@ -87,6 +87,9 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const textoInfo = e.info_complementar && !lotes ? paragrafos(e.info_complementar) : [];
   const exclusivoTotal = detalhes !== null && detalhes.resumo.total > 0 && detalhes.resumo.exclusivos === detalhes.resumo.total;
   const aviso = avisoSituacao(e.situacao_id);
+  // Revogada ou anulada (link direto): só o rótulo da situação, sem a tag de prazo "Aberta".
+  const rotuloSit = rotuloSituacao(e.situacao_id);
+  const encerradaPorSituacao = rotuloSit === 'Revogada' || rotuloSit === 'Anulada';
 
   return (
     <>
@@ -104,8 +107,12 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
         <section className="flex flex-wrap items-end justify-between gap-5">
           <div className="flex min-w-0 flex-[1_1_560px] flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-xs px-2 py-0.5 text-xs font-semibold ${TAG_PRAZO[p.tom]}`}>{p.situacao}</span>
-              <span className={`text-[13px] ${TEXTO_PRAZO[p.tom]}`}>{p.texto}</span>
+              {encerradaPorSituacao ? null : (
+                <>
+                  <span className={`rounded-xs px-2 py-0.5 text-xs font-semibold ${TAG_PRAZO[p.tom]}`}>{p.situacao}</span>
+                  <span className={`text-[13px] ${TEXTO_PRAZO[p.tom]}`}>{p.texto}</span>
+                </>
+              )}
               <EtiquetaSituacao situacaoId={e.situacao_id} />
               {titulo.tipo ? <span className={ETIQUETA}>{titulo.tipo}</span> : null}
               {e.modalidade_nome ? <span className={ETIQUETA}>{modalidadeCurta(e.modalidade_nome)}</span> : null}

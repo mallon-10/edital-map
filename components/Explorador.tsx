@@ -240,7 +240,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
   }, [filtros, resultado, limite, tela, selecionadoId]);
 
   // Última busca, para os links Mapa e Lista da barra do celular nas outras páginas.
-  useEffect(() => guardarUltimaBusca(urlDaBusca(filtros)), [filtros]);
+  useEffect(() => guardarUltimaBusca(urlDaBusca(filtros, { pagina, ordem })), [filtros, pagina, ordem]);
 
   // Celular: a barra acende Mapa ou Lista conforme a parte da página que está na tela. Só o item aceso muda: nada de
   // `tela` nem de endereço (replaceState), que cancelaria uma ida ao edital ainda carregando. A volta do edital usa a

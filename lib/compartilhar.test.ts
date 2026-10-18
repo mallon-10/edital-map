@@ -23,3 +23,16 @@ describe('linkDoEdital', () => {
     expect(LINK_COPIADO).toBe('Link copiado');
   });
 });
+
+describe('foiCancelamento', () => {
+  it('só AbortError é cancelamento', async () => {
+    const { foiCancelamento, ehAvisoManual } = await import('./compartilhar');
+    expect(foiCancelamento({ name: 'AbortError' })).toBe(true);
+    expect(foiCancelamento(new Error('x'))).toBe(false);
+    expect(foiCancelamento({ name: 'NotAllowedError' })).toBe(false);
+    expect(foiCancelamento(null)).toBe(false);
+    expect(ehAvisoManual('Copie o link: https://x')).toBe(true);
+    expect(ehAvisoManual('Link copiado')).toBe(false);
+    expect(ehAvisoManual(null)).toBe(false);
+  });
+});

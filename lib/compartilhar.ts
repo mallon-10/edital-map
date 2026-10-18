@@ -13,3 +13,17 @@ export const LINK_COPIADO = 'Link copiado';
 export function linkDoEdital(origem: string, slug: string): string {
   return `${origem}/edital/${slug}`;
 }
+
+/** A pessoa fechou a folha do sistema (AbortError): não é falha, nada a fazer. Qualquer outro erro cai na cópia do link. */
+export function foiCancelamento(erro: unknown): boolean {
+  return typeof erro === 'object' && erro !== null && (erro as { name?: unknown }).name === 'AbortError';
+}
+
+/** Avisos curtos somem sozinhos; o link para copiar à mão fica até a pessoa fechar. */
+export const AVISO_CURTO_MS = 4000;
+export function prefixoManual(): string {
+  return 'Copie o link: ';
+}
+export function ehAvisoManual(aviso: string | null): boolean {
+  return aviso !== null && aviso.startsWith(prefixoManual());
+}

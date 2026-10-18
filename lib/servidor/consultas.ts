@@ -44,13 +44,13 @@ function argumentosBusca(f: FiltrosBusca, b: Busca) {
 const lista = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 
 /** Uma linha de buscar_editais → card da lista, com a relevância (número e explicação calculados aqui, pela busca). */
-function paraResumo(l: Linha, b: Busca): EditalResumo {
+function paraResumo(l: Linha, b: Busca, divergentes: string[]): EditalResumo {
   const acertos: Acertos = { termosObjeto: lista(l.termos_objeto), termosItens: lista(l.termos_itens), frase: l.frase === true };
   const rel = relevancia(acertos, b);
   // A ordem vem do banco (pontuacao_busca) e o número do card vem daqui (pontuar), com os mesmos pesos.
   const doBanco = num(l.pontuacao);
   if (rel && doBanco !== null && doBanco !== rel.pontos) {
-    console.warn(`relevância diferente no edital ${String(l.id)}: banco ${doBanco}, site ${rel.pontos}`);
+    divergentes.push(String(l.id));
   }
   return {
     id: String(l.id),
@@ -83,7 +83,13 @@ export function buscarEditais(f: FiltrosBusca): Promise<ResultadoBusca> {
     });
     if (error) throw new Error(`buscar_editais: ${error.message}`);
     const linhas = (data ?? []) as Linha[];
-    return { total: Number(linhas[0]?.total ?? 0), editais: linhas.map((l) => paraResumo(l, b)) };
+    const divergentes: string[] = [];
+    const editais = linhas.map((l) => paraResumo(l, b, divergentes));
+    // Um aviso por pedido (não um por linha): quantidade e os 3 primeiros ids.
+    if (divergentes.length > 0) {
+      console.warn(`relevância diferente entre banco e site em ${divergentes.length} edital(is); primeiros: ${divergentes.slice(0, 3).join(', ')}`);
+    }
+    return { total: Number(linhas[0]?.total ?? 0), editais };
   });
 }
 
@@ -237,6 +243,7 @@ export async function exportarEditais(f: FiltrosBusca): Promise<{ editais: Edita
   const b = interpretarBusca(f.q);
   const editais: EditalExportado[] = [];
   let total = 0;
+  const divergentes: string[] = [];
   for (let de = 0; de < MAX_EXPORTACAO; de += 1000) {
     const { data, error } = await supabaseServidor().rpc('buscar_editais', {
       ...argumentosBusca(f, b),
@@ -246,8 +253,11 @@ export async function exportarEditais(f: FiltrosBusca): Promise<{ editais: Edita
     if (error) throw new Error(`exportar: ${error.message}`);
     const linhas = (data ?? []) as Linha[];
     if (de === 0) total = Number(linhas[0]?.total ?? 0);
-    for (const l of linhas) editais.push({ ...paraResumo(l, b), link_origem: texto(l.link_origem) });
+    for (const l of linhas) editais.push({ ...paraResumo(l, b, divergentes), link_origem: texto(l.link_origem) });
     if (linhas.length < 1000) break;
+  }
+  if (divergentes.length > 0) {
+    console.warn(`relevância diferente entre banco e site em ${divergentes.length} edital(is); primeiros: ${divergentes.slice(0, 3).join(', ')}`);
   }
   return { editais, total };
 }
