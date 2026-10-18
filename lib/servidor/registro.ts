@@ -10,7 +10,7 @@ export { COOKIE_INTERNO, COOKIE_VISITANTE };
 export type Contexto = { visitante: string; interno: boolean; ipHash: string | null };
 
 /** Hash do IP com o sal do servidor (IP_SAL). Sem sal ou sem IP: null (os limites por IP não valem). */
-function hashDoIp(h: { get(nome: string): string | null }): string | null {
+export function hashDoIp(h: { get(nome: string): string | null }): string | null {
   const ip = (h.get('x-forwarded-for') ?? '').split(',')[0]?.trim() || h.get('x-real-ip') || null;
   const sal = process.env.IP_SAL;
   return ip && sal ? createHash('sha256').update(`${sal}:${ip}`).digest('hex') : null;

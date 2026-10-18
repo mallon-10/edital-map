@@ -20,9 +20,11 @@ vi.mock('@/lib/servidor/sessao', () => ({
 vi.mock('@/lib/servidor/registro', () => ({
   contexto: async () => ({ visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, ipHash: null }),
   gravarEvento: m.gravarEvento,
+  hashDoIp: (h: { get(nome: string): string | null }) => h.get('x-forwarded-for'),
 }));
 vi.mock('@/lib/servidor/conta', () => ({ lerRadar: m.lerRadar }));
 
+const { LIMITES_CONTA } = await import('@/lib/servidor/limiteTentativas');
 const conta = await import('./route');
 const codigo = await import('./codigo/route');
 const entrar = await import('./entrar/route');
@@ -42,6 +44,7 @@ beforeEach(() => {
   m.entrarComCodigo.mockResolvedValue({ ok: true, usuario: { id: 'u-1', email: 'dono@empresa.com.br' } });
   m.sair.mockResolvedValue(undefined);
   m.lerRadar.mockResolvedValue(null);
+  for (const l of Object.values(LIMITES_CONTA)) l.zerarTudo();
 });
 
 describe('GET /api/conta', () => {
@@ -116,6 +119,61 @@ describe('POST /api/conta/entrar', () => {
     m.entrarComCodigo.mockResolvedValue({ ok: false, erro: { code: 'otp_expired', status: 403 } });
     await entrar.POST(post({ email: 'a@b.co', codigo: '000000' }));
     expect(m.gravarEvento).not.toHaveBeenCalled();
+  });
+});
+
+describe('limite próprio de tentativas (por instância; o Supabase é a segunda camada)', () => {
+  const errado = () => m.entrarComCodigo.mockResolvedValue({ ok: false, erro: { code: 'otp_expired', status: 403 } });
+  const tentar = (email: string, ip = '1.1.1.1') => entrar.POST(post({ email, codigo: '000000' }, { 'x-forwarded-for': ip }));
+
+  it('entrar: 5 códigos errados no mesmo e-mail → 6ª tentativa leva 429 sem chamar o Supabase', async () => {
+    errado();
+    for (let i = 0; i < 5; i++) expect((await tentar('Dono@Empresa.com.br', `10.0.0.${i}`)).status).toBe(400);
+    m.entrarComCodigo.mockClear();
+    const r = await tentar(' dono@empresa.com.br ', '10.0.0.99');
+    expect(r.status).toBe(429);
+    expect(await r.json()).toEqual({ erro: MENSAGENS_CONTA.muitas });
+    expect(m.entrarComCodigo).not.toHaveBeenCalled();
+    // outro e-mail segue normal
+    expect((await tentar('outro@empresa.com.br', '10.0.0.98')).status).toBe(400);
+  });
+  it('entrar: 20 códigos errados do mesmo IP (e-mails variados) → 429 sem chamar o Supabase', async () => {
+    errado();
+    for (let i = 0; i < 20; i++) expect((await tentar(`u${i}@empresa.com.br`, '2.2.2.2')).status).toBe(400);
+    m.entrarComCodigo.mockClear();
+    expect((await tentar('novo@empresa.com.br', '2.2.2.2')).status).toBe(429);
+    expect(m.entrarComCodigo).not.toHaveBeenCalled();
+    expect((await tentar('novo@empresa.com.br', '3.3.3.3')).status).toBe(400);
+  });
+  it('entrar: login certo zera as falhas daquele e-mail', async () => {
+    errado();
+    for (let i = 0; i < 4; i++) await tentar('a@b.co');
+    m.entrarComCodigo.mockResolvedValue({ ok: true, usuario: { id: 'u-1', email: 'a@b.co' } });
+    expect((await entrar.POST(post({ email: 'a@b.co', codigo: '123456' }, { 'x-forwarded-for': '9.9.9.9' }))).status).toBe(200);
+    errado();
+    for (let i = 0; i < 5; i++) expect((await tentar('a@b.co', '9.9.9.9')).status).toBe(400);
+    expect((await tentar('a@b.co', '9.9.9.9')).status).toBe(429);
+  });
+  it('entrar: código certo, mal digitado ou falha do Supabase (502) não contam como falha', async () => {
+    for (let i = 0; i < 6; i++) await entrar.POST(post({ email: 'a@b.co', codigo: '12a' }));
+    m.entrarComCodigo.mockResolvedValue({ ok: false, erro: { code: 'unexpected_failure', status: 500 } });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    for (let i = 0; i < 6; i++) expect((await tentar('a@b.co')).status).toBe(502);
+    expect(LIMITES_CONTA.falhasPorEmail.excedido('a@b.co')).toBe(false);
+  });
+  it('codigo: 5 pedidos por e-mail por hora → 6º leva 429 sem chamar o Supabase', async () => {
+    for (let i = 0; i < 5; i++) expect((await codigo.POST(post({ email: 'a@b.co' }, { 'x-forwarded-for': `10.1.0.${i}` }))).status).toBe(200);
+    m.enviarCodigo.mockClear();
+    const r = await codigo.POST(post({ email: 'A@B.co' }, { 'x-forwarded-for': '10.1.0.99' }));
+    expect(r.status).toBe(429);
+    expect(await r.json()).toEqual({ erro: MENSAGENS_CONTA.muitas });
+    expect(m.enviarCodigo).not.toHaveBeenCalled();
+  });
+  it('codigo: 20 pedidos do mesmo IP por hora → 429 sem chamar o Supabase', async () => {
+    for (let i = 0; i < 20; i++) expect((await codigo.POST(post({ email: `u${i}@b.co` }, { 'x-forwarded-for': '4.4.4.4' }))).status).toBe(200);
+    m.enviarCodigo.mockClear();
+    expect((await codigo.POST(post({ email: 'novo@b.co' }, { 'x-forwarded-for': '4.4.4.4' }))).status).toBe(429);
+    expect(m.enviarCodigo).not.toHaveBeenCalled();
   });
 });
 
