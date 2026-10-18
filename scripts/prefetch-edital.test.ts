@@ -43,6 +43,15 @@ describe('links para /edital sem prefetch (cada edital aberto conta no limite do
     }
     expect(faltando).toEqual([]);
   });
+  it('todo <Link> para a página inicial com busca (/?…) tem prefetch={false} (abrir conta como busca)', () => {
+    const faltando: string[] = [];
+    for (const arquivo of [...arquivosTsx('app'), ...arquivosTsx('components')]) {
+      for (const a of aberturasDeLink(readFileSync(join(RAIZ, arquivo), 'utf8'))) {
+        if (/href=\{?[`"']\/\?/.test(a) && !a.includes('prefetch={false}')) faltando.push(`${arquivo}: ${a.replace(/\s+/g, ' ').slice(0, 100)}`);
+      }
+    }
+    expect(faltando).toEqual([]);
+  });
   it('a página do edital não ganha loading.tsx nem Cache Components (o Next passaria a pré-carregar e contar)', () => {
     expect(existsSync(join(RAIZ, 'app', 'edital', '[slug]', 'loading.tsx'))).toBe(false);
     expect(readFileSync(join(RAIZ, 'next.config.ts'), 'utf8')).not.toContain('cacheComponents');
