@@ -16,9 +16,9 @@ const ENTRADA = 'h-11 w-full rounded-sm border border-line-strong bg-surface px-
 const ROTULO = 'flex flex-col gap-1 text-[13px] font-semibold text-ink';
 const so = (t: string) => t.replace(/\D/g, '');
 
-function CampoTexto({ rotulo, erro, children }: { rotulo: string; erro?: string; children: ReactNode }) {
+function CampoTexto({ rotulo, erro, largo = false, children }: { rotulo: string; erro?: string; largo?: boolean; children: ReactNode }) {
   return (
-    <label className={ROTULO}>
+    <label className={`${ROTULO} ${largo ? 'col-span-2' : ''}`}>
       {rotulo}
       {children}
       {erro ? <span className="text-[12px] font-normal text-pin-strong">{erro}</span> : null}
@@ -232,12 +232,12 @@ export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; 
       {metodo === 'pix' ? (
         <p className="text-[13px] text-ink-muted">Você autoriza uma vez no app do banco e a renovação cai sozinha. Sem cartão.</p>
       ) : (
-        <fieldset className="grid gap-3 md:grid-cols-2">
+        <fieldset className="grid grid-cols-2 gap-3">
           <legend className="sr-only">Cartão</legend>
-          <CampoTexto rotulo="Número do cartão">
+          <CampoTexto rotulo="Número do cartão" largo>
             <input className={ENTRADA} inputMode="numeric" autoComplete="cc-number" value={cartao.numero} onChange={(e) => setCartao({ ...cartao, numero: e.target.value })} />
           </CampoTexto>
-          <CampoTexto rotulo="Nome impresso no cartão">
+          <CampoTexto rotulo="Nome impresso no cartão" largo>
             <input className={ENTRADA} autoComplete="cc-name" value={cartao.nomeCartao} onChange={(e) => setCartao({ ...cartao, nomeCartao: e.target.value })} />
           </CampoTexto>
           <CampoTexto rotulo="Validade (MM/AA)">
@@ -249,13 +249,13 @@ export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; 
           <CampoTexto rotulo="CEP de cobrança">
             <input className={ENTRADA} inputMode="numeric" autoComplete="postal-code" value={endereco.cep} onChange={(e) => setEndereco({ ...endereco, cep: e.target.value })} />
           </CampoTexto>
-          <CampoTexto rotulo="Rua">
-            <input className={ENTRADA} autoComplete="address-line1" value={endereco.rua} onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })} />
-          </CampoTexto>
           <CampoTexto rotulo="Número">
             <input className={ENTRADA} value={endereco.numero} onChange={(e) => setEndereco({ ...endereco, numero: e.target.value })} />
           </CampoTexto>
-          <CampoTexto rotulo="Complemento (opcional)">
+          <CampoTexto rotulo="Rua" largo>
+            <input className={ENTRADA} autoComplete="address-line1" value={endereco.rua} onChange={(e) => setEndereco({ ...endereco, rua: e.target.value })} />
+          </CampoTexto>
+          <CampoTexto rotulo="Complemento (opcional)" largo>
             <input className={ENTRADA} autoComplete="address-line2" value={endereco.complemento} onChange={(e) => setEndereco({ ...endereco, complemento: e.target.value })} />
           </CampoTexto>
           <CampoTexto rotulo="Cidade">
@@ -264,7 +264,7 @@ export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; 
           <CampoTexto rotulo="UF">
             <input className={ENTRADA} maxLength={2} autoComplete="address-level1" value={endereco.uf} onChange={(e) => setEndereco({ ...endereco, uf: e.target.value })} />
           </CampoTexto>
-          <p className="text-[12px] text-ink-muted md:col-span-2">
+          <p className="col-span-2 text-[12px] text-ink-muted">
             Os dados do cartão vão direto do seu navegador para a Cakto, protegidos; o Edital Map não vê nem guarda o número do cartão.
           </p>
         </fieldset>

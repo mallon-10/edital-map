@@ -78,11 +78,13 @@ export function lerCobranca(r: unknown): Cobranca {
   const pix = (typeof c.pix === 'object' && c.pix !== null ? c.pix : {}) as Record<string, unknown>;
   const expira = texto(pix.expirationDate);
   const data = expira ? new Date(expira.replace(' ', 'T')) : null;
+  // O BR Code passa de 255 caracteres: lido inteiro, sem o corte de `texto`.
+  const qrCode = typeof pix.qrCode === 'string' && pix.qrCode.trim() ? pix.qrCode.trim() : null;
   return {
     pedido,
-    estado: ESTADOS[String(c.status)] ?? 'processando',
-    // O BR Code passa de 255 caracteres: lido inteiro, sem o corte de `texto`.
-    qrCode: typeof pix.qrCode === 'string' && pix.qrCode.trim() ? pix.qrCode.trim() : null,
+    // A criação do Pix Automático nem sempre volta com waiting_payment (o pedido aparece assim no painel): com QR, aguarda.
+    estado: ESTADOS[String(c.status)] ?? (qrCode ? 'aguardando' : 'processando'),
+    qrCode,
     expiraEm: data && Number.isFinite(data.getTime()) ? data.toISOString() : null,
   };
 }

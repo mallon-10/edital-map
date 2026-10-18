@@ -168,6 +168,17 @@ async function sondarPagamento(access: string, metodo: string) {
   console.log((await r.text()).slice(0, 2500));
 }
 
+/** Últimos pedidos (status, método, oferta, e-mail mascarado), para conferir testes. */
+async function pedidos(access: string) {
+  const r = (await chamar(access, 'GET', '/orders/?limit=5&ordering=-createdAt')) as Pagina<Record<string, unknown>>;
+  for (const o of r.results ?? []) {
+    const c = (o.customer ?? {}) as { email?: string };
+    const email = (c.email ?? '').replace(/^(.{3}).*(@.*)$/, '$1…$2');
+    const oferta = (o.offer ?? {}) as { id?: string };
+    console.log(`${o.refId} · ${o.status} · ${o.paymentMethod} · oferta ${oferta.id} · ${email} · ${o.createdAt}`);
+  }
+}
+
 const comando = process.argv[2];
 const { access, escopos } = await token();
 console.log(`escopos: ${escopos}`);
@@ -177,6 +188,7 @@ else if (comando === 'ajustar') await ajustar(access, process.argv[3], Number(pr
 else if (comando === 'preco-oferta') await precoOferta(access, process.argv[3], Number(process.argv[4]));
 else if (comando === 'desativar-produto') await desativarProduto(access, process.argv[3]);
 else if (comando === 'sondar-pagamento') await sondarPagamento(access, process.argv[3]);
+else if (comando === 'pedidos') await pedidos(access);
 else if (comando === 'criar-webhook') await criarWebhook(access, process.argv[3], process.argv.slice(4));
 else if (comando === 'gravar-ofertas') {
   const [bm, ba, pm, pa] = process.argv.slice(3);

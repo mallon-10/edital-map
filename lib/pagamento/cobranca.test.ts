@@ -58,6 +58,10 @@ describe('lerCobranca', () => {
     expect(lerCobranca({ id: 'c3', status: 'refused' }).estado).toBe('recusado');
     expect(lerCobranca({ id: 'c4', status: 'pending' }).estado).toBe('processando');
   });
+  it('status desconhecido com QR Code: aguardando; sem QR: processando', () => {
+    expect(lerCobranca({ id: 'p3', status: 'outro', pix: { qrCode: '000201x' } }).estado).toBe('aguardando');
+    expect(lerCobranca({ id: 'p4', status: null }).estado).toBe('processando');
+  });
   it('copia-e-cola longo chega inteiro', () => {
     const longo = '00020126'.padEnd(400, '7');
     expect(lerCobranca({ id: 'p2', status: 'waiting_payment', pix: { qrCode: longo } }).qrCode).toBe(longo);
