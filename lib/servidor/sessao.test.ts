@@ -16,6 +16,7 @@ vi.mock('next/headers', () => ({
   cookies: async () => ({
     getAll: () => [...m.jarro].map(([name, c]) => ({ name, value: c.value })),
     set: (name: string, value: string, options?: Record<string, unknown>) => m.jarro.set(name, { value, options }),
+    delete: (name: string) => m.jarro.delete(name),
   }),
 }));
 vi.mock('@supabase/ssr', () => ({
@@ -25,12 +26,14 @@ vi.mock('@supabase/ssr', () => ({
   },
 }));
 
+const COOKIE = 'sb-omtwaflypzlebjoeubvp-auth-token';
 const { entrarComCodigo, enviarCodigo, sair, usuarioAtual } = await import('./sessao');
 
 beforeEach(() => {
   vi.clearAllMocks();
   m.criados.length = 0;
   m.jarro.clear();
+  m.jarro.set(COOKIE, { value: 'sessao' });
   vi.stubEnv('SUPABASE_URL', 'https://omtwaflypzlebjoeubvp.supabase.co');
   vi.stubEnv('SUPABASE_ANON_KEY', 'sb_publishable_teste');
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'segredo-que-nao-pode-ir');
@@ -46,6 +49,18 @@ describe('usuarioAtual', () => {
     vi.stubEnv('SUPABASE_ANON_KEY', '');
     expect(await usuarioAtual()).toBeNull();
     expect(m.criados).toHaveLength(0);
+  });
+  it('sem cookie sb-* de sessão: null, sem criar cliente nem chamar o Auth', async () => {
+    m.jarro.clear();
+    m.jarro.set('em_interno', { value: '1' });
+    expect(await usuarioAtual()).toBeNull();
+    expect(m.criados).toHaveLength(0);
+    expect(m.getUser).not.toHaveBeenCalled();
+  });
+  it('cookie de sessão em pedaços (.0) também conta', async () => {
+    m.jarro.clear();
+    m.jarro.set(COOKIE + '.0', { value: 'x' });
+    expect(await usuarioAtual()).not.toBeNull();
   });
   it('usa a chave publicável (nunca a service role) e devolve o usuário do auth.getUser()', async () => {
     const u = await usuarioAtual();
@@ -101,6 +116,17 @@ describe('código por e-mail', () => {
     expect(await entrarComCodigo('a@b.co', '123456')).toEqual({ ok: false, erro: { code: 'falha', status: null } });
     m.signOut.mockRejectedValueOnce(new Error('rede'));
     expect(await sair()).toEqual({ ok: false, erro: { code: 'falha', status: null } });
+  });
+  it('sair com o Auth fora do ar: apaga os cookies sb-* à mão (e só eles)', async () => {
+    m.jarro.set(COOKIE + '.1', { value: 'y' });
+    m.jarro.set('em_interno', { value: '1' });
+    m.signOut.mockResolvedValueOnce({ error: { code: 'unexpected_failure', status: 500 } });
+    expect(await sair()).toEqual({ ok: false, erro: { code: 'unexpected_failure', status: 500 } });
+    expect([...m.jarro.keys()]).toEqual(['em_interno']);
+    m.jarro.set(COOKIE, { value: 'z' });
+    m.signOut.mockRejectedValueOnce(new Error('rede'));
+    await sair();
+    expect([...m.jarro.keys()]).toEqual(['em_interno']);
   });
   it('sair encerra só a sessão local', async () => {
     expect(await sair()).toEqual({ ok: true });

@@ -1,9 +1,12 @@
 import { destinoSeguro, lerCodigo, lerEmail, MENSAGENS_CONTA, mensagemErroAuth, statusErroAuth } from '@/lib/conta';
 import { SEM_CACHE } from '@/lib/http';
+import { recusaForaDoSite } from '@/lib/servidor/mesmaOrigem';
 import { entrarComCodigo } from '@/lib/servidor/sessao';
 
 /** Confere o código; certo, a sessão vai nos cookies httpOnly desta resposta e o navegador segue para o destino. */
 export async function POST(request: Request) {
+  const recusa = recusaForaDoSite(request);
+  if (recusa) return recusa;
   let corpo: Record<string, unknown>;
   try {
     corpo = (await request.json()) as Record<string, unknown>;

@@ -2,7 +2,7 @@ import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
-import { OPCOES_COOKIE_SESSAO, type ErroAuth } from '../conta';
+import { OPCOES_COOKIE_SESSAO, temCookieDeSessao, type ErroAuth } from '../conta';
 
 declare const MARCA_SESSAO: unique symbol;
 /**
@@ -20,8 +20,9 @@ function envAuth(): Env | null {
   return url && chave ? { url, chave } : null;
 }
 
-async function clienteAuth(env: Env) {
-  const jarro = await cookies();
+type Jarro = Awaited<ReturnType<typeof cookies>>;
+
+function clienteAuth(env: Env, jarro: Jarro) {
   return createServerClient(env.url, env.chave, {
     cookies: {
       getAll: () => jarro.getAll(),
@@ -56,7 +57,10 @@ export const usuarioAtual = cache(async function usuarioAtual(): Promise<Usuario
   const env = envAuth();
   if (!env) return null;
   try {
-    const { data, error } = await (await clienteAuth(env)).auth.getUser();
+    const jarro = await cookies();
+    // Sem cookie sb-* não há sessão: nem cria o cliente nem pergunta ao Auth (visitante anônimo, robô).
+    if (!temCookieDeSessao(jarro.getAll().map((c) => c.name))) return null;
+    const { data, error } = await clienteAuth(env, jarro).auth.getUser();
     if (error) return null;
     return paraUsuario(data.user);
   } catch (erro) {
@@ -73,7 +77,7 @@ export async function enviarCodigo(email: string): Promise<{ ok: true } | { ok: 
     return { ok: false, erro: SEM_CHAVE };
   }
   try {
-    const { error } = await (await clienteAuth(env)).auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    const { error } = await clienteAuth(env, await cookies()).auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
     return error ? { ok: false, erro: erroDe(error) } : { ok: true };
   } catch (erro) {
     console.error('enviar código:', erro);
@@ -89,7 +93,7 @@ export async function entrarComCodigo(
   const env = envAuth();
   if (!env) return { ok: false, erro: SEM_CHAVE };
   try {
-    const { data, error } = await (await clienteAuth(env)).auth.verifyOtp({ email, token: codigo, type: 'email' });
+    const { data, error } = await clienteAuth(env, await cookies()).auth.verifyOtp({ email, token: codigo, type: 'email' });
     const usuario = paraUsuario(data?.user);
     if (error || !usuario) return { ok: false, erro: erroDe(error) };
     return { ok: true, usuario };
@@ -99,15 +103,29 @@ export async function entrarComCodigo(
   }
 }
 
-/** Encerra só esta sessão (neste navegador). */
+/** Apaga à mão os cookies sb-* da sessão (quando o signOut do Auth falha, o visitante sai do mesmo jeito). */
+function apagarCookiesDeSessao(jarro: Jarro): void {
+  try {
+    for (const { name } of jarro.getAll()) if (temCookieDeSessao([name])) jarro.delete(name);
+  } catch (erro) {
+    console.error('apagar cookies da sessão:', erro);
+  }
+}
+
+/** Encerra só esta sessão (neste navegador). Se o Auth falhar, os cookies sb-* saem mesmo assim. */
 export async function sair(): Promise<{ ok: true } | { ok: false; erro: ErroAuth }> {
   const env = envAuth();
   if (!env) return { ok: false, erro: SEM_CHAVE };
+  let jarro: Jarro | undefined;
   try {
-    const { error } = await (await clienteAuth(env)).auth.signOut({ scope: 'local' });
-    return error ? { ok: false, erro: erroDe(error) } : { ok: true };
+    jarro = await cookies();
+    const { error } = await clienteAuth(env, jarro).auth.signOut({ scope: 'local' });
+    if (!error) return { ok: true };
+    apagarCookiesDeSessao(jarro);
+    return { ok: false, erro: erroDe(error) };
   } catch (erro) {
     console.error('sair:', erro);
+    if (jarro) apagarCookiesDeSessao(jarro);
     return { ok: false, erro: FALHA };
   }
 }

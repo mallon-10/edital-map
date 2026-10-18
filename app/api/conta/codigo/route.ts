@@ -1,9 +1,12 @@
 import { lerEmail, MENSAGENS_CONTA, mensagemErroAuth, statusErroAuth } from '@/lib/conta';
 import { SEM_CACHE } from '@/lib/http';
+import { recusaForaDoSite } from '@/lib/servidor/mesmaOrigem';
 import { enviarCodigo } from '@/lib/servidor/sessao';
 
 /** Pede ao Supabase Auth o código de 6 dígitos (e-mail pelo Resend). Primeiro acesso cria a conta. */
 export async function POST(request: Request) {
+  const recusa = recusaForaDoSite(request);
+  if (recusa) return recusa;
   let corpo: unknown;
   try {
     corpo = await request.json();

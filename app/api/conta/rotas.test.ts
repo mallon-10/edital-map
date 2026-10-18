@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MENSAGENS_CONTA } from '@/lib/conta';
 
+vi.mock('server-only', () => ({}));
+
 const m = vi.hoisted(() => ({
   usuario: null as null | { id: string; email: string },
   enviarCodigo: vi.fn(),
@@ -19,10 +21,10 @@ const codigo = await import('./codigo/route');
 const entrar = await import('./entrar/route');
 const sairRota = await import('./sair/route');
 
-const post = (corpo: unknown) =>
+const post = (corpo: unknown, cabecalhos: Record<string, string> = {}) =>
   new Request('http://localhost/api/conta/x', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'sec-fetch-site': 'same-origin', ...cabecalhos },
     body: typeof corpo === 'string' ? corpo : JSON.stringify(corpo),
   });
 
@@ -95,8 +97,39 @@ describe('POST /api/conta/entrar', () => {
 
 describe('POST /api/conta/sair', () => {
   it('encerra a sessão: 204', async () => {
-    const r = await sairRota.POST();
+    const r = await sairRota.POST(post({}));
     expect(r.status).toBe(204);
     expect(m.sair).toHaveBeenCalledTimes(1);
   });
+});
+
+describe('CSRF: só JSON do próprio site', () => {
+  const rotas = [
+    ['codigo', () => codigo.POST, { email: 'a@b.co' }, () => m.enviarCodigo],
+    ['entrar', () => entrar.POST, { email: 'a@b.co', codigo: '123456' }, () => m.entrarComCodigo],
+    ['sair', () => sairRota.POST, {}, () => m.sair],
+  ] as const;
+  for (const [nome, rota, corpo, chamada] of rotas) {
+    it(`${nome}: formulário text/plain de outro site → 403 sem chamar o Supabase`, async () => {
+      const r = await rota()(post(JSON.stringify(corpo), { 'content-type': 'text/plain', 'sec-fetch-site': 'cross-site' }));
+      expect(r.status).toBe(403);
+      expect(chamada()).not.toHaveBeenCalled();
+    });
+    it(`${nome}: JSON com Sec-Fetch-Site cross-site → 403`, async () => {
+      expect((await rota()(post(corpo, { 'sec-fetch-site': 'cross-site' }))).status).toBe(403);
+      expect(chamada()).not.toHaveBeenCalled();
+    });
+    it(`${nome}: text/plain mesmo do próprio site → 403`, async () => {
+      expect((await rota()(post(JSON.stringify(corpo), { 'content-type': 'text/plain' }))).status).toBe(403);
+    });
+    it(`${nome}: JSON do próprio site (Origin igual, sem Sec-Fetch-Site) passa`, async () => {
+      const req = new Request('http://localhost/api/conta/x', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: 'http://localhost' },
+        body: JSON.stringify(corpo),
+      });
+      expect((await rota()(req)).status).toBeLessThan(300);
+      expect(chamada()).toHaveBeenCalledTimes(1);
+    });
+  }
 });
