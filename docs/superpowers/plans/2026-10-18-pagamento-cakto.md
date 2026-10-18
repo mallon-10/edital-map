@@ -340,3 +340,45 @@ Regras (todas só com o interruptor ligado; desligado, nada muda):
 - [ ] **Step 3:** `POST /public_api/webhook/event_test/75009/?event_id=purchase_approved` (comando novo `testar-webhook` em scripts/cakto.ts) → a entrega aparece como 200 no histórico (o payload de teste traz oferta desconhecida: resposta `ignorado`, nada muda) — confere endereço e assinatura.
 - [ ] **Step 4:** Dono: URL de volta nos 2 produtos no painel; abrir `/sobre?interno=<segredo>` nos navegadores dele (passar o endereço por mensagem, não em arquivo); compra real de R$ 49,90 com Pix num navegador comum → plano liga, `/obrigado` mostra a chave → chave em outro navegador → reembolso pelo painel → plano cai.
 - [ ] **Step 5:** CLAUDE.md (regras de pagamento, interruptor, dono, comandos `npx tsx scripts/cakto.ts …`), commit, push, avisar a Fase 3.
+
+---
+
+## Revisão 2 (18/10/2026): checkout próprio, só Pro, Pro pela conta
+
+Spec revisada em docs/superpowers/specs/2026-10-18-pagamento-cakto-design.md (revisão 2). As Tasks 1–10 acima estão feitas no branch `pagamento`; estas substituem a Task 11 e ajustam o que mudou. Mesmas regras globais (TDD, commits, segredos).
+
+### Task R1: Só Pro (configuração, preços, tabela, limites)
+- `lib/pagamento/config.ts`: só `CAKTO_OFERTA_PRO_MENSAL`, `CAKTO_OFERTA_PRO_ANUAL`, `CAKTO_WEBHOOK_SECRET`, `CAKTO_CLIENT_ID`, `CAKTO_CLIENT_SECRET`; `ofertas: Record<Periodo, string>`; `planoDaOferta` devolve `{ plano: 'pro', periodo }`.
+- `lib/planos.ts`: Pro `centavosMes: 3790`, `centavosAno: 34990` (anual deixa de ser 10× o mensal; `precoDoPlano` usa o preço anual explícito e mostra o equivalente mensal); `PLANOS` só Grátis e Pro; `LINHAS_PLANOS` sem a coluna Basic, com a linha "Resumo semanal por e-mail" (Pro, em breve) e o "Abrir edital oficial" só no Pro.
+- `lib/limites.ts`: `LIMITES_PLANO` sem Basic na tela (o tipo `Plano` continua aceitando `'basic'` como valor antigo, tratado como Pro? não: como grátis não; tratado como Pro nunca acontece porque nada novo o cria); mensagens e cartões só com Pro.
+- Testes de config, planos e limites ajustados primeiro.
+
+### Task R2: Cobrança direta (puro + cliente da API)
+- `lib/pagamento/comprador.ts`: `validarComprador({ nome, email, celular, documento })` → `{ ok, comprador }` ou erros por campo (CPF/CNPJ com dígito verificador, celular brasileiro com DDD, e-mail).
+- `lib/pagamento/cobranca.ts`: `corpoPix(oferta, comprador, codigo)` e `corpoCartao(oferta, comprador, codigo, cartao)` (campos da Cakto: `paymentMethod`, `customer {name,email,phone,docType,docNumber,fingerprint}`, `items:[{offerId}]` / `offerId`, `cardToken`, `threeDSecure`, `antifraud_profiling_attempt_reference`, `metadata:{codigo}`, `pixExpiresIn: 600`); `lerCobranca(json)` → `{ pedido, status, qrCode? , erro? }`.
+- `lib/servidor/caktoApi.ts`: `tokenDaApi()` com cache em memória até 5 min antes de expirar; `criarCobranca(corpo, idempotencia)` → `POST /public_api/payments/` com `X-Idempotency-Key`; erro 400 da Cakto devolvido com a mensagem por campo (para logar e mostrar texto genérico).
+- Testes com `fetch` simulado.
+
+### Task R3: `POST /api/assinar` e espera
+- Rota: `recusaForaDoSite`; 10 por hora por IP (`recursoDentroDoLimite` com `'assinou_tentativa'`); `validarComprador`; `criarCheckout(ctx, 'pro', periodo)`; Pix → `{ codigo, qrCode, expiraEm }`; cartão → `{ codigo, status: 'aprovado' | 'recusado' | 'processando', erro? }`.
+- A espera reaproveita `/api/checkout/estado`. `/api/checkout` (redirecionamento) passa a mandar para `/assinar`.
+
+### Task R4: Página `/assinar`
+- Servidor: interruptor desligado → redireciona a /planos; já Pro → /assinatura.
+- Cliente: alternador de período, campos do comprador, abas Pix Automático | Cartão. Pix: QR desenhado no navegador (pacote `qrcode`) + copia-e-cola + espera. Cartão: carrega o SDK (`https://cakto-sdk.pages.dev/cakto-sdk.min.js`, `NEXT_PUBLIC_CAKTO_CLIENT_ID`), CEP pelo ViaCEP, `createToken` → `authenticate3DS` → `completeAntifraudProfile` → `/api/assinar`.
+- Capturas computador e celular.
+
+### Task R5: Webhook por `metadata.codigo`
+- `lerPedidos`: `callback` = `data.metadata.codigo` ou `data.callback`. Teste.
+
+### Task R6: Pro pela conta; sai a chave de acesso
+- `planoAtual(ctx)`: com cookie de sessão, `usuarioAtual()` e assinatura válida pelo e-mail (`assinaturaDoEmail`). Teste com o supabase falso.
+- Sai: `/api/assinatura/ativar`, `FormChave`, `ChaveAcesso`, `ativarChave`, `lerPedidoChave`, evento `ativou_chave` (fica no enum de eventos: valor antigo inofensivo? retirar, ainda não publicado).
+- `/obrigado`: "Pro ativo" + "Ativar minha conta" (`/entrar?email=…&voltar=/radar/comecar`). `/assinatura`: plano, validade, e-mail da compra, instrução de entrar com ele. `/entrar` aceita `?email=` para preencher o campo.
+
+### Task R7: Telas só com Pro
+- `AcaoDoPlano`, `CartaoLimite` (só "Ver o Pro"), `BotaoEditalOficial` ("Abrir edital oficial · Pro", leva a /assinar), `Relacionados` ("no Pro"), `FaixaPlano` (sai a faixa do Basic), `planoDoLimite`, `EsperaPagamento`. Conferência local ponta a ponta (script e2e adaptado) e capturas.
+
+### Task R8: Publicar e conferir
+- Variáveis na Vercel (lidas do .env, sem imprimir): `CAKTO_CLIENT_ID`, `CAKTO_CLIENT_SECRET`, `NEXT_PUBLIC_CAKTO_CLIENT_ID`, `CAKTO_WEBHOOK_SECRET`, `CAKTO_OFERTA_PRO_MENSAL`, `CAKTO_OFERTA_PRO_ANUAL`, `INTERNO_SEGREDO`; tirar `CAKTO_OFERTA_BASIC_*` do .env.
+- Avisar a Fase 3/4, juntar na main, `vercel deploy --prod` (ok do dono), evento de teste do webhook, compra real com Pix Automático, CLAUDE.md.
