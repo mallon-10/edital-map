@@ -17,6 +17,8 @@ export const MENSAGENS_CONTA = {
   muitas: 'Muitas tentativas. Espere alguns minutos e tente de novo.',
   falha: 'Não foi possível concluir agora. Tente de novo em instantes.',
   entrar: 'Entre para continuar.',
+  /** Lista da conta (salvos, alertas) fora do ar: a página fica, com este aviso no lugar da lista. */
+  carregar: 'Não deu para carregar agora. Tente de novo em instantes.',
 } as const;
 
 /** Erro do Supabase Auth reduzido ao que importa (AuthError.code e .status). */

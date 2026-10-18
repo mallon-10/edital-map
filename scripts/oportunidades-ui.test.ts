@@ -75,7 +75,7 @@ describe('Minhas Oportunidades', () => {
   it('grátis sem salvos vê o convite ao Pro no lugar da lista; plano incerto pede para tentar de novo', () => {
     expect(pagina).toContain('<CartaoRecursoPlano titulo={MENSAGENS_LIMITE_CONTA.salvosPlano} texto={MENSAGENS_LIMITE_CONTA.salvosConvite} />');
     expect(pagina).toContain('planoIncerto(plano)');
-    expect(pagina).toContain('{gratis && lista.length === 0 ? null : (');
+    expect(pagina).toContain(') : gratis && lista.length === 0 ? null : (');
     expect(pagina).toContain('MENSAGENS_LIMITE_CONTA.planoIndisponivel');
   });
   it('linha: status, observação que salva ao sair do campo, abrir e remover com confirmação', () => {

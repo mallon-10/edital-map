@@ -4,6 +4,22 @@ import { describe, expect, it } from 'vitest';
 const ler = (caminho: string) => readFileSync(new URL(`../${caminho}`, import.meta.url), 'utf8');
 const existe = (caminho: string) => existsSync(new URL(`../${caminho}`, import.meta.url));
 
+describe('lista da conta fora do ar não derruba a página (como o /radar)', () => {
+  for (const [arquivo, funcao] of [
+    ['app/alertas/page.tsx', 'alertasDaConta(usuario)'],
+    ['app/oportunidades/page.tsx', 'salvosDaConta(usuario)'],
+  ] as const) {
+    it(arquivo, () => {
+      const pagina = ler(arquivo);
+      // a leitura tem catch próprio (sem ele, o erro iria para o error.tsx e a página inteira sumiria)
+      expect(pagina, arquivo).toMatch(new RegExp(`${funcao.replace(/[()]/g, '\\$&')}\\.catch\\(`));
+      // aviso curto em role="alert", com o título e os links da página no lugar
+      expect(pagina, arquivo).toMatch(/role="alert"[^>]*>\s*\{MENSAGENS_CONTA\.carregar\}/);
+      expect(pagina, arquivo).toContain('<h1');
+    });
+  }
+});
+
 describe('/alertas com conta', () => {
   const pagina = ler('app/alertas/page.tsx');
   it('sem conta: convite para entrar (o formulário antigo saiu)', () => {

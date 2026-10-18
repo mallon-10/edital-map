@@ -6,6 +6,7 @@ import { ItemAlerta } from '@/components/alertas/ItemAlerta';
 import { ResumoSemanal } from '@/components/alertas/ResumoSemanal';
 import { CartaoRecursoPlano } from '@/components/conta/CartaoRecursoPlano';
 import { AVISO_ENVIO_INDISPONIVEL, envioIndisponivel, textoUltimoEnvio } from '@/lib/alertas/regras';
+import { MENSAGENS_CONTA } from '@/lib/conta';
 import { avisoPlanoNavegador, bloqueioAlerta, MENSAGENS_LIMITE_CONTA, planoIncerto } from '@/lib/limitesConta';
 import { resumoDoRadar } from '@/lib/radar';
 import { alertasDaConta } from '@/lib/servidor/alertas';
@@ -26,7 +27,8 @@ const SECUNDARIO = 'inline-flex h-11 items-center rounded-sm border border-line-
 /**
  * Alertas da conta (Fase 4, §3): lista com último envio, criar (também a partir do Meu Radar), editar, pausar/retomar,
  * excluir; e o resumo semanal do Pro. Sem conta: convite para entrar (é o que o Google vê). Pedidos antigos por e-mail
- * (pedidos_alerta) ficam guardados no banco para um convite futuro.
+ * (pedidos_alerta) ficam guardados no banco para um convite futuro. Alertas fora do ar: o título, os botões e o resumo
+ * semanal ficam, e um aviso curto entra no lugar da lista (sem error.tsx; o teto de 5 continua garantido na API e no banco).
  */
 export default async function PaginaAlertas() {
   await connection();
@@ -55,12 +57,17 @@ export default async function PaginaAlertas() {
   }
 
   const ctx = await contextoDaPagina();
-  const [alertas, plano, radar, resumoLigado] = await Promise.all([
-    alertasDaConta(usuario),
+  const [lidos, plano, radar, resumoLigado] = await Promise.all([
+    alertasDaConta(usuario).catch((erro: unknown) => {
+      console.error('alertas da conta:', erro);
+      return null;
+    }),
     planoDaConta(usuario, ctx),
     lerRadar(usuario),
     resumoSemanalLigado(usuario),
   ]);
+  const falhou = lidos === null;
+  const alertas = lidos ?? [];
   const cidades = await municipiosPorIbge([...new Set(alertas.flatMap((a) => a.municipios))]);
   const bloqueio = bloqueioAlerta(plano.plano, alertas.length);
   const aviso = avisoPlanoNavegador(plano);
@@ -112,7 +119,11 @@ export default async function PaginaAlertas() {
             ) : null}
           </div>
         )}
-        {alertas.length === 0 ? (
+        {falhou ? (
+          <p role="alert" className="rounded-sm bg-pin-soft px-3 py-2 text-[14px] font-semibold text-pin-strong">
+            {MENSAGENS_CONTA.carregar}
+          </p>
+        ) : alertas.length === 0 ? (
           <p className="text-[15px] text-ink-muted">Você ainda não tem alertas.</p>
         ) : (
           <section aria-label="Seus alertas" className="flex flex-col gap-3">

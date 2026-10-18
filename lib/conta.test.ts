@@ -77,6 +77,7 @@ describe('mensagens de erro do Supabase Auth', () => {
       muitas: 'Muitas tentativas. Espere alguns minutos e tente de novo.',
       falha: 'Não foi possível concluir agora. Tente de novo em instantes.',
       entrar: 'Entre para continuar.',
+      carregar: 'Não deu para carregar agora. Tente de novo em instantes.',
     });
   });
 });

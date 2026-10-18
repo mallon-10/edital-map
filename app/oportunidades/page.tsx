@@ -5,6 +5,7 @@ import { connection } from 'next/server';
 import { Cabecalho } from '@/components/Cabecalho';
 import { CartaoRecursoPlano } from '@/components/conta/CartaoRecursoPlano';
 import { LinhaOportunidade } from '@/components/oportunidades/LinhaOportunidade';
+import { MENSAGENS_CONTA } from '@/lib/conta';
 import { numero } from '@/lib/formato';
 import { avisoPlanoNavegador, LIMITES_CONTA, MENSAGENS_LIMITE_CONTA, planoIncerto } from '@/lib/limitesConta';
 import { contarPorStatus, FILTROS_STATUS, lerNavegacaoSalvos, ROTULO_FILTRO, salvosDaAba, TEXTO_STATUS_PESSOAL, urlDosSalvos } from '@/lib/salvos';
@@ -26,13 +27,22 @@ const ABA = 'inline-flex h-11 items-center gap-1.5 rounded-sm px-3 text-sm font-
  * salvou). "Todos" não mostra os descartados (só a aba deles). Os status são da pessoa, não a situação oficial.
  * Grátis sem salvos vê só o convite ao Pro (no lugar da lista); grátis com salvos antigos (Pro vencido) vê o convite e
  * a lista, e ainda pode remover. Plano não confirmado (consulta falhou): pede para tentar de novo em vez do convite.
+ * Salvos fora do ar: o título e os avisos ficam, e um aviso curto entra no lugar das abas e da lista (sem error.tsx).
  */
 export default async function MinhasOportunidades({ searchParams }: Props) {
   await connection();
   const usuario = await usuarioAtual();
   if (!usuario) redirect('/entrar?voltar=/oportunidades');
   const nav = lerNavegacaoSalvos(paraUrlSearchParams(await searchParams));
-  const [lista, plano] = await Promise.all([salvosDaConta(usuario), planoDaConta(usuario, await contextoDaPagina())]);
+  const [lida, plano] = await Promise.all([
+    salvosDaConta(usuario).catch((erro: unknown) => {
+      console.error('salvos da conta:', erro);
+      return null;
+    }),
+    planoDaConta(usuario, await contextoDaPagina()),
+  ]);
+  const falhou = lida === null;
+  const lista = lida ?? [];
   const contagem = contarPorStatus(lista.map((s) => s.status));
   const visiveis = salvosDaAba(lista, nav);
   const agora = new Date().toISOString();
@@ -61,7 +71,11 @@ export default async function MinhasOportunidades({ searchParams }: Props) {
         ) : gratis ? (
           <CartaoRecursoPlano titulo={MENSAGENS_LIMITE_CONTA.salvosPlano} texto={MENSAGENS_LIMITE_CONTA.salvosConvite} />
         ) : null}
-        {gratis && lista.length === 0 ? null : (
+        {falhou ? (
+          <p role="alert" className="rounded-sm bg-pin-soft px-3 py-2 text-[14px] font-semibold text-pin-strong">
+            {MENSAGENS_CONTA.carregar}
+          </p>
+        ) : gratis && lista.length === 0 ? null : (
           <>
             <nav aria-label="Filtrar por status" className="flex flex-wrap gap-1 border-b border-line pb-2">
               {FILTROS_STATUS.map((f) => (
