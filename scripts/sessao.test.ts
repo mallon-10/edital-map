@@ -17,3 +17,14 @@ describe('proxy e sessão', () => {
     expect(ler('.env.example')).toMatch(/^SUPABASE_ANON_KEY=$/m);
   });
 });
+
+describe('modelo do e-mail do código', () => {
+  const html = ler('supabase/templates/codigo.html');
+  it('mostra o código, em português, sem link de login', () => {
+    expect(html).toContain('{{ .Token }}');
+    expect(html).toContain('lang="pt-BR"');
+    expect(html).toContain('Use este código para entrar no Edital Map');
+    expect(html).not.toContain('ConfirmationURL');
+    expect(html).not.toContain('TokenHash');
+  });
+});

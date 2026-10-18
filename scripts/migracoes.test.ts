@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { TIPOS_EVENTO, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';
+import { TIPOS_EVENTO, TIPOS_EVENTO_CONTA, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';
 import { ORDENS } from '../lib/filtros';
 import { PESOS } from '../lib/relevancia/pontuacao';
 import { SITUACOES_FORA_DAS_ABERTAS } from '../lib/situacao';
@@ -270,6 +270,125 @@ describe('migração 0010 (período da lista de espera)', () => {
 });
 
 /** Do `inicio` (ex.: "create function public.x(") até o `$$;` que fecha o corpo, com fim de linha \n. */
+describe('migração 0012 (conta e Meu Radar)', () => {
+  const sql = ler('supabase/migrations/0012_conta_radar.sql').replace(/\r\n/g, '\n');
+  const corpo = (inicio: string) => {
+    const c = corpoDe(sql, inicio);
+    expect(c, inicio).not.toBe('');
+    return c;
+  };
+  const NOVOS_ABERTAS = 'p_ibges text[] default null, p_valor_max numeric default null, p_so_me_epp boolean default null';
+
+  it('uma transação curta e o PostgREST relê as funções no fim', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql.trimEnd().endsWith("notify pgrst, 'reload schema';")).toBe(true);
+  });
+  it('perfil: planos gratis, basic e pro e a última visita ao radar', () => {
+    expect(sql).toContain('alter table public.perfis drop constraint perfis_plano_check;');
+    expect(sql).toContain("add constraint perfis_plano_check check (plano in ('gratis', 'basic', 'pro'))");
+    expect(sql).toContain('add column ultima_visita_radar timestamptz');
+  });
+  it('radar: colunas novas, checagens e um radar por conta', () => {
+    for (const c of [
+      "add column municipios text[] not null default '{}'",
+      'add column valor_max numeric(16,2)',
+      'add column so_me_epp boolean not null default false',
+      'add column atualizado_em timestamptz not null default now()',
+      'check (cardinality(termos) between 1 and 10)',
+      'check (cardinality(termos_excluir) <= 10)',
+      'check (cardinality(municipios) <= 50)',
+      'check (cardinality(ufs) = 0 or cardinality(municipios) = 0)',
+      'check (valor_min is null or valor_max is null or valor_min <= valor_max)',
+      'create unique index radares_user_id_key on public.radares (user_id);',
+    ]) {
+      expect(sql).toContain(c);
+    }
+  });
+  it('dados da conta só pelo servidor: sem políticas, RLS ligado, sem acesso de anon/authenticated', () => {
+    for (const p of ['"perfil próprio" on public.perfis', '"radares próprios" on public.radares', '"salvos próprios" on public.salvos']) {
+      expect(sql).toContain(`drop policy ${p};`);
+    }
+    expect(sql).not.toMatch(/create policy/i);
+    for (const t of ['perfis', 'radares', 'salvos', 'alertas_enviados']) {
+      expect(sql).toContain(`alter table public.${t} enable row level security;`);
+      expect(sql).toContain(`revoke all on table public.${t} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant select, insert, update, delete on table public.${t} to service_role;`);
+    }
+  });
+  it('as assinaturas antigas saem antes das novas', () => {
+    const antigas = [
+      'drop function public.buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int, text[], text[], text[], text);',
+      'drop function public.abertas_unicas(tsquery, tsquery, text[], numeric, int[], text, text, int, int);',
+    ];
+    for (const d of antigas) {
+      expect(sql).toContain(d);
+      expect(sql.indexOf(d)).toBeLessThan(sql.indexOf('create function public.abertas_unicas('));
+    }
+  });
+  it('abertas_unicas = corpo da 0011 + municípios, valor máximo e ME/EPP', () => {
+    const c12 = corpo('create function public.abertas_unicas(');
+    const c11 = corpoDe(ler('supabase/migrations/0011_busca_relevancia.sql'), 'create function public.abertas_unicas(');
+    const filtros = [
+      '    and (p_ibges is null or cardinality(p_ibges) = 0 or c.codigo_ibge = any(p_ibges))\n',
+      '    and (p_valor_max is null or nullif(c.valor_estimado, 0) <= p_valor_max)\n',
+      '    and (p_so_me_epp is not true or public.exclusivo_me_epp(c.itens_resumo))\n',
+    ];
+    for (const f of filtros) expect(c12).toContain(f);
+    let semNovos = c12.replace(`p_dias int default null,\n                                      ${NOVOS_ABERTAS})`, 'p_dias int default null)');
+    for (const f of filtros) semNovos = semNovos.replace(f, '');
+    expect(semNovos).toBe(c11);
+  });
+  it('buscar_editais = corpo da 0011 com os filtros novos nas duas chamadas', () => {
+    const c12 = corpo('create function public.buscar_editais(');
+    const c11 = corpoDe(ler('supabase/migrations/0011_busca_relevancia.sql'), 'create function public.buscar_editais(');
+    expect(c12.split('p_raio_km, p_dias, p_ibges, p_valor_max, p_so_me_epp)').length - 1).toBe(2);
+    const semNovos = c12
+      .replace(`p_ordem text default null,\n  ${NOVOS_ABERTAS})`, 'p_ordem text default null)')
+      .replaceAll('p_raio_km, p_dias, p_ibges, p_valor_max, p_so_me_epp)', 'p_raio_km, p_dias)');
+    expect(semNovos).toBe(c11);
+  });
+  it('ME/EPP com a regra da etiqueta do edital: todos os itens exclusivos', () => {
+    const c = corpo('create function public.exclusivo_me_epp(');
+    expect(c).toContain("coalesce((p_resumo ->> 'total')::int, 0) > 0");
+    expect(c).toContain("coalesce((p_resumo ->> 'exclusivos')::int, 0) = (p_resumo ->> 'total')::int");
+  });
+  it('contagens do radar sobre a mesma abertas_unicas; prazo próximo = mesma conta de p_dias 7', () => {
+    const c = corpo('create function public.radar_contagens(');
+    expect(c).toContain('public.abertas_unicas(t.tq, t.tq_excluir, p_ufs, p_valor_min, p_modalidades, null, null, null, null, p_ibges, p_valor_max, p_so_me_epp)');
+    expect(c).toContain('count(*) filter (where p_desde is not null and u.publicada_em > p_desde)');
+    expect(c).toContain("(date_trunc('day', now() at time zone 'America/Sao_Paulo') + make_interval(days => 7 + 1)) at time zone 'America/Sao_Paulo'");
+    expect(corpoDe(ler('supabase/migrations/0011_busca_relevancia.sql'), 'create function public.abertas_unicas(')).toContain(
+      "(date_trunc('day', now() at time zone 'America/Sao_Paulo') + make_interval(days => p_dias + 1)) at time zone 'America/Sao_Paulo'",
+    );
+  });
+  it('busca de município sem acento, por prefixo primeiro, até 20', () => {
+    const c = corpo('create function public.buscar_municipios(');
+    expect(c).toContain("public.sem_acento(m.nome) ilike public.sem_acento(q) || '%'");
+    expect(c).toContain('limit least(greatest(coalesce(p_limite, 10), 1), 20)');
+  });
+  it('eventos: a restrição aceita os de antes e os da conta', () => {
+    const tipos = (texto: string) => {
+      const trecho = texto.slice(texto.indexOf('add constraint eventos_tipo_check'));
+      return [...trecho.slice(0, trecho.indexOf(';')).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    };
+    const antes = tipos(ler('supabase/migrations/0009_limites_lista_espera.sql'));
+    const depois = tipos(sql);
+    for (const t of [...antes, ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR, ...TIPOS_EVENTO_CONTA]) expect(depois).toContain(t);
+  });
+  it('só o servidor executa (cada assinatura)', () => {
+    for (const f of [
+      'exclusivo_me_epp(jsonb)',
+      'abertas_unicas(tsquery, tsquery, text[], numeric, int[], text, text, int, int, text[], numeric, boolean)',
+      'buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int, text[], text[], text[], text, text[], numeric, boolean)',
+      'radar_contagens(text[], text[], text[], text[], text[], numeric, numeric, int[], boolean, timestamptz)',
+      'buscar_municipios(text, int)',
+    ]) {
+      expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
+    }
+  });
+});
+
 function corpoDe(texto: string, inicio: string): string {
   const t = texto.replace(/\r\n/g, '\n');
   const i = t.indexOf(inicio);

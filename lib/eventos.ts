@@ -3,6 +3,9 @@ export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 /** Eventos gravados só pelo servidor (o navegador não manda): pedido de alerta e limite do grátis atingido. */
 export const TIPOS_EVENTO_SERVIDOR = ['pediu_alerta', 'limite_atingido'] as const;
 export type TipoEventoServidor = (typeof TIPOS_EVENTO_SERVIDOR)[number];
+/** Eventos da conta (Evolução, Fase 3), gravados só pelo servidor, sem e-mail no detalhe. */
+export const TIPOS_EVENTO_CONTA = ['conta_entrou', 'onboarding_iniciado', 'onboarding_concluido', 'radar_visto'] as const;
+export type TipoEventoConta = (typeof TIPOS_EVENTO_CONTA)[number];
 
 export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia', 'plano_pro', 'filtros_pro', 'plano_basic'] as const;
 export type Recurso = (typeof RECURSOS)[number];
