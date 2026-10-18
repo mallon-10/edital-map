@@ -64,7 +64,7 @@ O termo da busca é um termo do próprio grupo: a busca expande para os relacion
 - `<title>` e `<h1>`: "Licitações de EPI abertas em São Paulo" / "Licitações de EPI abertas no Brasil" / "Licitações abertas em São Paulo". Descrição com o total: "128 editais de EPI abertos em São Paulo, do PNCP, atualizados a cada 3 horas…".
 - Faixa de cobertura que já existe (fonte PNCP, modalidades, atualizado em).
 - Texto curto fixo por molde (2 a 3 frases, sem IA), com o total e a UF.
-- Os 20 editais abertos de menor prazo (`buscarEditais` com `ordem` por prazo, `pagina` 1), no mesmo cartão da lista, com link para o edital (`prefetch={false}`).
+- Os 20 primeiros editais abertos (`buscarEditais`, `pagina` 1): por relevância nas páginas com assunto, por prazo nas de UF e Brasil, no mesmo cartão da lista, com link para o edital (`prefetch={false}`).
 - Botão "Ver todos no mapa" → `/?q=<termo>&uf=<UF>` (urlDaBusca), que conta como busca normal quando o visitante chega lá.
 - Links vizinhos: nas páginas de assunto, as 27 UFs daquele assunto; nas de UF, os 14 assuntos naquela UF; nas de assunto × UF, o mesmo assunto no Brasil e a UF com todos os assuntos.
 - Caminho (Início / Licitações / EPI / SP) com `BreadcrumbList` em JSON-LD.

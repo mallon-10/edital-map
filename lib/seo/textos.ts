@@ -3,7 +3,8 @@ import { data, moeda, numero } from '../formato';
 import { modalidadeCurta } from '../participacao';
 import { nomeProprio } from '../texto';
 import type { Edital } from '../tipos';
-import { type Assunto, naUf } from './assuntos';
+import { UFS_BRASIL } from '../eventos';
+import { ASSUNTOS, type Assunto, naUf } from './assuntos';
 import { url } from './site';
 
 /** Uma página de /licitacoes: Brasil (nada), só UF, só assunto ou assunto na UF. */
@@ -38,7 +39,8 @@ export function descricaoDaPagina(p: Pagina, total: number): string {
 export function introDaPagina(p: Pagina, total: number): string {
   const busca = p.assunto ? ` A busca inclui termos parecidos com "${p.assunto.termo}", no objeto e nos itens do edital.` : '';
   if (total === 0) return `${contagem(p, 0)}. Os editais chegam do PNCP (Portal Nacional de Contratações Públicas) a cada 3 horas.${busca}`;
-  return `${contagem(p, total)} no PNCP (Portal Nacional de Contratações Públicas), com prazo para enviar proposta. A lista é atualizada a cada 3 horas e mostra primeiro os que encerram antes.${busca}`;
+  const ordem = p.assunto ? `os que mais falam de ${p.assunto.nome}` : 'os que encerram antes';
+  return `${contagem(p, total)} no PNCP (Portal Nacional de Contratações Públicas), com prazo para enviar proposta. A lista é atualizada a cada 3 horas e mostra primeiro ${ordem}.${busca}`;
 }
 
 /** Link "Ver todos no mapa": a mesma busca na página inicial (conta como busca quando a pessoa chega lá). */
@@ -63,6 +65,27 @@ export function jsonLdMigalhas(itens: Array<{ nome: string; caminho: string }>):
     '@type': 'BreadcrumbList',
     itemListElement: itens.map((i, n) => ({ '@type': 'ListItem', position: n + 1, name: i.nome, item: url(i.caminho) })),
   };
+}
+
+const ufsPorNome = () => [...UFS_BRASIL].sort((a, b) => NOMES_UF[a].localeCompare(NOMES_UF[b], 'pt-BR'));
+
+/** Links da página para as vizinhas. `porUf` (contagem do assunto por UF) esconde as UFs vazias; null = mostra todas. */
+export function vizinhos(p: Pagina, porUf: Record<string, number> | null): Array<{ nome: string; caminho: string; total: number | null }> {
+  const assuntos = (uf: string | null) =>
+    ASSUNTOS.map((a) => ({ nome: maiuscula(a.nome), caminho: caminhoDaPagina({ assunto: a, uf }), total: null }));
+  const ufs = (assunto: Pagina['assunto']) =>
+    ufsPorNome()
+      .filter((uf) => !porUf || (porUf[uf] ?? 0) > 0)
+      .map((uf) => ({ nome: NOMES_UF[uf], caminho: caminhoDaPagina({ assunto, uf }), total: porUf ? (porUf[uf] ?? 0) : null }));
+  if (p.assunto && p.uf) {
+    return [
+      { nome: `${maiuscula(p.assunto.nome)} no Brasil`, caminho: caminhoDaPagina({ assunto: p.assunto, uf: null }), total: null },
+      { nome: `Tudo ${naUf(p.uf)}`, caminho: caminhoDaPagina({ assunto: null, uf: p.uf }), total: null },
+    ];
+  }
+  if (p.assunto) return ufs(p.assunto);
+  if (p.uf) return assuntos(p.uf);
+  return [...assuntos(null), ...ufs(null)];
 }
 
 /** Mesma regra de public.em_aberto (0011): prazo no futuro e situação diferente de Revogada (2) e Anulada (3). */

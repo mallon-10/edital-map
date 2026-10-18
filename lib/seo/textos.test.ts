@@ -3,7 +3,7 @@ import type { Edital } from '../tipos';
 import { assuntoPorSlug } from './assuntos';
 import {
   buscaDaPagina, caminhoDaPagina, descricaoDaPagina, descricaoDoEdital, editalAberto, introDaPagina, jsonLdMigalhas, migalhas,
-  temBusca, tituloDaPagina,
+  temBusca, tituloDaPagina, vizinhos,
 } from './textos';
 
 const epi = assuntoPorSlug('epi')!;
@@ -36,6 +36,9 @@ describe('páginas /licitacoes', () => {
     expect(introDaPagina(EPI_BA, 12)).toContain('12 editais de EPI abertos na Bahia');
     expect(introDaPagina(EPI_BA, 12)).toContain('PNCP');
     expect(introDaPagina(BR, 0)).toContain('Nenhum edital aberto no Brasil agora');
+    // Com assunto a lista vem por relevância; sem assunto, pelo prazo.
+    expect(introDaPagina(EPI_BA, 12)).toContain('mostra primeiro os que mais falam de EPI');
+    expect(introDaPagina(SP, 12)).toContain('mostra primeiro os que encerram antes');
   });
   it('link para a busca no mapa', () => {
     expect(buscaDaPagina(EPI_BA)).toBe('/?q=EPI&uf=BA');
@@ -96,4 +99,28 @@ it('temBusca: qualquer parâmetro conhecido da busca', () => {
   expect(temBusca({ uf: 'SP' })).toBe(true);
   expect(temBusca({ vista: 'mapa' })).toBe(true);
   expect(temBusca({ utm_source: 'google', gclid: 'x' })).toBe(false);
+});
+
+describe('vizinhos', () => {
+  it('assunto no Brasil: as UFs com editais, em ordem alfabética do nome', () => {
+    const v = vizinhos(EPI, { SP: 10, BA: 2 });
+    expect(v.map((x) => x.caminho)).toEqual(['/licitacoes/epi/ba', '/licitacoes/epi/sp']);
+    expect(v[0]).toMatchObject({ nome: 'Bahia', total: 2 });
+  });
+  it('assunto sem contagem (banco fora): as 27 UFs, sem total', () => {
+    const v = vizinhos(EPI, null);
+    expect(v).toHaveLength(27);
+    expect(v[0].total).toBeNull();
+  });
+  it('UF: os 14 assuntos naquela UF', () => {
+    const v = vizinhos(SP, null);
+    expect(v).toHaveLength(14);
+    expect(v[0].caminho).toBe('/licitacoes/epi/sp');
+  });
+  it('assunto na UF: o assunto no Brasil e a UF com tudo', () => {
+    expect(vizinhos(EPI_BA, null).map((x) => x.caminho)).toEqual(['/licitacoes/epi', '/licitacoes/ba']);
+  });
+  it('Brasil: os 14 assuntos e as 27 UFs', () => {
+    expect(vizinhos(BR, null)).toHaveLength(41);
+  });
 });

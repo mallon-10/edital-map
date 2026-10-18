@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Cabecalho } from '@/components/Cabecalho';
 import { MarcarInterno } from '@/components/MarcarInterno';
 import { FONTE_COBERTURA } from '@/lib/cobertura';
@@ -34,6 +35,13 @@ export default async function PaginaSobre({ searchParams }: Props) {
           <p>
             Mostra no mapa os editais abertos e deixa você buscar pelo que sua empresa vende. Não participa da licitação: você participa pelo
             sistema indicado no edital oficial, e as regras valem conforme esse edital. O ponto no mapa é a sede do órgão comprador, não o local de entrega.
+          </p>
+        </section>
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg font-bold">Licitações por assunto e estado</h2>
+          <p>
+            Veja as licitações abertas de cada assunto (EPI, uniformes, limpeza, informática e outros) em cada estado na página{' '}
+            <Link href="/licitacoes" prefetch={false} className="font-semibold text-pin-strong hover:underline">Licitações abertas</Link>.
           </p>
         </section>
         <section className="flex flex-col gap-2">
