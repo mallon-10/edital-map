@@ -2,7 +2,9 @@ import 'server-only';
 import { createHash, randomUUID } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
 import { ehDono, segredoDoEndereco, valorCookieDono } from '../dono';
-import type { Detalhe, PedidoAlerta, PedidoListaEspera, TipoEvento, TipoEventoConta, TipoEventoServidor } from '../eventos';
+import type {
+  Detalhe, PedidoAlerta, PedidoListaEspera, TipoEvento, TipoEventoConta, TipoEventoOportunidades, TipoEventoServidor,
+} from '../eventos';
 import { COOKIE_DONO, COOKIE_INTERNO, COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie, visitanteValido } from '../visitante';
 import { supabaseServidor } from './supabase';
 
@@ -92,7 +94,11 @@ export function exportacaoDentroDoLimite(ipHash: string | null, limite: number):
   return recursoDentroDoLimite(ipHash, 'exportou', limite);
 }
 
-export async function gravarEvento(ctx: Contexto, tipo: TipoEvento | TipoEventoServidor | TipoEventoConta, detalhe: Detalhe): Promise<void> {
+export async function gravarEvento(
+  ctx: Contexto,
+  tipo: TipoEvento | TipoEventoServidor | TipoEventoConta | TipoEventoOportunidades,
+  detalhe: Detalhe,
+): Promise<void> {
   const { error } = await supabaseServidor()
     .from('eventos')
     .insert({ visitante: ctx.visitante, tipo, detalhe, interno: ctx.interno, ip_hash: ctx.ipHash });

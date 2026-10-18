@@ -81,5 +81,8 @@ export function temCookieDeSessao(nomes: readonly string[]): boolean {
 
 /** Rotas em que o proxy renova a sessão: conta, radar e as APIs deles. */
 export function rotaComSessao(caminho: string): boolean {
-  return [/^\/entrar$/, /^\/radar(\/|$)/, /^\/api\/conta(\/|$)/, /^\/api\/radar(\/|$)/].some((r) => r.test(caminho));
+  return [
+    /^\/entrar$/, /^\/radar(\/|$)/, /^\/oportunidades(\/|$)/, /^\/alertas(\/|$)/,
+    /^\/api\/conta(\/|$)/, /^\/api\/radar(\/|$)/, /^\/api\/salvos(\/|$)/, /^\/api\/alertas(\/|$)/,
+  ].some((r) => r.test(caminho));
 }

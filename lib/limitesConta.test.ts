@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AVISO_PLANO_NAVEGADOR, avisoPlanoNavegador, bloqueioAlerta, bloqueioSalvar, LIMITES_CONTA, lerPlano, maiorPlano, MENSAGENS_LIMITE_CONTA,
+  AVISO_PLANO_NAVEGADOR, avisoPlanoNavegador, planoIncerto, bloqueioAlerta, bloqueioSalvar, LIMITES_CONTA, lerPlano, maiorPlano, MENSAGENS_LIMITE_CONTA,
 } from './limitesConta';
 
 describe('limites da conta', () => {
@@ -18,9 +18,9 @@ describe('limites da conta', () => {
     for (const v of ['business', '', null, undefined, 3]) expect(lerPlano(v)).toBe('gratis');
   });
   it('aviso quando o plano está só no navegador', () => {
-    expect(avisoPlanoNavegador({ plano: 'pro', daConta: 'gratis', doNavegador: 'pro' })).toBe(AVISO_PLANO_NAVEGADOR);
-    expect(avisoPlanoNavegador({ plano: 'pro', daConta: 'pro', doNavegador: 'pro' })).toBeNull();
-    expect(avisoPlanoNavegador({ plano: 'pro', daConta: 'pro', doNavegador: 'gratis' })).toBeNull();
+    expect(avisoPlanoNavegador({ plano: 'pro', daConta: 'gratis', doNavegador: 'pro', falhou: false })).toBe(AVISO_PLANO_NAVEGADOR);
+    expect(avisoPlanoNavegador({ plano: 'pro', daConta: 'pro', doNavegador: 'pro', falhou: false })).toBeNull();
+    expect(avisoPlanoNavegador({ plano: 'pro', daConta: 'pro', doNavegador: 'gratis', falhou: false })).toBeNull();
     expect(AVISO_PLANO_NAVEGADOR).toBe('Plano no navegador, não na conta: use o mesmo e-mail da compra.');
   });
   it('salvar: grátis vê o convite; Pro até 500', () => {
@@ -33,11 +33,17 @@ describe('limites da conta', () => {
     expect(bloqueioAlerta('pro', 4)).toBeNull();
     expect(bloqueioAlerta('pro', 5)).toEqual({ codigo: 'limite', mensagem: 'Você já tem 5 alertas, o máximo do plano. Pause ou exclua um para criar outro.' });
   });
+  it('plano incerto: a consulta da conta falhou e nada garante o Pro (pedir para tentar de novo, não o convite)', () => {
+    expect(planoIncerto({ plano: 'gratis', daConta: 'gratis', doNavegador: 'gratis', falhou: true })).toBe(true);
+    expect(planoIncerto({ plano: 'pro', daConta: 'gratis', doNavegador: 'pro', falhou: true })).toBe(false);
+    expect(planoIncerto({ plano: 'gratis', daConta: 'gratis', doNavegador: 'gratis', falhou: false })).toBe(false);
+  });
   it('textos', () => {
     expect(MENSAGENS_LIMITE_CONTA).toEqual({
       salvosPlano: 'Salvar editais é do plano Pro.',
       alertasPlano: 'Alertas por e-mail são do plano Pro.',
       resumoPlano: 'O resumo semanal é do plano Pro.',
+      planoIndisponivel: 'Não deu para confirmar seu plano agora. Tente de novo.',
       salvosConvite: 'No Pro, salve os editais que interessam e acompanhe cada um com status e observação.',
       alertasConvite: 'No Pro, até 5 alertas: os editais novos chegam por e-mail às 7h, e toda segunda chega o resumo da semana.',
     });

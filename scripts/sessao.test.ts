@@ -6,7 +6,10 @@ const ler = (caminho: string) => readFileSync(new URL(`../${caminho}`, import.me
 describe('proxy e sessão', () => {
   const proxy = ler('proxy.ts');
   it('o proxy roda nas páginas da conta e do radar', () => {
-    for (const rota of ["'/entrar'", "'/radar'", "'/radar/:path*'", "'/api/:path*'"]) expect(proxy).toContain(rota);
+    for (const rota of ["'/entrar'", "'/radar'", "'/radar/:path*'", "'/oportunidades'", "'/alertas/:path*'", "'/api/:path*'"]) expect(proxy).toContain(rota);
+  });
+  it('o matcher mantém as páginas do pagamento e as do SEO', () => {
+    for (const rota of ["'/assinar'", "'/assinatura'", "'/obrigado/:path*'", "'/licitacoes/:path*'", "'/planos'", "'/alertas'"]) expect(proxy).toContain(rota);
   });
   it('só renova a sessão nas rotas da conta e quando há cookie de sessão', () => {
     expect(proxy).toContain('rotaComSessao(');

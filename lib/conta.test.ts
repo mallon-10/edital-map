@@ -108,13 +108,15 @@ describe('cookie de sessão do Supabase', () => {
 });
 
 describe('rotaComSessao (onde o proxy renova a sessão)', () => {
-  it('conta, radar e as APIs da conta e do radar', () => {
-    for (const p of ['/entrar', '/radar', '/radar/editar', '/api/conta', '/api/conta/codigo', '/api/radar', '/api/radar/x']) {
+  it('conta, radar, oportunidades, alertas e as APIs deles', () => {
+    for (const p of ['/entrar', '/radar', '/radar/editar', '/api/conta', '/api/conta/codigo', '/api/radar', '/api/radar/x', '/oportunidades',
+                     '/alertas', '/alertas/novo', '/alertas/sair', '/api/salvos', '/api/alertas', '/api/alertas/x']) {
       expect(rotaComSessao(p)).toBe(true);
     }
   });
   it('o resto do site não', () => {
-    for (const p of ['/', '/edital/1', '/planos', '/alertas', '/sobre', '/api/busca', '/api/mapa', '/radarx', '/entrarx', '/api/contabil']) {
+    for (const p of ['/', '/edital/1', '/planos', '/sobre', '/api/busca', '/api/mapa', '/radarx', '/entrarx', '/api/contabil', '/alertasx',
+                     '/oportunidadesx', '/api/salvosx', '/api/descadastro']) {
       expect(rotaComSessao(p)).toBe(false);
     }
   });

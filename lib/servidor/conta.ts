@@ -27,7 +27,8 @@ export async function perfilDaConta(usuario: Usuario): Promise<Perfil> {
 /**
  * Plano da conta (Fase 4, §1): Pro se plano_da_conta (perfis.plano manual ou assinatura válida com o e-mail da conta,
  * 0016) ou, quando há navegador, o plano dele (planoAtual: dono confiável, assinatura do navegador) for Pro. Banco fora:
- * a parte da conta vale grátis. Os envios por e-mail (sem navegador) usam só a parte da conta.
+ * a parte da conta vale grátis com `falhou` (planoIncerto: quem bloqueia pede para tentar de novo). Os envios por e-mail
+ * (sem navegador) usam só a parte da conta.
  */
 export async function planoDaConta(usuario: Usuario, ctx: Contexto | null = null): Promise<PlanoConta> {
   const [conta, navegador] = await Promise.all([
@@ -37,7 +38,7 @@ export async function planoDaConta(usuario: Usuario, ctx: Contexto | null = null
   if (conta.error) console.error(`plano_da_conta: ${conta.error.message}`);
   const daConta = conta.error ? 'gratis' : lerPlano(conta.data);
   const doNavegador = lerPlano(navegador);
-  return { plano: maiorPlano(daConta, doNavegador), daConta, doNavegador };
+  return { plano: maiorPlano(daConta, doNavegador), daConta, doNavegador, falhou: conta.error !== null && conta.error !== undefined };
 }
 
 /** Resumo semanal do Pro ligado nesta conta? Sem perfil: ligado (o padrão da coluna). */

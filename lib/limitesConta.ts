@@ -21,8 +21,19 @@ export function maiorPlano(...planos: NivelConta[]): NivelConta {
   return planos.includes('pro') ? 'pro' : 'gratis';
 }
 
-/** `daConta`: perfis.plano + assinatura com o e-mail da conta (o que os envios por e-mail veem). `doNavegador`: Cakto por navegador. */
-export type PlanoConta = { plano: NivelConta; daConta: NivelConta; doNavegador: NivelConta };
+/**
+ * `daConta`: perfis.plano + assinatura com o e-mail da conta (o que os envios por e-mail veem). `doNavegador`: Cakto por
+ * navegador. `falhou`: a consulta da conta deu erro (daConta saiu grátis por isso, não porque a conta é grátis).
+ */
+export type PlanoConta = { plano: NivelConta; daConta: NivelConta; doNavegador: NivelConta; falhou: boolean };
+
+/**
+ * Não deu para confirmar o plano: a consulta da conta falhou e nada mais garante o Pro. Quem bloqueia pede para tentar
+ * de novo (MENSAGENS_LIMITE_CONTA.planoIndisponivel, 503) em vez de mostrar o convite ao Pro.
+ */
+export function planoIncerto(p: PlanoConta): boolean {
+  return p.falhou && p.plano !== 'pro';
+}
 
 export const AVISO_PLANO_NAVEGADOR = 'Plano no navegador, não na conta: use o mesmo e-mail da compra.';
 
@@ -37,6 +48,7 @@ export const MENSAGENS_LIMITE_CONTA = {
   salvosPlano: 'Salvar editais é do plano Pro.',
   alertasPlano: 'Alertas por e-mail são do plano Pro.',
   resumoPlano: 'O resumo semanal é do plano Pro.',
+  planoIndisponivel: 'Não deu para confirmar seu plano agora. Tente de novo.',
   salvosConvite: 'No Pro, salve os editais que interessam e acompanhe cada um com status e observação.',
   alertasConvite: 'No Pro, até 5 alertas: os editais novos chegam por e-mail às 7h, e toda segunda chega o resumo da semana.',
 } as const;

@@ -49,20 +49,23 @@ beforeEach(() => {
 describe('planoDaConta', () => {
   it('manual ou assinatura com o e-mail (plano_da_conta), pelo id da sessão; sem navegador não pergunta a ele', async () => {
     m.respostas.push({ data: 'pro', error: null });
-    expect(await planoDaConta(usuario)).toEqual({ plano: 'pro', daConta: 'pro', doNavegador: 'gratis' });
+    expect(await planoDaConta(usuario)).toEqual({ plano: 'pro', daConta: 'pro', doNavegador: 'gratis', falhou: false });
     expect(m.chamadas).toEqual([['rpc.plano_da_conta', { p_user: 'u-sessao' }]]);
     expect(m.navegador).not.toHaveBeenCalled();
   });
   it('com navegador, o maior vence; basic do navegador vale pro', async () => {
     m.respostas.push({ data: 'gratis', error: null });
     m.navegador.mockResolvedValue('basic');
-    expect(await planoDaConta(usuario, CTX)).toEqual({ plano: 'pro', daConta: 'gratis', doNavegador: 'pro' });
+    expect(await planoDaConta(usuario, CTX)).toEqual({ plano: 'pro', daConta: 'gratis', doNavegador: 'pro', falhou: false });
     expect(m.navegador).toHaveBeenCalledWith(CTX);
   });
-  it('banco fora: a conta vale grátis (o navegador ainda vale)', async () => {
+  it('banco fora: a conta vale grátis, marcada como falha (o navegador ainda vale)', async () => {
     m.respostas.push({ data: null, error: { message: 'fora' } });
     m.navegador.mockResolvedValue('pro');
-    expect(await planoDaConta(usuario, CTX)).toEqual({ plano: 'pro', daConta: 'gratis', doNavegador: 'pro' });
+    expect(await planoDaConta(usuario, CTX)).toEqual({ plano: 'pro', daConta: 'gratis', doNavegador: 'pro', falhou: true });
+    m.respostas.push({ data: null, error: { message: 'fora' } });
+    m.navegador.mockResolvedValue('gratis');
+    expect(await planoDaConta(usuario, CTX)).toEqual({ plano: 'gratis', daConta: 'gratis', doNavegador: 'gratis', falhou: true });
   });
   it('valor desconhecido do banco: grátis', async () => {
     m.respostas.push({ data: 'business', error: null });
