@@ -35,6 +35,36 @@ describe('lista ligada ao Explorador', () => {
     }
   });
 
+  it('página ou ordem que falham voltam atrás (estado e endereço), e repetir a mesma página funciona', () => {
+    const explorador = ler('components/Explorador.tsx');
+    const pagina = funcao(explorador, 'irParaPagina');
+    expect(pagina).toMatch(/await carregarLista\(/);
+    expect(pagina).toMatch(/=== 'erro'/);
+    expect(pagina).toContain('setPagina(antes)');
+    expect(pagina).toContain('escreverEndereco(filtros, { pagina: antes })');
+    const ordem = funcao(explorador, 'mudarOrdem');
+    expect(ordem).toMatch(/await carregarLista\(/);
+    expect(ordem).toMatch(/=== 'erro'/);
+    expect(ordem).toContain('setOrdem(antes.ordem)');
+    expect(ordem).toContain('escreverEndereco(filtros, { ordem: antes.ordem, pagina: antes.pagina })');
+  });
+
+  it('paginação não usa disabled (o foco não cai no body depois de "Próxima")', () => {
+    const paginacao = ler('components/inicio/Paginacao.tsx');
+    expect(paginacao).not.toMatch(/(?<![-\w])disabled=\{/);
+    expect(paginacao).toContain('aria-disabled');
+  });
+
+  it('cards com link esticado: o contorno do foco segue o card inteiro; a descrição aponta para um elemento comum', () => {
+    const css = ler('app/globals.css');
+    expect(css).toContain('.link-esticado:focus-visible::after');
+    for (const arquivo of ['components/inicio/CardCompacto.tsx', 'components/inicio/CardLista.tsx']) {
+      expect(ler(arquivo), arquivo).toContain('link-esticado');
+    }
+    const card = ler('components/inicio/CardCompacto.tsx');
+    expect(card).not.toMatch(/id=\{idPrazo\}[^>]*\bcontents\b/);
+  });
+
   it('o endereço da página inicial só é escrito por trocarEndereco (nada de router.replace)', () => {
     const explorador = ler('components/Explorador.tsx');
     expect(explorador).not.toMatch(/router\.(replace|push)|useRouter/);

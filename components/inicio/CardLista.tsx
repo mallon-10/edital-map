@@ -31,7 +31,7 @@ export function CardLista({ edital: e, agora }: { edital: EditalResumo; agora: D
         {tipo ? <span className="rounded-xs bg-sunken px-2 py-0.5 text-xs font-semibold text-ink-muted">{tipo}</span> : null}
       </div>
       <h3 className="line-clamp-3 text-[16px] font-bold leading-snug">
-        <Link href={`/edital/${e.slug}`} prefetch={false} className="after:absolute after:inset-0 after:rounded-md">
+        <Link href={`/edital/${e.slug}`} prefetch={false} className="link-esticado after:absolute after:inset-0 after:rounded-md">
           <TituloDestacado texto={titulo} termos={e.destaques} />
         </Link>
       </h3>

@@ -57,7 +57,8 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
         // Seleção só existe no computador; no celular tocar abre o edital.
         aria-current={computador && selecionado ? 'true' : undefined}
         aria-describedby={idPrazo}
-        className="flex flex-col gap-2 rounded-sm after:absolute after:inset-0 after:rounded-md"
+        // link-esticado (globals.css): o contorno do foco vai no ::after, que cobre o card inteiro.
+        className="link-esticado flex flex-col gap-2 after:absolute after:inset-0 after:rounded-md"
       >
         <span className="flex items-start justify-between gap-3">
           <span className="line-clamp-3 text-[14px] font-semibold leading-5">
@@ -76,7 +77,7 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
       </Link>
       <span className="flex flex-wrap items-center gap-1.5">
         {/* Prazo e situação: fora do link (por causa da pílula ao lado), mas lidos com ele (aria-describedby). */}
-        <span id={idPrazo} className="contents">
+        <span id={idPrazo} className="inline-flex flex-wrap items-center gap-1.5">
           <span className={`inline-flex w-fit items-center gap-1.5 rounded-xs px-2 py-0.5 text-xs font-semibold ${ESTILO_ETIQUETA[et.tom]}`}>
             <span className={`size-[7px] rounded-full ${PONTO_ETIQUETA[et.tom]}`} aria-hidden="true" />
             {et.texto}

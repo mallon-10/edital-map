@@ -51,6 +51,15 @@ body {
   outline-offset: 2px;
 }
 
+/* Link esticado (cards): o ::after cobre o card inteiro; o contorno do foco vai nele, não só no texto do link. */
+.link-esticado:focus-visible {
+  outline: none;
+}
+.link-esticado:focus-visible::after {
+  outline: 2px solid var(--color-rio);
+  outline-offset: 2px;
+}
+
 .maplibregl-popup-content {
   font-family: var(--font-sans);
   font-size: 13px;

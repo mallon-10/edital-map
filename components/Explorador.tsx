@@ -167,7 +167,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
   );
 
   const carregarLista = useCallback(
-    async (f: FiltrosTela, lista: { pagina?: number; ordem?: Ordem | null } = {}) => {
+    /** 'ok', 'erro' (falha ou limite do dia) ou 'velho' (um pedido mais novo tomou o lugar: esta resposta não vale). */
+    async (f: FiltrosTela, lista: { pagina?: number; ordem?: Ordem | null } = {}): Promise<'ok' | 'erro' | 'velho'> => {
       const id = ++pedidoLista.current;
       // Posições de uma volta do edital que ainda não foram aplicadas são da lista antiga: não valem para a nova.
       rolagemPendente.current = null;
@@ -177,15 +178,16 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         // Mesma busca em outra página ou ordem: mesma chave no limite do dia (não conta de novo).
         const ordemPedida = lista.ordem === undefined ? estadoAtual.current.ordem : lista.ordem;
         const novo = await obter<RespostaBusca>(`/api/busca?${paraParametros(f, { pagina: lista.pagina ?? 1, ordem: ordemPedida })}`, ERRO_LISTA);
-        if (id !== pedidoLista.current) return;
+        if (id !== pedidoLista.current) return 'velho';
         setResultado({ total: novo.total, editais: novo.editais });
         setLimite(null);
         if (novo.buscasUsadas !== null) publicarUso({ buscas: novo.buscasUsadas });
         setSelecionadoId(novo.editais[0]?.id ?? null);
         setAgora(new Date());
         setErroLista(null);
+        return 'ok';
       } catch (e) {
-        if (id !== pedidoLista.current) return;
+        if (id !== pedidoLista.current) return 'velho';
         if (e instanceof LimiteAtingido) {
           // Busca nova além do limite do dia: o cartão dos planos no lugar da lista (o mapa fica com a última permitida).
           setLimite(e.limite);
@@ -196,6 +198,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         }
         // No celular o aviso e o cartão aparecem na lista, embaixo do mapa: a página rola até eles.
         if (ehCelular()) irPara('lista', f);
+        return 'erro';
       } finally {
         if (id === pedidoLista.current) setCarregandoLista(false);
       }
@@ -364,8 +367,9 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
    * Outra página da mesma busca: não conta como busca nem grava o evento "busca"; o mapa não muda.
    * O limite (402) e o uso do dia seguem o caminho de `carregarLista`.
    */
-  function irParaPagina(n: number) {
+  async function irParaPagina(n: number) {
     if (n < 1 || n === pagina || carregandoLista) return;
+    const antes = pagina;
     setPagina(n);
     escreverEndereco(filtros, { pagina: n });
     // Celular: a lista rola com a página; volta ao começo dela (a barra acende Lista).
@@ -373,15 +377,26 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
       setAtivoBarra('lista');
       rolarPara('lista');
     }
-    void carregarLista(filtros, { pagina: n });
+    // Falhou: os cards continuam os da página anterior, então a paginação e o endereço voltam para ela
+    // (e pedir a mesma página de novo funciona).
+    if ((await carregarLista(filtros, { pagina: n })) === 'erro') {
+      setPagina(antes);
+      escreverEndereco(filtros, { pagina: antes });
+    }
   }
 
   /** Outra ordem da mesma busca: volta à página 1; não conta como busca nem grava o evento "busca"; o mapa não muda. */
-  function mudarOrdem(o: Ordem) {
+  async function mudarOrdem(o: Ordem) {
+    const antes = { ordem, pagina };
     setOrdem(o);
     setPagina(1);
     escreverEndereco(filtros, { ordem: o, pagina: 1 });
-    void carregarLista(filtros, { pagina: 1, ordem: o });
+    // Falhou: a lista na tela é a da ordem anterior; o seletor, a página e o endereço voltam para ela.
+    if ((await carregarLista(filtros, { pagina: 1, ordem: o })) === 'erro') {
+      setOrdem(antes.ordem);
+      setPagina(antes.pagina);
+      escreverEndereco(filtros, { ordem: antes.ordem, pagina: antes.pagina });
+    }
   }
 
   return (
