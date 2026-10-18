@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   adicionarTermos, argumentosRadar, buscaDoRadar, corpoDoRascunho, desdeDaVisita, ENTRADA_RADAR, erroDaEtapa, filtrosDoRadar, lerBuscaMunicipio,
-  lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR, MENSAGENS_RADAR, palavraValida, radarDaLinha, rascunhoDoRadar, sugestoesTermos, validarRadar,
+  lerNavegacaoRadar, lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR, MENSAGENS_RADAR, palavraValida, radarDaLinha, rascunhoDoRadar, resumoDoRadar, sugestoesTermos, textoPrevia, urlDoRadar, validarRadar,
   VISIVEIS_GRATIS, vistaDoRadar, type Radar, type RascunhoRadar,
 } from './radar';
+import { moeda } from './formato';
 import { interpretarBusca, MAX_RELACIONADOS } from './relevancia/termos';
 
 const BASE: Radar = { termos: ['uniforme'], termosExcluir: [], ufs: [], municipios: [], valorMin: null, valorMax: null, modalidades: [], soMeEpp: false };
@@ -303,5 +304,29 @@ describe('formulário do radar', () => {
     expect(lerBuscaMunicipio('  São   José ')).toBe('São José');
     expect(lerBuscaMunicipio("Pau-d'Arco")).toBe("Pau-d'Arco");
     for (const q of [null, '', 'a', 'x%', 'abc_', 'a'.repeat(61), '12']) expect(lerBuscaMunicipio(q)).toBeNull();
+  });
+});
+
+describe('navegação, prévia e resumo do radar', () => {
+  it('ordem e página do endereço; relevância e página 1 ficam fora do endereço', () => {
+    expect(lerNavegacaoRadar(new URLSearchParams('ordem=recentes&pagina=3'))).toEqual({ ordem: 'recentes', pagina: 3 });
+    expect(lerNavegacaoRadar(new URLSearchParams('ordem=xx&pagina=-1'))).toEqual({ ordem: null, pagina: 1 });
+    expect(urlDoRadar({ ordem: 'relevancia', pagina: 1 })).toBe('/radar');
+    expect(urlDoRadar({ ordem: null, pagina: 2 })).toBe('/radar?pagina=2');
+    expect(urlDoRadar({ ordem: 'menor_valor', pagina: 4 })).toBe('/radar?ordem=menor_valor&pagina=4');
+  });
+  it('texto da prévia', () => {
+    expect(textoPrevia(1234)).toBe('Você está vendo 5 de 1.234 oportunidades do seu perfil.');
+  });
+  it('resumo: produtos, área e extras', () => {
+    const cidades = [{ ibge: '4209102', nome: 'Joinville', uf: 'SC' }, { ibge: '4205407', nome: 'Florianópolis', uf: 'SC' },
+      { ibge: '4202404', nome: 'Blumenau', uf: 'SC' }, { ibge: '4204202', nome: 'Chapecó', uf: 'SC' }];
+    expect(resumoDoRadar(BASE, [])).toEqual({ produtos: ['uniforme'], local: 'Todo o Brasil', extras: [] });
+    expect(resumoDoRadar({ ...BASE, ufs: ['PR', 'SC'] }, []).local).toBe('Estados: PR, SC');
+    expect(resumoDoRadar({ ...BASE, municipios: cidades.map((c) => c.ibge) }, cidades).local).toBe('Municípios: Joinville/SC, Florianópolis/SC, Blumenau/SC e mais 1');
+    const r = resumoDoRadar({ ...BASE, valorMin: 10000, valorMax: 500000, modalidades: [6, 8], soMeEpp: true, termosExcluir: ['escolar'] }, []);
+    expect(r.extras).toEqual([`De ${moeda(10000)} a ${moeda(500000)}`, 'Pregão eletrônico, Dispensa', 'Só exclusivas para ME/EPP', 'Sem: escolar']);
+    expect(resumoDoRadar({ ...BASE, valorMin: 10000 }, []).extras).toEqual([`A partir de ${moeda(10000)}`]);
+    expect(resumoDoRadar({ ...BASE, valorMax: 9000 }, []).extras).toEqual([`Até ${moeda(9000)}`]);
   });
 });

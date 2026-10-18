@@ -1,5 +1,6 @@
 import { UFS_BRASIL, type Resultado } from './eventos';
-import { limiteDeValor, MAX_PAGINA, MODALIDADES, ordemEfetiva, POR_PAGINA } from './filtros';
+import { lerOrdem, limiteDeValor, MAX_PAGINA, MODALIDADES, ordemEfetiva, POR_PAGINA } from './filtros';
+import { moeda, numero } from './formato';
 import type { IdPlano } from './planos';
 import { chave, expandir, GRUPOS, gruposDigitados, LIGACOES, normalizar, SIGLAS_TERMOS, type Busca } from './relevancia/termos';
 import type { Cidade, Ordem } from './tipos';
@@ -154,7 +155,7 @@ export function validarRadar(corpo: unknown): Resultado<Radar> {
 }
 
 const lista = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
-const numero = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
+const numeroOuNulo = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 
 /** Linha de public.radares (numeric chega como texto) → Radar. */
 export function radarDaLinha(l: Record<string, unknown>): Radar {
@@ -163,8 +164,8 @@ export function radarDaLinha(l: Record<string, unknown>): Radar {
     termosExcluir: lista(l.termos_excluir),
     ufs: lista(l.ufs),
     municipios: lista(l.municipios),
-    valorMin: numero(l.valor_min),
-    valorMax: numero(l.valor_max),
+    valorMin: numeroOuNulo(l.valor_min),
+    valorMax: numeroOuNulo(l.valor_max),
     modalidades: Array.isArray(l.modalidades) ? l.modalidades.map(Number) : [],
     soMeEpp: l.so_me_epp === true,
   };
@@ -349,4 +350,45 @@ export function sugestoesTermos(digitado: string, escolhidos: readonly string[],
   const comeca = livres.filter((t) => chave(t).startsWith(k));
   const palavra = livres.filter((t) => !chave(t).startsWith(k) && chave(t).includes(` ${k}`));
   return [...comeca, ...palavra].slice(0, limite);
+}
+
+// ── Página Meu Radar ────────────────────────────────────────────────────────────────────────────────────────────
+
+export type NavegacaoRadar = { ordem: Ordem | null; pagina: number };
+
+export function lerNavegacaoRadar(p: URLSearchParams): NavegacaoRadar {
+  const pg = Number(p.get('pagina') ?? 1);
+  return { ordem: lerOrdem(p.get('ordem')), pagina: Number.isInteger(pg) && pg >= 1 && pg <= MAX_PAGINA ? pg : 1 };
+}
+
+/** Endereço do radar; a ordem padrão (relevância) e a página 1 ficam fora. */
+export function urlDoRadar(n: NavegacaoRadar): string {
+  const p = new URLSearchParams();
+  if (n.ordem && n.ordem !== 'relevancia') p.set('ordem', n.ordem);
+  if (n.pagina > 1) p.set('pagina', String(n.pagina));
+  const s = p.toString();
+  return s ? `/radar?${s}` : '/radar';
+}
+
+export function textoPrevia(total: number): string {
+  return `Você está vendo ${VISIVEIS_GRATIS} de ${numero(total)} oportunidades do seu perfil.`;
+}
+
+const listaCurta = (itens: string[], n: number) => (itens.length <= n ? itens.join(', ') : `${itens.slice(0, n).join(', ')} e mais ${itens.length - n}`);
+
+/** O que o radar monitora, em texto curto, para o topo do Meu Radar. */
+export function resumoDoRadar(r: Radar, cidades: Cidade[]): { produtos: string[]; local: string; extras: string[] } {
+  const local = r.municipios.length
+    ? `Municípios: ${listaCurta(cidades.map((c) => `${c.nome}/${c.uf}`), 3)}`
+    : r.ufs.length
+      ? `Estados: ${r.ufs.join(', ')}`
+      : 'Todo o Brasil';
+  const extras: string[] = [];
+  if (r.valorMin !== null && r.valorMax !== null) extras.push(`De ${moeda(r.valorMin)} a ${moeda(r.valorMax)}`);
+  else if (r.valorMin !== null) extras.push(`A partir de ${moeda(r.valorMin)}`);
+  else if (r.valorMax !== null) extras.push(`Até ${moeda(r.valorMax)}`);
+  if (r.modalidades.length) extras.push(MODALIDADES.filter((m) => r.modalidades.includes(m.id)).map((m) => m.nome).join(', '));
+  if (r.soMeEpp) extras.push('Só exclusivas para ME/EPP');
+  if (r.termosExcluir.length) extras.push(`Sem: ${r.termosExcluir.join(', ')}`);
+  return { produtos: r.termos, local, extras };
 }
