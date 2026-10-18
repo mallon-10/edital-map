@@ -122,6 +122,14 @@ describe('contrato com as funções SQL (0007)', () => {
     expect(chamadas[1].args).toMatchObject({ p_ufs: null });
   });
 
+  it('valor 0 não vai ao banco como limite (lista, mapa e exportação mandam nulo)', async () => {
+    await buscarEditais({ ...SEM_FILTRO, valorMin: 0 });
+    await pontosDoMapa({ ...SEM_FILTRO, valorMin: 0 });
+    await exportarEditais({ ...SEM_FILTRO, valorMin: 0 });
+    expect(chamadas).toHaveLength(3);
+    for (const c of chamadas) expect(c.args).toMatchObject({ p_valor_min: null });
+  });
+
   it('pontosDoMapa com raio manda a cidade e o raio', async () => {
     await pontosDoMapa({ ...SEM_FILTRO, ibge: '4209102', raio: 100 });
     expect(chamadas[0].args).toMatchObject({ p_ibge: '4209102', p_raio_km: 100 });

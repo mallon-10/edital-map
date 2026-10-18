@@ -56,8 +56,10 @@ export function nivel(p: number): NivelRelevancia {
 
 const emLista = (ts: string[]) => (ts.length === 1 ? ts[0] : `${ts.slice(0, -1).join(', ')} e ${ts[ts.length - 1]}`);
 
-/** Uma frase com o melhor acerto: digitado no objeto, relacionado no objeto, digitado nos itens, relacionado nos itens. */
-export function explicar(a: Acertos, b: Busca): string | null {
+type Melhor = { termos: string; tipo: 'digitado' | 'relacionado'; onde: 'objeto' | 'itens'; quantos: number };
+
+/** O melhor acerto, nesta ordem: digitado no objeto, relacionado no objeto, digitado nos itens, relacionado nos itens. */
+function melhorAcerto(a: Acertos, b: Busca): Melhor | null {
   const { digitados, objeto, itens } = daBusca(a, b);
   const porTermo = new Map(b.relacionados.map((r) => [r.termo, r]));
   const relacionados = (lista: string[]) => {
@@ -69,17 +71,35 @@ export function explicar(a: Acertos, b: Busca): string | null {
     return `${emLista(mesmos)}, ${mesmos.length === 1 ? 'relacionado' : 'relacionados'} a ${assunto}`;
   };
   const digObjeto = objeto.filter((t) => digitados.has(t)).slice(0, 3);
-  if (digObjeto.length) return `Menciona ${emLista(digObjeto)} no objeto.`;
+  if (digObjeto.length) return { termos: emLista(digObjeto), tipo: 'digitado', onde: 'objeto', quantos: digObjeto.length };
   const relObjeto = relacionados(objeto);
-  if (relObjeto) return `Menciona ${relObjeto}, no objeto.`;
+  if (relObjeto) return { termos: relObjeto, tipo: 'relacionado', onde: 'objeto', quantos: 1 };
   const digItens = itens.filter((t) => digitados.has(t)).slice(0, 3);
-  if (digItens.length) return `Menciona ${emLista(digItens)} nos itens.`;
+  if (digItens.length) return { termos: emLista(digItens), tipo: 'digitado', onde: 'itens', quantos: digItens.length };
   const relItens = relacionados(itens);
-  return relItens ? `Menciona ${relItens}, nos itens.` : null;
+  return relItens ? { termos: relItens, tipo: 'relacionado', onde: 'itens', quantos: 1 } : null;
 }
 
-export function relevancia(a: Acertos, b: Busca): Relevancia | null {
+const lugar = (m: Melhor) => (m.onde === 'objeto' ? 'no objeto' : 'nos itens');
+
+/** Uma frase com o melhor acerto (busca avulsa). */
+export function explicar(a: Acertos, b: Busca): string | null {
+  const m = melhorAcerto(a, b);
+  if (!m) return null;
+  return m.tipo === 'digitado' ? `Menciona ${m.termos} ${lugar(m)}.` : `Menciona ${m.termos}, ${lugar(m)}.`;
+}
+
+/** A mesma frase no Meu Radar, citando os produtos do perfil ("um dos produtos que você monitora"). */
+export function explicarPerfil(a: Acertos, b: Busca): string | null {
+  const m = melhorAcerto(a, b);
+  if (!m) return null;
+  const produtos = m.quantos > 1 ? 'produtos que você monitora' : 'um dos produtos que você monitora';
+  if (m.tipo === 'digitado') return `Menciona ${m.termos} ${lugar(m)}, ${produtos}.`;
+  return m.onde === 'objeto' ? `Menciona ${m.termos}, ${produtos}.` : `Menciona ${m.termos}, nos itens, ${produtos}.`;
+}
+
+export function relevancia(a: Acertos, b: Busca, opcoes: { perfil?: boolean } = {}): Relevancia | null {
   const pontos = pontuar(a, b);
   if (pontos === null) return null;
-  return { pontos, nivel: nivel(pontos), explicacao: explicar(a, b) ?? '' };
+  return { pontos, nivel: nivel(pontos), explicacao: (opcoes.perfil ? explicarPerfil(a, b) : explicar(a, b)) ?? '' };
 }

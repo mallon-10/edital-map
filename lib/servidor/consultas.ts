@@ -2,7 +2,7 @@ import 'server-only';
 import type { ChaveCompra } from '@/worker/mapear';
 import { criarCache } from '../cache';
 import { MAX_EXPORTACAO } from '../csv';
-import { chaveFiltros, ordemEfetiva, POR_PAGINA } from '../filtros';
+import { chaveFiltros, limiteDeValor, ordemEfetiva, POR_PAGINA } from '../filtros';
 import { relevancia, type Acertos } from '../relevancia/pontuacao';
 import { interpretarBusca, type Busca } from '../relevancia/termos';
 import { nomeProprio } from '../texto';
@@ -16,7 +16,7 @@ import { supabaseServidor } from './supabase';
 const cache = criarCache(5 * 60 * 1000);
 export const LIMITE_RELACIONADOS = 6;
 export const LIMITE_ORGAOS = 20;
-type Linha = Record<string, unknown>;
+export type Linha = Record<string, unknown>;
 
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 const texto = (v: unknown): string | null => (v === null || v === undefined ? null : String(v));
@@ -30,7 +30,8 @@ function argumentosBusca(f: FiltrosBusca, b: Busca) {
     p_ufs: f.uf && !f.raio ? [f.uf] : null,
     p_ibge: f.ibge,
     p_dias: f.dias,
-    p_valor_min: f.valorMin,
+    // Valor 0 = sem limite (null), também no mapa e na exportação.
+    p_valor_min: limiteDeValor(f.valorMin),
     p_modalidades: f.modalidades,
     p_orgao: f.orgao,
     p_raio_km: f.raio,
@@ -44,9 +45,9 @@ function argumentosBusca(f: FiltrosBusca, b: Busca) {
 const lista = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 
 /** Uma linha de buscar_editais → card da lista, com a relevância (número e explicação calculados aqui, pela busca). */
-function paraResumo(l: Linha, b: Busca, divergentes: string[]): EditalResumo {
+export function paraResumo(l: Linha, b: Busca, divergentes: string[], opcoes: { perfil?: boolean } = {}): EditalResumo {
   const acertos: Acertos = { termosObjeto: lista(l.termos_objeto), termosItens: lista(l.termos_itens), frase: l.frase === true };
-  const rel = relevancia(acertos, b);
+  const rel = relevancia(acertos, b, opcoes);
   // A ordem vem do banco (pontuacao_busca) e o número do card vem daqui (pontuar), com os mesmos pesos.
   const doBanco = num(l.pontuacao);
   if (rel && doBanco !== null && doBanco !== rel.pontos) {
@@ -112,7 +113,7 @@ export function pontosDoMapa(f: FiltrosBusca): Promise<PontoMapa[]> {
           // Com raio a UF não filtra: o raio atravessa a divisa de estado.
           p_ufs: f.uf && !f.raio ? [f.uf] : null,
           p_dias: f.dias,
-          p_valor_min: f.valorMin,
+          p_valor_min: limiteDeValor(f.valorMin),
           p_modalidades: f.modalidades,
           p_orgao: f.orgao,
           p_ibge: ibge,

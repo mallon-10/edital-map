@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AVISO_RELEVANCIA, explicar, nivel, PESOS, pontuar, relevancia, type Acertos } from './pontuacao';
+import { AVISO_RELEVANCIA, explicar, explicarPerfil, nivel, PESOS, pontuar, relevancia, type Acertos } from './pontuacao';
 import { interpretarBusca } from './termos';
 
 const UNIFORMES = interpretarBusca('uniformes');
@@ -92,6 +92,34 @@ describe('relevancia', () => {
   it('aviso fixo da spec', () => {
     expect(AVISO_RELEVANCIA).toBe(
       'Relevância mede o quanto o edital combina com a sua busca. Não indica chance de vencer nem garante que sua empresa pode participar.',
+    );
+  });
+});
+
+describe('explicarPerfil (Meu Radar)', () => {
+  const b = interpretarBusca('uniforme, luva');
+  it('relacionado no objeto: cita o assunto e o perfil (texto da spec)', () => {
+    expect(explicarPerfil({ termosObjeto: ['fardamento'], termosItens: [], frase: false }, b)).toBe(
+      'Menciona fardamento, relacionado a uniformes profissionais, um dos produtos que você monitora.',
+    );
+  });
+  it('produto do perfil no objeto ou nos itens', () => {
+    expect(explicarPerfil({ termosObjeto: ['uniforme'], termosItens: [], frase: true }, b)).toBe('Menciona uniforme no objeto, um dos produtos que você monitora.');
+    expect(explicarPerfil({ termosObjeto: ['uniforme', 'luva'], termosItens: [], frase: false }, b)).toBe('Menciona uniforme e luva no objeto, produtos que você monitora.');
+    expect(explicarPerfil({ termosObjeto: [], termosItens: ['luva'], frase: false }, b)).toBe('Menciona luva nos itens, um dos produtos que você monitora.');
+  });
+  it('relacionado só nos itens', () => {
+    expect(explicarPerfil({ termosObjeto: [], termosItens: ['fardamento'], frase: false }, b)).toBe(
+      'Menciona fardamento, relacionado a uniformes profissionais, nos itens, um dos produtos que você monitora.',
+    );
+  });
+  it('nada da busca: null; a busca avulsa continua com o texto de antes', () => {
+    expect(explicarPerfil({ termosObjeto: [], termosItens: [], frase: false }, b)).toBeNull();
+    expect(relevancia({ termosObjeto: ['fardamento'], termosItens: [], frase: false }, b)?.explicacao).toBe(
+      'Menciona fardamento, relacionado a uniformes profissionais, no objeto.',
+    );
+    expect(relevancia({ termosObjeto: ['fardamento'], termosItens: [], frase: false }, b, { perfil: true })?.explicacao).toBe(
+      'Menciona fardamento, relacionado a uniformes profissionais, um dos produtos que você monitora.',
     );
   });
 });

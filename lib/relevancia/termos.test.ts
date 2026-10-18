@@ -53,6 +53,12 @@ describe('grupos de termos', () => {
 });
 
 describe('expandir', () => {
+  it('teto opcional menor que MAX_RELACIONADOS, ainda intercalado', () => {
+    const r = expandir(['EPI', 'uniforme', 'merenda'], 6);
+    expect(r).toHaveLength(6);
+    expect(new Set(r.slice(0, 3).map((x) => x.de))).toEqual(new Set(['EPI', 'uniforme', 'merenda']));
+    expect(expandir(['EPI', 'uniforme', 'merenda'])).toHaveLength(MAX_RELACIONADOS);
+  });
   it('sem diferença de acento, maiúsculas ou plural', () => {
     expect(expandir(['UNIFORMES']).map((r) => r.termo)).toContain('fardamento');
     expect(expandir(['fardamentos']).map((r) => r.termo)).toContain('uniforme');

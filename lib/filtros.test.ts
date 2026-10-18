@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buscaDoCampo, chaveFiltros, lerFiltros, filtrosAtivos, lerTermoOrgao, limparFiltros, normalizarTela, ordemEfetiva, ORDENS, paraParametros, recursosUsados, ufIgnoradaPeloRaio, UFS_ORDENADAS } from './filtros';
+import { buscaDoCampo, chaveFiltros, lerFiltros, filtrosAtivos, lerTermoOrgao, limiteDeValor, limparFiltros, normalizarTela, ordemEfetiva, ORDENS, paraParametros, recursosUsados, ufIgnoradaPeloRaio, UFS_ORDENADAS } from './filtros';
 import type { FiltrosTela } from './tipos';
 
 const ler = (s: string) => lerFiltros(new URLSearchParams(s));
@@ -222,5 +222,13 @@ describe('ordemEfetiva', () => {
   });
   it('ORDENS: os rótulos da spec, na ordem do seletor', () => {
     expect(ORDENS.map((o) => o.rotulo)).toEqual(['Maior relevância', 'Mais recentes', 'Menor prazo', 'Maior valor', 'Menor valor']);
+  });
+});
+
+describe('limiteDeValor (valor que vai ao banco como filtro)', () => {
+  it('positivo passa; 0, negativo, NaN, infinito e nulo viram nulo (sem limite)', () => {
+    expect(limiteDeValor(10000)).toBe(10000);
+    expect(limiteDeValor(0.5)).toBe(0.5);
+    for (const v of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, null, undefined]) expect(limiteDeValor(v)).toBeNull();
   });
 });

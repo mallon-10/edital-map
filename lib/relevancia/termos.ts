@@ -161,9 +161,10 @@ export type TermoRelacionado = { termo: string; assunto: string; de: string };
 
 /**
  * Para cada digitado que é termo de um grupo, os outros termos do grupo (sem repetir nem devolver um digitado).
- * Com vários digitados, intercala os relacionados de cada um antes de cortar em MAX_RELACIONADOS.
+ * Com vários digitados, intercala os relacionados de cada um antes de cortar em `max` (MAX_RELACIONADOS na busca avulsa;
+ * o Meu Radar usa um teto menor, MAX_RELACIONADOS_RADAR em lib/radar.ts).
  */
-export function expandir(digitados: readonly string[]): TermoRelacionado[] {
+export function expandir(digitados: readonly string[], max: number = MAX_RELACIONADOS): TermoRelacionado[] {
   const listas = digitados.map((d) => {
     const k = chave(d);
     return GRUPOS.filter((g) => g.termos.some((t) => chave(t) === k)).flatMap((g) =>
@@ -179,7 +180,7 @@ export function expandir(digitados: readonly string[]): TermoRelacionado[] {
       if (!r || vistos.has(chave(r.termo))) continue;
       vistos.add(chave(r.termo));
       saida.push(r);
-      if (saida.length === MAX_RELACIONADOS) return saida;
+      if (saida.length >= max) return saida;
     }
   }
   return saida;

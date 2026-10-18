@@ -27,6 +27,14 @@ export const POR_PAGINA = 20;
 /** Última página aceita (20.000 editais). */
 export const MAX_PAGINA = 1000;
 
+/**
+ * Valor (R$) que vai ao banco como filtro: só positivo. 0 (ou vazio) é "sem limite" e vira null: no banco,
+ * p_valor_max = 0 não casaria nada e p_valor_min = 0 tiraria os editais sem valor informado.
+ */
+export function limiteDeValor(v: number | null | undefined): number | null {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+}
+
 export function lerOrdem(v: string | null): Ordem | null {
   return ORDENS.find((o) => o.id === v)?.id ?? null;
 }
