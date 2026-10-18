@@ -1,26 +1,33 @@
 'use client';
 
 import Link from 'next/link';
-import type { KeyboardEvent, MouseEvent } from 'react';
+import { useId, type KeyboardEvent, type MouseEvent } from 'react';
 import { etiqueta, moedaCurta } from '@/lib/formato';
 import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
+import { EtiquetaSituacao } from '@/components/EtiquetaSituacao';
 import { ESTILO_ETIQUETA, PONTO_ETIQUETA } from './estilos';
+import { PilulaRelevancia } from './Relevancia';
+import { TituloDestacado } from './TituloDestacado';
 import { useComputador } from './useComputador';
 
 type Props = { edital: EditalResumo; agora: Date; selecionado: boolean; aoSelecionar: () => void };
 
 /**
- * Card da lista: título limpo, valor curto à direita, órgão · UF e etiqueta de prazo.
+ * Card da lista: título limpo (com os termos destacados), valor curto à direita, órgão · UF, etiqueta de prazo,
+ * "Suspensa" e a relevância (com termo).
  * Computador (lg+): clicar seleciona (o resumo aparece na coluna da direita). Celular: tocar abre o edital.
  * Ctrl/⌘/Shift/Alt/botão do meio abrem em outra aba. Sem prefetch: cada edital aberto conta no limite do dia.
  * No computador, Enter e Espaço selecionam (como o botão de antes; abrir é o "Ver edital" da coluna da direita); no celular Enter segue o link e o card escolhido é o `aria-current`.
+ * O link cobre o card inteiro (::after); a pílula da relevância é um botão e fica fora do link, por cima dele:
+ * tocar nela abre o aviso sem abrir nem selecionar o edital.
  */
 export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props) {
   const et = etiqueta(edital, agora);
   const valor = moedaCurta(edital.valor_estimado);
   const { titulo, tipo } = assunto(edital.objeto);
   const computador = useComputador();
+  const idPrazo = useId();
 
   function clicar(e: MouseEvent<HTMLAnchorElement>) {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -37,33 +44,51 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
   }
 
   return (
-    <Link
-      href={`/edital/${edital.slug}`}
-      prefetch={false}
-      onClick={clicar}
-      onKeyDown={tecla}
-      // Seleção só existe no computador; no celular tocar abre o edital.
-      aria-current={computador && selecionado ? 'true' : undefined}
-      className={`flex w-full shrink-0 flex-col gap-2 rounded-md border bg-raised p-3.5 text-left transition-colors ${
+    <div
+      className={`relative flex w-full shrink-0 flex-col gap-2 rounded-md border bg-raised p-3.5 text-left transition-colors ${
         selecionado ? 'border-line lg:border-ink lg:shadow-[0_0_0_1px_#0c2340]' : 'border-line hover:border-line-strong'
       }`}
     >
-      <span className="flex items-start justify-between gap-3">
-        <span className="line-clamp-3 text-[14px] font-semibold leading-5">{titulo}</span>
-        {valor ? (
-          <span className="shrink-0 whitespace-nowrap font-mono text-[13px] font-medium">{valor}</span>
-        ) : (
-          <span className="w-16 shrink-0 text-right text-[11px] leading-4 text-ink-muted">Valor não informado</span>
-        )}
+      <Link
+        href={`/edital/${edital.slug}`}
+        prefetch={false}
+        onClick={clicar}
+        onKeyDown={tecla}
+        // Seleção só existe no computador; no celular tocar abre o edital.
+        aria-current={computador && selecionado ? 'true' : undefined}
+        aria-describedby={idPrazo}
+        className="flex flex-col gap-2 rounded-sm after:absolute after:inset-0 after:rounded-md"
+      >
+        <span className="flex items-start justify-between gap-3">
+          <span className="line-clamp-3 text-[14px] font-semibold leading-5">
+            <TituloDestacado texto={titulo} termos={edital.destaques} />
+          </span>
+          {valor ? (
+            <span className="shrink-0 whitespace-nowrap font-mono text-[13px] font-medium">{valor}</span>
+          ) : (
+            <span className="w-16 shrink-0 text-right text-[11px] leading-4 text-ink-muted">Valor não informado</span>
+          )}
+        </span>
+        <span className="truncate text-xs text-ink-muted">
+          {[tipo, nomeProprio(edital.orgao_nome), edital.uf].filter(Boolean).join(' · ')}
+        </span>
+        {edital.onde === 'itens' ? <span className="text-xs text-rio">Encontrado nos itens</span> : null}
+      </Link>
+      <span className="flex flex-wrap items-center gap-1.5">
+        {/* Prazo e situação: fora do link (por causa da pílula ao lado), mas lidos com ele (aria-describedby). */}
+        <span id={idPrazo} className="contents">
+          <span className={`inline-flex w-fit items-center gap-1.5 rounded-xs px-2 py-0.5 text-xs font-semibold ${ESTILO_ETIQUETA[et.tom]}`}>
+            <span className={`size-[7px] rounded-full ${PONTO_ETIQUETA[et.tom]}`} aria-hidden="true" />
+            {et.texto}
+          </span>
+          <EtiquetaSituacao situacaoId={edital.situacao_id} />
+        </span>
+        {edital.relevancia ? (
+          <span className="relative z-10 inline-flex">
+            <PilulaRelevancia relevancia={edital.relevancia} />
+          </span>
+        ) : null}
       </span>
-      <span className="truncate text-xs text-ink-muted">
-        {[tipo, nomeProprio(edital.orgao_nome), edital.uf].filter(Boolean).join(' · ')}
-      </span>
-      {edital.onde === 'itens' ? <span className="text-xs text-rio">Encontrado nos itens</span> : null}
-      <span className={`inline-flex w-fit items-center gap-1.5 rounded-xs px-2 py-0.5 text-xs font-semibold ${ESTILO_ETIQUETA[et.tom]}`}>
-        <span className={`size-[7px] rounded-full ${PONTO_ETIQUETA[et.tom]}`} aria-hidden="true" />
-        {et.texto}
-      </span>
-    </Link>
+    </div>
   );
 }

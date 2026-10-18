@@ -4,6 +4,8 @@ import { modalidadeCurta } from '@/lib/participacao';
 import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
 import { PinoMini } from './Icones';
+import { EtiquetaSituacao } from '@/components/EtiquetaSituacao';
+import { PilulaRelevancia } from './Relevancia';
 
 const ROTULO_BASE = 'font-mono text-[10px] uppercase tracking-[0.08em]';
 const ROTULO = `${ROTULO_BASE} text-[#a9c9c4]`;
@@ -27,6 +29,13 @@ export function CartaoSelecionado({ edital: e, agora, aoFechar }: { edital: Edit
         {e.municipio_nome ?? '—'} · {e.uf}
       </p>
       <h2 className="pr-6 text-[17px] font-bold leading-snug">{assunto(e.objeto).titulo}</h2>
+      <EtiquetaSituacao situacaoId={e.situacao_id} />
+      {e.relevancia ? (
+        <div className="flex flex-col gap-1">
+          <PilulaRelevancia relevancia={e.relevancia} classeAviso="text-[#c7d6d3]" />
+          {e.relevancia.explicacao ? <p className="text-[13px] text-[#c7d6d3]">{e.relevancia.explicacao}</p> : null}
+        </div>
+      ) : null}
       <p className="text-[13px] text-[#c7d6d3]">{orgao}</p>
       <div className="grid grid-cols-2 gap-3 border-t border-white/15 pt-3">
         <div>

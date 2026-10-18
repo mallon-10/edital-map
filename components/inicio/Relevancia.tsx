@@ -10,8 +10,11 @@ const ESTILO_NIVEL: Record<NivelRelevancia, string> = {
 };
 const rotulo = (r: Relevancia) => `Relevância ${r.nivel.toLocaleLowerCase('pt-BR')}`;
 
-/** Só o nível (card compacto e resumo escuro); tocar ou usar o teclado abre o aviso (title só funciona com o mouse). */
-export function PilulaRelevancia({ relevancia }: { relevancia: Relevancia }) {
+/**
+ * Só o nível (card compacto e resumo escuro); tocar ou usar o teclado abre o aviso (title só funciona com o mouse).
+ * `classeAviso`: cor do aviso (no resumo escuro o cinza padrão some no fundo).
+ */
+export function PilulaRelevancia({ relevancia, classeAviso = 'text-ink-muted' }: { relevancia: Relevancia; classeAviso?: string }) {
   const [aberto, setAberto] = useState(false);
   const id = useId();
   return (
@@ -27,7 +30,7 @@ export function PilulaRelevancia({ relevancia }: { relevancia: Relevancia }) {
         {rotulo(relevancia)}
       </button>
       {aberto ? (
-        <span id={id} className="text-xs text-ink-muted">
+        <span id={id} className={`text-xs ${classeAviso}`}>
           {AVISO_RELEVANCIA}
         </span>
       ) : null}

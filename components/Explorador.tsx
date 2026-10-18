@@ -6,11 +6,12 @@ import { registrar } from '@/lib/cliente/registrar';
 import { publicarUso } from '@/lib/cliente/uso';
 import { guardarUltimaBusca, guardarVolta, tomarVolta, type Volta } from '@/lib/cliente/volta';
 import type { Raio } from '@/lib/geo';
-import { buscaDoCampo, filtrosAtivos, normalizarTela, paraParametros, POR_PAGINA, recursosUsados } from '@/lib/filtros';
+import { buscaDoCampo, filtrosAtivos, normalizarTela, ordemEfetiva, paraParametros, recursosUsados } from '@/lib/filtros';
 import { LimiteAtingido, lerLimite, type Limite, type RespostaBusca } from '@/lib/limites';
 import { resumirPontos } from '@/lib/painel';
-import type { Cidade, EditalResumo, FiltrosTela, PontoMapa, ResultadoBusca } from '@/lib/tipos';
-import { mesmaBusca, telaPelaRolagem, urlDaBusca, type Tela } from '@/lib/urlBusca';
+import { temTermo } from '@/lib/relevancia/termos';
+import type { Cidade, EditalResumo, FiltrosTela, Ordem, PontoMapa, ResultadoBusca } from '@/lib/tipos';
+import { mesmaBusca, telaPelaRolagem, urlDaBusca, type EstadoTela, type Tela, type Vista } from '@/lib/urlBusca';
 import { BarraCelular } from './BarraCelular';
 import { Mapa } from './Mapa';
 import { BuscaPrincipal } from './inicio/BuscaPrincipal';
@@ -64,7 +65,8 @@ const mensagem = (e: unknown, padrao: string) => (e instanceof Error && e.messag
 
 type Props = {
   filtrosIniciais: FiltrosTela;
-  telaInicial: Tela;
+  /** Vista, parte do celular, página e ordem lidas do endereço. */
+  estadoInicial: EstadoTela;
   /** null quando a busca do endereço já bateu no limite do dia. */
   inicial: ResultadoBusca | null;
   limiteInicial: Limite | null;
@@ -75,19 +77,23 @@ type Props = {
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
 type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'limite' | 'tela' | 'selecionadoId'>;
 
-export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicial, agoraInicial, atualizadoEm }: Props) {
+export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInicial, agoraInicial, atualizadoEm }: Props) {
   const [filtros, setFiltros] = useState<FiltrosTela>(filtrosIniciais);
   // Celular: a parte da página pedida por último (botão da barra, cidade escolhida, aviso ou limite na lista), guardada
   // no endereço (`tela=lista` abre a página rolada até a lista). Só muda por ação explícita, nunca pela rolagem.
-  const [tela, setTela] = useState<Tela>(telaInicial);
+  const [tela, setTela] = useState<Tela>(estadoInicial.tela);
+  // Lista ou Mapa, página e ordem da lista: vão no endereço e não contam como busca.
+  // A troca de vista (e o layout da vista Lista) chega na próxima etapa; até lá a tela é a de três colunas.
+  const [vista, setVista] = useState<Vista>(estadoInicial.vista);
+  const [pagina, setPagina] = useState(estadoInicial.pagina);
+  const [ordem, setOrdem] = useState<Ordem | null>(estadoInicial.ordem);
   // Item aceso na barra de baixo: segue a rolagem. Fica fora do endereço: o replaceState do Next durante uma navegação
   // pendente (tocar num card e rolar um pouco) a descartaria.
-  const [ativoBarra, setAtivoBarra] = useState<Tela>(telaInicial);
+  const [ativoBarra, setAtivoBarra] = useState<Tela>(estadoInicial.tela);
   const [resultado, setResultado] = useState<ResultadoBusca>(inicial ?? SEM_RESULTADO);
   const [limite, setLimite] = useState<Limite | null>(limiteInicial);
   const [agora, setAgora] = useState(() => new Date(agoraInicial));
   const [carregandoLista, setCarregandoLista] = useState(false);
-  const [carregandoMais, setCarregandoMais] = useState(false);
   const [erroLista, setErroLista] = useState<string | null>(null);
   const [erroMapa, setErroMapa] = useState<string | null>(null);
   const [pontos, setPontos] = useState<PontoMapa[]>([]);
@@ -114,9 +120,17 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   // Celular: início da lista (alvo do botão Lista) e até quando a rolagem não decide o item ativo da barra.
   const inicioLista = useRef<HTMLElement>(null);
   const ignorarRolagemAte = useRef(0);
+  // O que vai no endereço além dos filtros (vista, tela, página, ordem), sempre o mais recente (callbacks antigos leem daqui).
+  const estadoAtual = useRef<EstadoTela>(estadoInicial);
+  /** Escreve a busca no endereço com o estado atual mais as mudanças (sem recarregar nem criar entrada no histórico). */
+  const escreverEndereco = useCallback((f: FiltrosTela, mudancas: Partial<EstadoTela> = {}) => {
+    estadoAtual.current = { ...estadoAtual.current, ...mudancas };
+    trocarEndereco(urlDaBusca(f, estadoAtual.current));
+  }, []);
 
   const painel = useMemo(() => resumirPontos(pontos), [pontos]);
   const selecionado = resultado.editais.find((e) => e.id === selecionadoId) ?? resultado.editais[0] ?? null;
+  const comTermo = temTermo(filtros.q);
   // Sede do município filtrado (com ou sem raio): o mapa vai até ela; com raio, ela é o centro do círculo.
   const centro = filtros.cidade ? centros[filtros.cidade.ibge] : undefined;
   const sedeMapa = centro ?? null;
@@ -126,10 +140,13 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   );
 
   /** Troca a tela do celular e escreve a busca no endereço (sem recarregar a página nem criar entrada no histórico). */
-  const trocarTela = useCallback((nova: Tela, f: FiltrosTela) => {
-    setTela(nova);
-    trocarEndereco(urlDaBusca(f, { vista: 'mapa', tela: nova }));
-  }, []);
+  const trocarTela = useCallback(
+    (nova: Tela, f: FiltrosTela) => {
+      setTela(nova);
+      escreverEndereco(f, { tela: nova });
+    },
+    [escreverEndereco],
+  );
 
   /** Celular: leva a página ao mapa (topo) ou ao início da lista. No computador as duas estão na tela: não rola. */
   const rolarPara = useCallback((t: Tela, jeito: ScrollBehavior = comportamento()) => {
@@ -150,15 +167,16 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   );
 
   const carregarLista = useCallback(
-    async (f: FiltrosTela) => {
+    async (f: FiltrosTela, lista: { pagina?: number; ordem?: Ordem | null } = {}) => {
       const id = ++pedidoLista.current;
       // Posições de uma volta do edital que ainda não foram aplicadas são da lista antiga: não valem para a nova.
       rolagemPendente.current = null;
       rolagemPaginaPendente.current = null;
       setCarregandoLista(true);
-      setCarregandoMais(false);
       try {
-        const novo = await obter<RespostaBusca>(`/api/busca?${paraParametros(f)}`, ERRO_LISTA);
+        // Mesma busca em outra página ou ordem: mesma chave no limite do dia (não conta de novo).
+        const ordemPedida = lista.ordem === undefined ? estadoAtual.current.ordem : lista.ordem;
+        const novo = await obter<RespostaBusca>(`/api/busca?${paraParametros(f, { pagina: lista.pagina ?? 1, ordem: ordemPedida })}`, ERRO_LISTA);
         if (id !== pedidoLista.current) return;
         setResultado({ total: novo.total, editais: novo.editais });
         setLimite(null);
@@ -265,7 +283,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
     () => () => {
       rolagemPagina.current = window.scrollY;
     },
-    [carregarMapa, filtrosIniciais, telaInicial, limiteInicial],
+    [carregarMapa, filtrosIniciais, estadoInicial, limiteInicial],
   );
 
   // Montagem: voltando do edital (mesmo endereço), restaura busca, lista, tela e posições; senão, vale o que o servidor
@@ -275,6 +293,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
     if (volta) {
       setFiltros(volta.filtros);
       setTela(volta.tela);
+      estadoAtual.current = { ...estadoAtual.current, tela: volta.tela };
       setAtivoBarra(volta.tela);
       setResultado(volta.resultado);
       setLimite(volta.limite);
@@ -286,9 +305,9 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
       void carregarMapa(volta.filtrosMapa);
     } else {
       // Endereço canônico (ordem dos parâmetros, valores inválidos fora): a volta compara por ele.
-      trocarEndereco(urlDaBusca(filtrosIniciais, { vista: 'mapa', tela: telaInicial }));
+      trocarEndereco(urlDaBusca(filtrosIniciais, estadoInicial));
       // Celular com `tela=lista` no endereço (botão Lista de outra página, link compartilhado): abre rolada até a lista.
-      if (telaInicial === 'lista') rolarPara('lista', 'auto');
+      if (estadoInicial.tela === 'lista') rolarPara('lista', 'auto');
       // Mesmos parâmetros da busca que o servidor já contou (a lista veio pronta): o mapa não conta de novo.
       // Busca do endereço bloqueada pelo limite: o mapa do Brasil todo, que não conta.
       void carregarMapa(limiteInicial ? VAZIO : filtrosIniciais);
@@ -298,13 +317,13 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
       if (!atual) return;
       guardarVolta({
         ...atual,
-        endereco: urlDaBusca(atual.filtros, { vista: 'mapa', tela: atual.tela }),
+        endereco: urlDaBusca(atual.filtros, { ...estadoAtual.current, tela: atual.tela }),
         filtrosMapa: filtrosDoMapa.current,
         rolagem: rolagem.current,
         rolagemPagina: rolagemPagina.current,
       });
     };
-  }, [carregarMapa, rolarPara, filtrosIniciais, telaInicial, limiteInicial]);
+  }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial, limiteInicial]);
 
   /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança conta como busca. */
   function aplicar(pedido: FiltrosTela, opcoes: { abrirLista?: boolean } = {}) {
@@ -316,6 +335,9 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
     const cidadeNova = Boolean(novo.cidade && novo.cidade.ibge !== filtros.cidade?.ibge);
     setFiltros(novo);
     setAnimarFoco(true);
+    // Filtro novo começa na página 1 (a ordem escolhida fica).
+    setPagina(1);
+    estadoAtual.current = { ...estadoAtual.current, pagina: 1 };
     if ((opcoes.abrirLista || cidadeNova) && ehCelular()) irPara('lista', novo);
     else trocarTela(tela, novo);
     registrar('busca', { q: novo.q.trim() || null, uf: novo.uf || null, dias: novo.seteDias ? 7 : null });
@@ -338,28 +360,28 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
     setSelecionadoId(e.id);
   }
 
-  async function carregarMais() {
-    if (carregandoMais || carregandoLista) return;
-    const id = pedidoLista.current;
-    setCarregandoMais(true);
-    try {
-      const mais = await obter<RespostaBusca>(`/api/busca?${paraParametros(filtros, { pagina: Math.floor(resultado.editais.length / POR_PAGINA) + 1 })}`, ERRO_LISTA);
-      // Busca ou filtro mudou enquanto esperava: essa página não pertence mais à lista na tela.
-      if (id !== pedidoLista.current) return;
-      setResultado((anterior) => {
-        const ids = new Set(anterior.editais.map((e) => e.id));
-        return { total: mais.total, editais: [...anterior.editais, ...mais.editais.filter((e) => !ids.has(e.id))] };
-      });
-      setErroLista(null);
-    } catch (e) {
-      if (id !== pedidoLista.current) return;
-      if (e instanceof LimiteAtingido) {
-        setLimite(e.limite);
-        publicarUso({ buscas: e.limite.usados });
-      } else setErroLista(mensagem(e, ERRO_LISTA));
-    } finally {
-      if (id === pedidoLista.current) setCarregandoMais(false);
+  /**
+   * Outra página da mesma busca: não conta como busca nem grava o evento "busca"; o mapa não muda.
+   * O limite (402) e o uso do dia seguem o caminho de `carregarLista`.
+   */
+  function irParaPagina(n: number) {
+    if (n < 1 || n === pagina || carregandoLista) return;
+    setPagina(n);
+    escreverEndereco(filtros, { pagina: n });
+    // Celular: a lista rola com a página; volta ao começo dela (a barra acende Lista).
+    if (ehCelular()) {
+      setAtivoBarra('lista');
+      rolarPara('lista');
     }
+    void carregarLista(filtros, { pagina: n });
+  }
+
+  /** Outra ordem da mesma busca: volta à página 1; não conta como busca nem grava o evento "busca"; o mapa não muda. */
+  function mudarOrdem(o: Ordem) {
+    setOrdem(o);
+    setPagina(1);
+    escreverEndereco(filtros, { ordem: o, pagina: 1 });
+    void carregarLista(filtros, { pagina: 1, ordem: o });
   }
 
   return (
@@ -395,15 +417,15 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
             agora={agora}
             painel={painel}
             painelPronto={pontosProntos}
-            seteDias={filtros.seteDias}
+            filtros={filtros}
             selecionadoId={selecionado?.id ?? null}
             carregandoLista={carregandoLista}
-            carregandoMais={carregandoMais}
             erro={erroLista}
             limite={limite}
-            cidade={filtros.cidade}
-            raio={filtros.raio}
-            parametrosBusca={paraParametros(filtros).toString()}
+            pagina={pagina}
+            ordem={ordemEfetiva(ordem, comTermo)}
+            temTermo={comTermo}
+            parametrosBusca={paraParametros(filtros, { ordem }).toString()}
             listaRef={listaRef}
             aoRolar={(topo) => {
               rolagem.current = topo;
@@ -411,7 +433,9 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
             aoTirarCidade={() => aplicar({ ...filtros, cidade: null })}
             aoSelecionar={selecionar}
             aoMudarPrazo={(seteDias) => aplicar({ ...filtros, seteDias })}
-            aoCarregarMais={carregarMais}
+            aoMudarOrdem={mudarOrdem}
+            aoIrPagina={irParaPagina}
+            aoAplicar={aplicar}
           />
         </section>
         {/* Celular: primeiro na página, com 58svh (pinça e um dedo mexem no mapa; fora dele, arrastar rola a página). */}

@@ -14,8 +14,6 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 export default async function Inicio({ searchParams }: Props) {
   await connection();
   const { busca, estado } = lerBuscaDaUrl(paraUrlSearchParams(await searchParams));
-  // Até a vista Lista existir (Task 9), a página inicial é a de hoje (vista Mapa).
-  const tela = estado.tela;
   const cnpj = busca.orgao;
   // Nomes para os chips; se a consulta falhar, o filtro só sai da tela.
   const [cidade, orgao] = await Promise.all([
@@ -25,7 +23,8 @@ export default async function Inicio({ searchParams }: Props) {
   const filtros = montarTela(busca, cidade, orgao);
   // A mesma busca que a lista pede a /api/busca (mesma chave no limite do dia). O navegador não repete o pedido da lista
   // ao abrir (recebe `inicial`) e o mapa leva os mesmos parâmetros: a busca do endereço conta uma vez só.
-  const daLista = lerFiltros(paraParametros(filtros));
+  // Página e ordem vêm do endereço e não mudam a chave do limite (a mesma busca em outra página não conta de novo).
+  const daLista = lerFiltros(paraParametros(filtros, { pagina: estado.pagina, ordem: estado.ordem }));
   const ctx = await contextoDaPagina();
   const decisao = await decidirBusca(ctx, daLista, { avisar: true });
   const [inicial, atualizado, uso] = await Promise.all([
@@ -42,9 +41,9 @@ export default async function Inicio({ searchParams }: Props) {
     <div className="flex flex-col lg:h-dvh">
       <Cabecalho uso={uso} />
       <Explorador
-        key={`${urlDaBusca(filtros, { vista: 'mapa', tela })}@${agora}`}
+        key={`${urlDaBusca(filtros, estado)}@${agora}`}
         filtrosIniciais={filtros}
-        telaInicial={tela}
+        estadoInicial={estado}
         inicial={inicial}
         limiteInicial={decisao.permitido ? null : decisao.limite}
         agoraInicial={agora}
