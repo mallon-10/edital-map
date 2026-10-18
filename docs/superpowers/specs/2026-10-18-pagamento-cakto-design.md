@@ -14,7 +14,7 @@ Sucesso: uma compra real (cartão ou Pix) liga o plano em segundos; renovar, can
 - Produto **Edital Map Pro** (assinatura): mensal R$ 89,90 e anual R$ 899,00.
 - Webhook `https://www.editalmap.com.br/api/cakto` nos dois produtos, eventos `purchase_approved`, `purchase_refused`, `refund`, `chargeback`, `subscription_created`, `subscription_renewed`, `subscription_renewal_refused`, `subscription_late`, `subscription_canceled`.
 - Dono, no painel (a API não tem o campo): em cada produto, Configurações → Checkout → "Redirecionar após o pagamento" = `https://www.editalmap.com.br/obrigado/{{callback}}`. Cadastro de vendedor completo (Financeiro), senão o checkout recusa a venda.
-- Variáveis (Vercel e .env; nada no git): `CAKTO_CLIENT_ID`, `CAKTO_CLIENT_SECRET` (só para os scripts de criação), `CAKTO_WEBHOOK_SECRET`, `CAKTO_OFERTA_BASIC_MENSAL`, `CAKTO_OFERTA_BASIC_ANUAL`, `CAKTO_OFERTA_PRO_MENSAL`, `CAKTO_OFERTA_PRO_ANUAL` (ids curtos das ofertas, os do link `pay.cakto.com.br/{id}`).
+- Variáveis (Vercel e .env; nada no git): `CAKTO_CLIENT_ID`, `CAKTO_CLIENT_SECRET` (só para os scripts de criação), `CAKTO_WEBHOOK_SECRET`, `CAKTO_OFERTA_BASIC_MENSAL`, `CAKTO_OFERTA_BASIC_ANUAL`, `CAKTO_OFERTA_PRO_MENSAL`, `CAKTO_OFERTA_PRO_ANUAL` (ids curtos das ofertas, os do link `pay.cakto.com.br/{id}`), `INTERNO_SEGREDO` (seção 5).
 - **Interruptor**: sem as quatro ofertas e o segredo do webhook, o site continua como hoje (lista de espera, recursos abertos). Assim dá para publicar antes de a Cakto estar pronta.
 
 ## 3. Fluxo da compra
@@ -46,7 +46,8 @@ Duração: mensal 31 dias, anual 366 dias.
 
 ## 5. Plano do navegador e chave de acesso
 
-- `lib/servidor/plano.ts`: `planoAtual(ctx): Promise<'gratis' | 'basic' | 'pro'>` — a assinatura ligada ao visitante com `valido_ate > now()` e status diferente de `estornada`; mais de uma: a maior (Pro > Basic). Interno: `pro`. Sem visitante ou banco fora: `gratis`. Cache por pedido. É a função que a Fase 3 (Prévia do Radar) vai usar; quando houver conta, ela também lê `perfis.plano` (Fase 5).
+- `lib/servidor/plano.ts`: `planoAtual(ctx): Promise<'gratis' | 'basic' | 'pro'>` — a assinatura ligada ao visitante com `valido_ate > now()` e status diferente de `estornada`; mais de uma: a maior (Pro > Basic). Dono (cookie assinado, abaixo): `pro`. Sem visitante ou banco fora: `gratis`. Cache por pedido. É a função que a Fase 3 (Prévia do Radar) vai usar; quando houver conta, ela também lê `perfis.plano` (Fase 5).
+- **Interno confiável**: hoje `em_interno=1` (ligado por qualquer um em `/sobre?interno=1`) tira todos os limites; com cobrança, isso vira um jeito de não pagar. Passa a ser assim: `em_interno=1` serve **só às métricas** (eventos e portão, como hoje) e não libera nada. Quem libera é o cookie `em_dono`, com valor = HMAC-SHA256 de `'dono'` com `INTERNO_SEGREDO` (variável do servidor), gravado por `/sobre?interno=<INTERNO_SEGREDO>` (que também grava `em_interno=1`); `?interno=1` continua marcando só as métricas. Sem `INTERNO_SEGREDO` configurado, ninguém é dono. Dono = Pro, sem faixa e sem contar uso (o que o "interno" fazia). Remarcar cada navegador do dono uma vez depois do deploy.
 - **Chave de acesso**: `EM-XXXX-XXXX-XXXX` (12 caracteres de um alfabeto sem 0/O/1/I/L, ~60 bits), gerada na primeira aprovação. Fica na tabela (só o servidor lê) para aparecer de novo em /assinatura.
 - `/assinatura`: no navegador com plano, mostra plano, período, "válido até", status ("cancelada: vale até…") e a chave com botão Copiar. Em qualquer navegador, campo "Tenho uma chave de acesso" → `POST /api/assinatura/ativar` liga aquele navegador (até 3 por assinatura; o 4º recebe "Esta chave já está em 3 navegadores. Escreva para o contato para liberar."). 10 tentativas por hora por IP. Rotas POST checam a origem (`lib/servidor/mesmaOrigem.ts` da Fase 3; se ela ainda não estiver na main, a mesma checagem do cabeçalho `Origin` contra o host).
 - Link "Minha assinatura" no cabeçalho para quem tem plano (no lugar de "Assinar Pro"); no rodapé de /planos, "Já assinou? Use sua chave de acesso".
@@ -81,7 +82,7 @@ Duração: mensal 31 dias, anual 366 dias.
 
 ## 8. Testes
 
-Vitest, teste primeiro: assinatura HMAC (válida, adulterada, antiga, sem cabeçalho com `secret`), `data` em lista, idempotência, cada evento da tabela da seção 4 (validade, status, renovação com e sem `subscription.id`, oferta desconhecida), mapa oferta → plano, chave (formato, alfabeto), limite de 3 navegadores, `planoAtual` (sem assinatura, vencida, estornada, Pro > Basic, interno), limites por plano e faixa, cadeados nas rotas (raio/órgão/exportar 402 fora do Pro), link oficial só com plano, interruptor desligado = comportamento de hoje, `/api/checkout` (código, redirecionamento, sem cookie).
+Vitest, teste primeiro: assinatura HMAC (válida, adulterada, antiga, sem cabeçalho com `secret`), `data` em lista, idempotência, cada evento da tabela da seção 4 (validade, status, renovação com e sem `subscription.id`, oferta desconhecida), mapa oferta → plano, chave (formato, alfabeto), limite de 3 navegadores, `planoAtual` (sem assinatura, vencida, estornada, Pro > Basic, dono), cookie do dono (assinatura certa, adulterada, sem segredo configurado; `em_interno=1` sozinho não libera), limites por plano e faixa, cadeados nas rotas (raio/órgão/exportar 402 fora do Pro), link oficial só com plano, interruptor desligado = comportamento de hoje, `/api/checkout` (código, redirecionamento, sem cookie).
 
 Conferência real: evento de teste da Cakto (`event_test`) chega e é aceito; compra real de R$ 49,90 com Pix → plano liga em segundos → /obrigado mostra a chave → chave em outro navegador → reembolso pelo painel → plano cai.
 
@@ -97,4 +98,5 @@ Login e plano preso à conta (Fase 5, junto com `perfis.plano`); troca de plano 
 - [ ] Grátis: cadeado no link oficial, nos filtros Pro e na exportação; 3 parecidos; 3/3 por dia. Basic: 15/15, sem filtros Pro. Pro: sem faixa.
 - [ ] Webhook com assinatura inválida = 401; evento repetido não duplica.
 - [ ] Interruptor desligado: site igual ao de hoje.
+- [ ] `/sobre?interno=1` não tira limites; `/sobre?interno=<segredo>` sim.
 - [ ] `npm test` e `npm run typecheck` passam.
