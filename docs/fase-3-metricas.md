@@ -65,3 +65,11 @@ O aumento em `contratacoes` são versões antigas das linhas (o `UPDATE` da 0005
 - [E1] 12 funções só com service_role; [E2] uma assinatura por função.
 - [E5] tempos: material/relevância 170 ms; uniformes 145 ms; EPI 236 ms; luva nitrílica 236 ms; material de limpeza -escolar 216 ms; merenda, leite 202 ms; computador 236 ms; sem termo 858 ms (prazo) / 853 ms (maior valor); mapa sem termo 792 ms.
 - scripts/conferir-relevancia.ts: todas ok (pontuação do banco = pontuar; ordem não sobe; só termos da busca; excluídos fora).
+
+## Evolução · Fase 3 · Conta e radar (0014)
+
+- 0014 aplicada em 2026-10-18 13:43 UTC (0012/0013 são do SEO, já aplicadas); site no ar seguiu 200. Ensaio antes em transação desfeita: site e funções do SEO iguais; gatilho cria perfil "gratis".
+- [C1–C3] permissões só service_role; uma assinatura por função; perfis/radares/salvos/alertas_enviados sem políticas, RLS ligado. [C4] lista 33.577 = mapa 33.577.
+- [C5] municípios, faixa de valor e ME/EPP corretos; [C6] contagens do radar = lista (454; 7 dias 187; novas 30). [C8] municípios ok; [C9] 11 tipos de evento.
+- [C7] radar com 5 produtos amplos (2ª execução): com 20 relacionados 805 ms (relevância) / 406 ms (prazo); com 12 relacionados 520 / 251 ms; contagens 357 ms. Decisão: radar usa no máximo 12 relacionados no total.
+- SUPABASE_ANON_KEY (chave publicável) e RESEND_API_KEY na Vercel (production); SUPABASE_ANON_KEY no .env.
