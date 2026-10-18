@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  argumentosRadar, buscaDoRadar, desdeDaVisita, ENTRADA_RADAR, filtrosDoRadar, lerBuscaMunicipio, lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR,
-  MENSAGENS_RADAR, palavraValida, radarDaLinha, validarRadar, VISIVEIS_GRATIS, vistaDoRadar, type Radar,
+  adicionarTermos, argumentosRadar, buscaDoRadar, corpoDoRascunho, desdeDaVisita, ENTRADA_RADAR, erroDaEtapa, filtrosDoRadar, lerBuscaMunicipio,
+  lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR, MENSAGENS_RADAR, palavraValida, radarDaLinha, rascunhoDoRadar, sugestoesTermos, validarRadar,
+  VISIVEIS_GRATIS, vistaDoRadar, type Radar, type RascunhoRadar,
 } from './radar';
 import { interpretarBusca, MAX_RELACIONADOS } from './relevancia/termos';
 
@@ -228,5 +229,79 @@ describe('lerBuscaMunicipio (texto que vai ao ilike de buscar_municipios)', () =
     for (const q of [null, '', 'a', ' a ', 'x%', '%', 'abc_', 'jo\\', 'são%paulo', 'a'.repeat(61), '12', 'joinville;']) {
       expect(lerBuscaMunicipio(q)).toBeNull();
     }
+  });
+});
+
+describe('formulário do radar', () => {
+  const VAZIO: RascunhoRadar = rascunhoDoRadar(null, []);
+  it('rascunho vazio: Todo o Brasil, sem nada escolhido', () => {
+    expect(VAZIO).toEqual({ termos: [], termosExcluir: [], abrangencia: 'brasil', ufs: [], municipios: [], valorMin: '', valorMax: '', modalidades: [], soMeEpp: false });
+  });
+  it('rascunho de um radar salvo (municípios na ordem do radar, valores formatados)', () => {
+    const cidades = [{ ibge: '4205407', nome: 'Florianópolis', uf: 'SC' }, { ibge: '4209102', nome: 'Joinville', uf: 'SC' }];
+    const r: Radar = { ...BASE, municipios: ['4209102', '4205407'], valorMin: 1500000, valorMax: null, soMeEpp: true };
+    expect(rascunhoDoRadar(r, cidades)).toMatchObject({
+      abrangencia: 'municipios', municipios: [cidades[1], cidades[0]], valorMin: '1.500.000', valorMax: '', soMeEpp: true,
+    });
+    expect(rascunhoDoRadar({ ...BASE, ufs: ['SC'] }, []).abrangencia).toBe('estados');
+  });
+  it('valor formatado no rascunho volta ao mesmo número', () => {
+    const d = rascunhoDoRadar({ ...BASE, valorMin: 1500000, valorMax: 25000000 }, []);
+    expect(lerValorReais(d.valorMin)).toBe(1500000);
+    expect(lerValorReais(d.valorMax)).toBe(25000000);
+  });
+  it('lerValorReais aceita "R$ 1.500.000,00", vazio é sem limite', () => {
+    expect(lerValorReais('R$ 1.500.000,00')).toBe(1500000);
+    expect(lerValorReais('50000')).toBe(50000);
+    expect(lerValorReais('  ')).toBeNull();
+    expect(lerValorReais('mil')).toBe('invalido');
+    expect(lerValorReais('-5')).toBe('invalido');
+  });
+  it('erros por etapa', () => {
+    expect(erroDaEtapa(VAZIO, 1)).toBe(MENSAGENS_RADAR.semTermo);
+    const d = { ...VAZIO, termos: ['luva'] };
+    expect(erroDaEtapa(d, 1)).toBeNull();
+    expect(erroDaEtapa({ ...d, abrangencia: 'estados' }, 2)).toBe(MENSAGENS_RADAR.semEstado);
+    expect(erroDaEtapa({ ...d, abrangencia: 'municipios' }, 2)).toBe(MENSAGENS_RADAR.semMunicipio);
+    expect(erroDaEtapa(d, 2)).toBeNull();
+    expect(erroDaEtapa({ ...d, valorMin: 'mil' }, 3)).toBe(MENSAGENS_RADAR.valor);
+    expect(erroDaEtapa({ ...d, valorMin: '500000', valorMax: '1000' }, 3)).toBe(MENSAGENS_RADAR.faixa);
+    expect(erroDaEtapa({ ...d, valorMin: '1000', valorMax: '500000' }, 3)).toBeNull();
+  });
+  it('corpo enviado: só a área escolhida; "Pular" limpa a etapa 3', () => {
+    const d: RascunhoRadar = {
+      ...VAZIO, termos: ['luva'], termosExcluir: ['latex'], abrangencia: 'brasil', ufs: ['SC'],
+      municipios: [{ ibge: '4209102', nome: 'Joinville', uf: 'SC' }], valorMin: '1000', valorMax: '', modalidades: [6], soMeEpp: true,
+    };
+    expect(corpoDoRascunho(d, { pular: false })).toEqual({
+      termos: ['luva'], termosExcluir: ['latex'], ufs: [], municipios: [], valorMin: 1000, valorMax: null, modalidades: [6], soMeEpp: true,
+    });
+    expect(corpoDoRascunho({ ...d, abrangencia: 'municipios' }, { pular: true })).toEqual({
+      termos: ['luva'], termosExcluir: [], ufs: [], municipios: ['4209102'], valorMin: null, valorMax: null, modalidades: [], soMeEpp: false,
+    });
+    expect(corpoDoRascunho({ ...d, abrangencia: 'estados' }, { pular: true }).ufs).toEqual(['SC']);
+  });
+  it('corpo do rascunho passa na validação do servidor', () => {
+    const d: RascunhoRadar = { ...VAZIO, termos: ['luva', 'EPI'], abrangencia: 'estados', ufs: ['SC', 'PR'], valorMin: 'R$ 1.000,00', modalidades: [8, 6] };
+    expect(validarRadar(corpoDoRascunho(d, { pular: false })).ok).toBe(true);
+  });
+  it('adicionarTermos separa por vírgula, tira repetidos e inválidos e respeita o teto', () => {
+    expect(adicionarTermos(['luva'], 'Luvas, botina, ti, -capacete', 10)).toEqual(['luva', 'botina', 'capacete']);
+    expect(adicionarTermos(['a1x', 'b2x'], 'cimento, areia', 3)).toEqual(['a1x', 'b2x', 'cimento']);
+    expect(adicionarTermos([], 'x'.repeat(41), 10, 40)).toEqual([]);
+  });
+  it('sugestões do catálogo de termos: começo primeiro, sem os já escolhidos', () => {
+    const s = sugestoesTermos('unif', []);
+    expect(s[0]).toBe('uniforme');
+    expect(sugestoesTermos('unif', ['Uniforme'])).not.toContain('uniforme');
+    expect(sugestoesTermos('luva', []).slice(0, 3)).toEqual(['luva', 'luva nitrílica', 'luva de vaqueta']);
+    expect(sugestoesTermos('l', [])).toEqual([]);
+    expect(sugestoesTermos('xyzw', [])).toEqual([]);
+    expect(sugestoesTermos('a', [], 3).length).toBe(0);
+  });
+  it('busca de município: letras, espaço, hífen e apóstrofo; 2 a 60 caracteres', () => {
+    expect(lerBuscaMunicipio('  São   José ')).toBe('São José');
+    expect(lerBuscaMunicipio("Pau-d'Arco")).toBe("Pau-d'Arco");
+    for (const q of [null, '', 'a', 'x%', 'abc_', 'a'.repeat(61), '12']) expect(lerBuscaMunicipio(q)).toBeNull();
   });
 });

@@ -22,3 +22,12 @@ export async function buscarMunicipios(bruto: string): Promise<Cidade[]> {
     return ((data ?? []) as LinhaMunicipio[]).map(paraCidade);
   });
 }
+
+/** Nome e UF dos municípios do radar (para os chips da edição), na ordem do radar. Código que não existe some. */
+export async function municipiosPorIbge(ibges: readonly string[]): Promise<Cidade[]> {
+  if (ibges.length === 0) return [];
+  const { data, error } = await supabaseServidor().from('municipios').select('codigo_ibge, nome, uf').in('codigo_ibge', [...ibges]);
+  if (error) throw new Error(`municípios: ${error.message}`);
+  const porIbge = new Map(((data ?? []) as LinhaMunicipio[]).map((l) => [String(l.codigo_ibge), paraCidade(l)]));
+  return ibges.map((i) => porIbge.get(i)).filter((c): c is Cidade => Boolean(c));
+}

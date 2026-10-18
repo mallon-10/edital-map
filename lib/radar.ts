@@ -1,8 +1,8 @@
 import { UFS_BRASIL, type Resultado } from './eventos';
 import { limiteDeValor, MAX_PAGINA, MODALIDADES, ordemEfetiva, POR_PAGINA } from './filtros';
 import type { IdPlano } from './planos';
-import { chave, expandir, gruposDigitados, LIGACOES, normalizar, SIGLAS_TERMOS, type Busca } from './relevancia/termos';
-import type { Ordem } from './tipos';
+import { chave, expandir, GRUPOS, gruposDigitados, LIGACOES, normalizar, SIGLAS_TERMOS, type Busca } from './relevancia/termos';
+import type { Cidade, Ordem } from './tipos';
 
 /**
  * Radar (perfil de interesse) de uma conta: regras puras de validação e da busca que alimenta o Meu Radar.
@@ -253,4 +253,100 @@ export function lerValorReais(t: string): number | null | 'invalido' {
 export function lerBuscaMunicipio(q: string | null): string | null {
   const t = (q ?? '').trim().replace(/\s+/g, ' ');
   return t.length >= 2 && t.length <= 60 && /^[\p{L}' -]+$/u.test(t) ? t : null;
+}
+
+// ── Formulário (onboarding e edição) ────────────────────────────────────────────────────────────────────────────
+
+export type Abrangencia = 'brasil' | 'estados' | 'municipios';
+
+/** O que a tela edita: valores como digitados (texto) e municípios com nome, para os chips. */
+export type RascunhoRadar = {
+  termos: string[];
+  termosExcluir: string[];
+  abrangencia: Abrangencia;
+  ufs: string[];
+  municipios: Cidade[];
+  valorMin: string;
+  valorMax: string;
+  modalidades: number[];
+  soMeEpp: boolean;
+};
+
+const formatoReais = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+
+/** Radar salvo (ou nenhum) → rascunho da tela. `cidades`: nome e UF dos municípios do radar (municipiosPorIbge). */
+export function rascunhoDoRadar(r: Radar | null, cidades: Cidade[]): RascunhoRadar {
+  if (!r) {
+    return { termos: [], termosExcluir: [], abrangencia: 'brasil', ufs: [], municipios: [], valorMin: '', valorMax: '', modalidades: [], soMeEpp: false };
+  }
+  const porIbge = new Map(cidades.map((c) => [c.ibge, c]));
+  return {
+    termos: r.termos,
+    termosExcluir: r.termosExcluir,
+    abrangencia: r.municipios.length ? 'municipios' : r.ufs.length ? 'estados' : 'brasil',
+    ufs: r.ufs,
+    municipios: r.municipios.map((i) => porIbge.get(i)).filter((c): c is Cidade => Boolean(c)),
+    valorMin: r.valorMin === null ? '' : formatoReais.format(r.valorMin),
+    valorMax: r.valorMax === null ? '' : formatoReais.format(r.valorMax),
+    modalidades: r.modalidades,
+    soMeEpp: r.soMeEpp,
+  };
+}
+
+/** Mensagem da etapa (1 produtos, 2 onde atende, 3 tipo de oportunidade), ou null se pode seguir. */
+export function erroDaEtapa(d: RascunhoRadar, etapa: 1 | 2 | 3): string | null {
+  if (etapa === 1) return d.termos.length === 0 ? MENSAGENS_RADAR.semTermo : null;
+  if (etapa === 2) {
+    if (d.abrangencia === 'estados' && d.ufs.length === 0) return MENSAGENS_RADAR.semEstado;
+    if (d.abrangencia === 'municipios' && d.municipios.length === 0) return MENSAGENS_RADAR.semMunicipio;
+    return null;
+  }
+  const min = lerValorReais(d.valorMin);
+  const max = lerValorReais(d.valorMax);
+  if (min === 'invalido' || max === 'invalido') return MENSAGENS_RADAR.valor;
+  if (min !== null && max !== null && min > max) return MENSAGENS_RADAR.faixa;
+  return null;
+}
+
+const comoNumero = (v: number | null | 'invalido') => (v === 'invalido' ? null : v);
+
+/** Rascunho → corpo de POST /api/radar (o servidor valida de novo). "Pular" deixa a etapa 3 em branco. */
+export function corpoDoRascunho(d: RascunhoRadar, o: { pular: boolean }): Radar {
+  return {
+    termos: d.termos,
+    termosExcluir: o.pular ? [] : d.termosExcluir,
+    ufs: d.abrangencia === 'estados' ? d.ufs : [],
+    municipios: d.abrangencia === 'municipios' ? d.municipios.map((c) => c.ibge) : [],
+    valorMin: o.pular ? null : comoNumero(lerValorReais(d.valorMin)),
+    valorMax: o.pular ? null : comoNumero(lerValorReais(d.valorMax)),
+    modalidades: o.pular ? [] : d.modalidades,
+    soMeEpp: o.pular ? false : d.soMeEpp,
+  };
+}
+
+/** Acrescenta o digitado aos chips: separa por vírgula, tira hífen, repetidos (pela chave) e o que não vale. */
+export function adicionarTermos(atuais: readonly string[], texto: string, max: number, tamanho: number = LIMITES_RADAR.tamanhoTermo): string[] {
+  const saida = [...atuais];
+  const vistos = new Set(atuais.map(chave));
+  for (const g of gruposDigitados(texto)) {
+    if (saida.length >= max) break;
+    const t = g.replace(/^-+/, '').trim();
+    if (!t || t.length > tamanho || !palavraValida(t) || vistos.has(chave(t))) continue;
+    vistos.add(chave(t));
+    saida.push(t);
+  }
+  return saida;
+}
+
+const CATALOGO: readonly string[] = [...new Set(GRUPOS.flatMap((g) => g.termos))];
+
+/** Termos do catálogo (lib/relevancia/termos.ts) que começam como o digitado; depois, os que têm uma palavra assim. */
+export function sugestoesTermos(digitado: string, escolhidos: readonly string[], limite = 6): string[] {
+  const k = chave(digitado);
+  if (k.length < 2) return [];
+  const ja = new Set(escolhidos.map(chave));
+  const livres = CATALOGO.filter((t) => !ja.has(chave(t)));
+  const comeca = livres.filter((t) => chave(t).startsWith(k));
+  const palavra = livres.filter((t) => !chave(t).startsWith(k) && chave(t).includes(` ${k}`));
+  return [...comeca, ...palavra].slice(0, limite);
 }

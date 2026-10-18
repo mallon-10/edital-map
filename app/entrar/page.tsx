@@ -6,7 +6,8 @@ import { FormEntrar } from '@/components/conta/FormEntrar';
 import { destinoSeguro } from '@/lib/conta';
 import { usuarioAtual } from '@/lib/servidor/sessao';
 
-export const metadata: Metadata = { title: 'Entrar' };
+/** Página de conta: fora do Google (o sitemap também não a lista). */
+export const metadata: Metadata = { title: 'Entrar', robots: { index: false, follow: false } };
 
 type Props = { searchParams: Promise<{ voltar?: string | string[] }> };
 
