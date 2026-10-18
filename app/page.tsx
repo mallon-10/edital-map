@@ -3,6 +3,7 @@ import { connection } from 'next/server';
 import { AtalhoRadar } from '@/components/AtalhoRadar';
 import { Cabecalho } from '@/components/Cabecalho';
 import { Explorador } from '@/components/Explorador';
+import { Medir } from '@/components/Medir';
 import { lerFiltros, paraParametros } from '@/lib/filtros';
 import { precisaPro } from '@/lib/limites';
 import { temBusca } from '@/lib/seo/textos';
@@ -55,6 +56,7 @@ export default async function Inicio({ searchParams }: Props) {
   return (
     <div className="flex flex-col lg:h-dvh">
       <Cabecalho uso={uso} />
+      {inicial && busca.q?.trim() ? <Medir conversao="buscou" chave="dia" /> : null}
       <AtalhoRadar />
       <Explorador
         key={`${urlDaBusca(filtros, estado)}@${agora}`}

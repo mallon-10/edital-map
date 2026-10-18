@@ -44,6 +44,14 @@ export default async function PaginaSobre({ searchParams }: Props) {
             <Link href="/licitacoes" prefetch={false} className="font-semibold text-pin-strong hover:underline">Licitações abertas</Link>.
           </p>
         </section>
+        <section id="cookies" className="flex scroll-mt-24 flex-col gap-2">
+          <h2 className="text-lg font-bold">Cookies e anúncios</h2>
+          <p>
+            Usamos um cookie próprio para contar as buscas e editais do plano grátis. Com a sua permissão no aviso de cookies, a tag do
+            Google Ads mede se nossos anúncios trazem visitas e assinaturas. Se você recusar, o Google recebe só sinais anônimos, sem
+            cookies. Para mudar a escolha, limpe os dados do site no navegador e o aviso volta a aparecer.
+          </p>
+        </section>
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-bold">Seu e-mail</h2>
           <p>

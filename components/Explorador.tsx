@@ -7,6 +7,7 @@ import { publicarUso } from '@/lib/cliente/uso';
 import { guardarUltimaBusca, guardarVolta, tomarVolta, type Volta } from '@/lib/cliente/volta';
 import type { Raio } from '@/lib/geo';
 import { buscaDoCampo, filtrosAtivos, normalizarTela, ordemEfetiva, paraParametros, recursosUsados } from '@/lib/filtros';
+import { medir } from '@/lib/cliente/medir';
 import { LimiteAtingido, lerLimite, lerRecursoPro, RecursoProBloqueado, type Limite, type RespostaBusca } from '@/lib/limites';
 import { resumirPontos } from '@/lib/painel';
 import { temTermo } from '@/lib/relevancia/termos';
@@ -186,6 +187,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         const novo = await obter<RespostaBusca>(`/api/busca?${paraParametros(f, { pagina: lista.pagina ?? 1, ordem: ordemPedida })}`, ERRO_LISTA);
         if (id !== pedidoLista.current) return 'velho';
         setResultado({ total: novo.total, editais: novo.editais });
+        if (f.q.trim()) medir('buscou', { chave: 'dia' });
         setLimite(null);
         setProBloqueado(false);
         if (novo.buscasUsadas !== null) publicarUso({ buscas: novo.buscasUsadas });

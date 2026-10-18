@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { Cabecalho } from '@/components/Cabecalho';
+import { Medir } from '@/components/Medir';
 import { EsperaPagamento } from '@/components/pagamento/EsperaPagamento';
+import { PLANOS } from '@/lib/planos';
 import { data } from '@/lib/formato';
 import { estadoDoCheckout, type EstadoCheckout } from '@/lib/servidor/pagamento';
 import { contextoDaPagina } from '@/lib/servidor/registro';
@@ -11,6 +13,7 @@ export const metadata: Metadata = { title: 'Pagamento', robots: { index: false, 
 
 type Props = { params: Promise<{ codigo: string }> };
 
+const PRO = PLANOS.find((p) => p.id === 'pro')!;
 const TITULO = 'text-[28px] font-bold leading-tight tracking-[-0.015em]';
 
 /** Depois do pagamento: confirma o Pro e leva a ativar a conta (código no e-mail da compra) e configurar o Radar. */
@@ -31,6 +34,15 @@ export default async function Obrigado({ params }: Props) {
       <main className="mx-auto flex w-full max-w-[640px] flex-col gap-5 px-4 py-10 text-[15px] leading-relaxed md:px-6">
         {estado.estado === 'pago' ? (
           <>
+            {estado.email ? (
+              <Medir
+                conversao="assinou"
+                chave={codigo}
+                transacao={codigo}
+                email={estado.email}
+                valorCentavos={estado.periodo === 'anual' ? PRO.centavosAno : PRO.centavosMes}
+              />
+            ) : null}
             <h1 className={TITULO}>Pro ativo</h1>
             <p>
               Obrigado! O Pro {estado.periodo === 'anual' ? 'anual' : 'mensal'} já está valendo neste navegador, até {data(estado.validoAte)}, e

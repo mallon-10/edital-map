@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Medir } from '@/components/Medir';
 import { CONVITE_PLANOS, mensagemLimite, type Plano, type TipoUso } from '@/lib/limites';
 
 /**
@@ -15,6 +16,7 @@ export function CartaoLimite({ tipo, plano = 'gratis' }: { tipo: TipoUso; plano?
   }
   return (
     <section role="status" className="flex flex-col gap-3 rounded-lg border border-pin bg-pin-soft p-5 text-ink">
+      <Medir conversao="limite" chave="dia" />
       <h2 className="text-[17px] font-bold leading-snug">{mensagemLimite(tipo, plano)}</h2>
       <p className="text-[15px] text-ink-muted">{CONVITE_PLANOS}</p>
       <div className="flex flex-wrap gap-2">
