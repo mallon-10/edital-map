@@ -6,7 +6,7 @@ import { buscarEditais } from '@/lib/servidor/consultas';
 export async function GET(request: Request) {
   const filtros = lerFiltros(new URL(request.url).searchParams);
   try {
-    const { total } = await buscarEditais({ ...filtros, deslocamento: 0 });
+    const { total } = await buscarEditais({ ...filtros, pagina: 1 });
     return Response.json({ total }, { headers: CACHE_PUBLICO });
   } catch (erro) {
     console.error(erro);

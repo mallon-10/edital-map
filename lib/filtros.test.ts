@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buscaDoCampo, chaveFiltros, lerFiltros, filtrosAtivos, lerTermoOrgao, limparFiltros, normalizarTela, paraParametros, recursosUsados, ufIgnoradaPeloRaio, UFS_ORDENADAS } from './filtros';
+import { buscaDoCampo, chaveFiltros, lerFiltros, filtrosAtivos, lerTermoOrgao, limparFiltros, normalizarTela, ordemEfetiva, ORDENS, paraParametros, recursosUsados, ufIgnoradaPeloRaio, UFS_ORDENADAS } from './filtros';
 import type { FiltrosTela } from './tipos';
 
 const ler = (s: string) => lerFiltros(new URLSearchParams(s));
-const BASE = { q: null, uf: null, ibge: null, dias: null, deslocamento: 0, valorMin: null, modalidades: null, orgao: null, raio: null };
+const BASE = { q: null, uf: null, ibge: null, dias: null, pagina: 1, ordem: null, valorMin: null, modalidades: null, orgao: null, raio: null };
 const JOINVILLE = { ibge: '4209102', nome: 'Joinville', uf: 'SC' };
 const ORGAO = { cnpj: '83102244000102', nome: 'Município de Joinville' };
 const TELA_VAZIA: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
@@ -13,8 +13,8 @@ describe('lerFiltros', () => {
     expect(ler('')).toEqual(BASE);
   });
   it('aceita os valores válidos', () => {
-    expect(ler('q=%20EPI%20e%20uniformes%20&uf=sc&ibge=4205407&dias=7&deslocamento=50&valor=50000&modalidades=8,6,6')).toEqual({
-      q: 'EPI e uniformes', uf: 'SC', ibge: '4205407', dias: 7, deslocamento: 50, valorMin: 50000, modalidades: [6, 8], orgao: null, raio: null,
+    expect(ler('q=%20EPI%20e%20uniformes%20&uf=sc&ibge=4205407&dias=7&pagina=3&ordem=recentes&valor=50000&modalidades=8,6,6')).toEqual({
+      q: 'EPI e uniformes', uf: 'SC', ibge: '4205407', dias: 7, pagina: 3, ordem: 'recentes', valorMin: 50000, modalidades: [6, 8], orgao: null, raio: null,
     });
   });
   it('descarta UF que não existe, IBGE malformado e dias diferentes de 7', () => {
@@ -27,11 +27,15 @@ describe('lerFiltros', () => {
   it('ignora valor fora da lista e modalidades desconhecidas', () => {
     expect(ler('valor=12345&modalidades=1,99,abc')).toEqual(BASE);
   });
-  it('limita o termo a 100 caracteres e o deslocamento a 0..20000', () => {
+  it('limita o termo a 100 caracteres, a página a 1..1000 e a ordem às conhecidas; o deslocamento antigo não vale mais', () => {
     expect(ler(`q=${'a'.repeat(150)}`).q).toHaveLength(100);
-    expect(ler('deslocamento=-1').deslocamento).toBe(0);
-    expect(ler('deslocamento=20050').deslocamento).toBe(0);
-    expect(ler('deslocamento=1.5').deslocamento).toBe(0);
+    expect(ler('pagina=0').pagina).toBe(1);
+    expect(ler('pagina=1001').pagina).toBe(1);
+    expect(ler('pagina=1.5').pagina).toBe(1);
+    expect(ler('pagina=1000').pagina).toBe(1000);
+    expect(ler('ordem=maior_valor').ordem).toBe('maior_valor');
+    expect(ler('ordem=aleatoria').ordem).toBeNull();
+    expect(ler('deslocamento=50')).toEqual(BASE);
   });
   it('órgão: CNPJ de 14 caracteres (numérico ou alfanumérico), em maiúsculas', () => {
     expect(ler('orgao=83102244000102').orgao).toBe('83102244000102');
@@ -56,6 +60,8 @@ describe('chaveFiltros', () => {
     expect(chaveFiltros(ler('q=epi'))).not.toBe(chaveFiltros(ler('q=epi&modalidades=6')));
     expect(chaveFiltros(ler('q=epi'))).not.toBe(chaveFiltros(ler('q=epi&orgao=83102244000102')));
     expect(chaveFiltros(ler('ibge=4209102'))).not.toBe(chaveFiltros(ler('ibge=4209102&raio=50')));
+    expect(chaveFiltros(ler('q=epi'))).not.toBe(chaveFiltros(ler('q=epi&pagina=2')));
+    expect(chaveFiltros(ler('q=epi'))).not.toBe(chaveFiltros(ler('q=epi&ordem=recentes')));
   });
 });
 
@@ -64,10 +70,11 @@ describe('paraParametros', () => {
     q: ' EPI ', uf: 'SC', cidade: { ibge: '4205407', nome: 'Florianópolis', uf: 'SC' }, valorMin: 50000, modalidades: [8, 6], seteDias: true,
     orgao: null, raio: null,
   };
-  it('monta os parâmetros que a API entende', () => {
-    expect(paraParametros(TELA, { deslocamento: 50 }).toString()).toBe(
-      'q=EPI&uf=SC&dias=7&valor=50000&modalidades=6%2C8&ibge=4205407&deslocamento=50',
+  it('monta os parâmetros que a API entende (página 1 e ordem padrão ficam fora)', () => {
+    expect(paraParametros(TELA, { pagina: 3, ordem: 'maior_valor' }).toString()).toBe(
+      'q=EPI&uf=SC&dias=7&valor=50000&modalidades=6%2C8&ibge=4205407&ordem=maior_valor&pagina=3',
     );
+    expect(paraParametros(TELA, { pagina: 1, ordem: null }).toString()).toBe('q=EPI&uf=SC&dias=7&valor=50000&modalidades=6%2C8&ibge=4205407');
   });
   it('sem cidade para o mapa e vazio quando não há filtro', () => {
     expect(paraParametros(TELA, { comCidade: false }).has('ibge')).toBe(false);
@@ -75,7 +82,7 @@ describe('paraParametros', () => {
   });
   it('ida e volta com lerFiltros', () => {
     expect(lerFiltros(paraParametros(TELA))).toEqual({
-      q: 'EPI', uf: 'SC', ibge: '4205407', dias: 7, deslocamento: 0, valorMin: 50000, modalidades: [6, 8], orgao: null, raio: null,
+      q: 'EPI', uf: 'SC', ibge: '4205407', dias: 7, pagina: 1, ordem: null, valorMin: 50000, modalidades: [6, 8], orgao: null, raio: null,
     });
   });
   it('órgão e raio: a lista leva os dois; o mapa leva a cidade só junto com o raio', () => {
@@ -200,5 +207,20 @@ describe('limparFiltros (folha de Filtros do celular)', () => {
     };
     expect(limparFiltros(cheio)).toEqual({ ...TELA_VAZIA, q: 'luva' });
     expect(filtrosAtivos(limparFiltros(cheio))).toBe(0);
+  });
+});
+
+describe('ordemEfetiva', () => {
+  it('com termo: a pedida, ou relevância', () => {
+    expect(ordemEfetiva(null, true)).toBe('relevancia');
+    expect(ordemEfetiva('maior_valor', true)).toBe('maior_valor');
+  });
+  it('sem termo: relevância (ou nada) vira menor prazo; as outras ficam', () => {
+    expect(ordemEfetiva(null, false)).toBe('prazo');
+    expect(ordemEfetiva('relevancia', false)).toBe('prazo');
+    expect(ordemEfetiva('recentes', false)).toBe('recentes');
+  });
+  it('ORDENS: os rótulos da spec, na ordem do seletor', () => {
+    expect(ORDENS.map((o) => o.rotulo)).toEqual(['Maior relevância', 'Mais recentes', 'Menor prazo', 'Maior valor', 'Menor valor']);
   });
 });

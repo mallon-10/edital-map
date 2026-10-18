@@ -22,6 +22,21 @@ export const ORDENS: ReadonlyArray<{ id: Ordem; rotulo: string }> = [
   { id: 'maior_valor', rotulo: 'Maior valor' },
   { id: 'menor_valor', rotulo: 'Menor valor' },
 ];
+/** Editais por página da lista (as duas vistas). */
+export const POR_PAGINA = 20;
+/** Última página aceita (20.000 editais). */
+export const MAX_PAGINA = 1000;
+
+export function lerOrdem(v: string | null): Ordem | null {
+  return ORDENS.find((o) => o.id === v)?.id ?? null;
+}
+
+/** Ordem que vale: a pedida; sem pedido, relevância com termo e menor prazo sem termo (relevância sem termo vira prazo). */
+export function ordemEfetiva(ordem: Ordem | null, temTermo: boolean): Ordem {
+  if (!temTermo) return ordem === null || ordem === 'relevancia' ? 'prazo' : ordem;
+  return ordem ?? 'relevancia';
+}
+
 /** CNPJ do órgão comprador: 14 caracteres, os 12 primeiros podem ser letras (CNPJ alfanumérico), como em SLUG_EDITAL. */
 const CNPJ = /^[0-9A-Z]{12}\d{2}$/;
 
@@ -32,8 +47,9 @@ export function lerFiltros(p: URLSearchParams): FiltrosBusca {
   const ibgeBruto = p.get('ibge') ?? '';
   const ibge = /^\d{7}$/.test(ibgeBruto) ? ibgeBruto : null;
   const dias = p.get('dias') === '7' ? 7 : null;
-  const d = Number(p.get('deslocamento') ?? 0);
-  const deslocamento = Number.isInteger(d) && d >= 0 && d <= 20000 ? d : 0;
+  const pg = Number(p.get('pagina') ?? 1);
+  const pagina = Number.isInteger(pg) && pg >= 1 && pg <= MAX_PAGINA ? pg : 1;
+  const ordem = lerOrdem(p.get('ordem'));
   const v = Number(p.get('valor'));
   const valorMin = (VALORES_MINIMOS as readonly number[]).includes(v) ? v : null;
   const ids = [...new Set((p.get('modalidades') ?? '').split(',').map((s) => Number(s.trim())))]
@@ -44,19 +60,22 @@ export function lerFiltros(p: URLSearchParams): FiltrosBusca {
   // O raio só vale com município: é contado a partir da sede dele.
   const r = Number(p.get('raio'));
   const raio = ibge && (RAIOS_KM as readonly number[]).includes(r) ? r : null;
-  return { q, uf, ibge, dias, deslocamento, valorMin, modalidades: ids.length ? ids : null, orgao, raio };
+  return { q, uf, ibge, dias, pagina, ordem, valorMin, modalidades: ids.length ? ids : null, orgao, raio };
 }
 
 export function chaveFiltros(f: FiltrosBusca): string {
-  return JSON.stringify([f.q?.toLowerCase() ?? null, f.uf, f.ibge, f.dias, f.deslocamento, f.valorMin, f.modalidades, f.orgao, f.raio]);
+  return JSON.stringify([f.q?.toLowerCase() ?? null, f.uf, f.ibge, f.dias, f.pagina, f.ordem, f.valorMin, f.modalidades, f.orgao, f.raio]);
 }
 
 /**
- * Filtros da tela → parâmetros de `/api/busca`, `/api/mapa` e `/api/exportar`.
+ * Filtros da tela (e a página e a ordem da lista) → parâmetros de `/api/busca`, `/api/mapa`, `/api/exportar` e `/api/contagem`.
  * O mapa (`comCidade: false`) não leva a cidade sozinha (mostra todas, para o usuário escolher outra);
  * com raio, leva a cidade e o raio.
  */
-export function paraParametros(f: FiltrosTela, opcoes: { comCidade?: boolean; deslocamento?: number } = {}): URLSearchParams {
+export function paraParametros(
+  f: FiltrosTela,
+  opcoes: { comCidade?: boolean; pagina?: number; ordem?: Ordem | null } = {},
+): URLSearchParams {
   const p = new URLSearchParams();
   if (f.q.trim()) p.set('q', f.q.trim());
   // Com raio a UF não vai: o raio atravessa a divisa de estado.
@@ -68,7 +87,8 @@ export function paraParametros(f: FiltrosTela, opcoes: { comCidade?: boolean; de
   const raio = f.cidade && f.raio ? f.raio : null;
   if (f.cidade && (opcoes.comCidade !== false || raio)) p.set('ibge', f.cidade.ibge);
   if (raio) p.set('raio', String(raio));
-  if (opcoes.deslocamento) p.set('deslocamento', String(opcoes.deslocamento));
+  if (opcoes.ordem) p.set('ordem', opcoes.ordem);
+  if (opcoes.pagina && opcoes.pagina > 1) p.set('pagina', String(opcoes.pagina));
   return p;
 }
 

@@ -1,18 +1,24 @@
 import { lerFiltros, normalizarTela } from './filtros';
-import type { Cidade, FiltrosBusca, FiltrosTela, Orgao } from './tipos';
+import type { Cidade, FiltrosBusca, FiltrosTela, Ordem, Orgao } from './tipos';
 
 /**
- * Parte da página inicial em que o celular (abaixo de lg) está: o mapa, em cima, ou a lista, embaixo. No endereço,
- * `tela=lista` faz a página abrir rolada até a lista. No computador as duas aparecem juntas e a tela não muda nada.
+ * Na vista Mapa, a parte da página inicial em que o celular (abaixo de lg) está: o mapa, em cima, ou a lista, embaixo.
+ * No endereço, `tela=lista` (só com `vista=mapa`) faz a página abrir rolada até a lista.
  */
 export type Tela = 'mapa' | 'lista';
+/** Resultado em Lista (cards largos; padrão) ou em Mapa (a tela de três colunas). Trocar não conta como busca. */
+export type Vista = 'lista' | 'mapa';
+/** O que, além dos filtros, a página inicial guarda no endereço. Nada disso entra na busca contada do dia. */
+export type EstadoTela = { vista: Vista; tela: Tela; pagina: number; ordem: Ordem | null };
+export const ESTADO_PADRAO: EstadoTela = { vista: 'lista', tela: 'mapa', pagina: 1, ordem: null };
 
 /**
  * Endereço da página inicial com a busca, para voltar do edital e compartilhar:
- * /?q=luva&uf=SC&municipio=4209102&valor=50000&modalidades=6,8&orgao=…&raio=100&dias=7[&tela=lista].
- * `municipio` é o código IBGE (na API o mesmo valor se chama `ibge`).
+ * /?q=luva&uf=SC&municipio=4209102&valor=50000&modalidades=6,8&orgao=…&raio=100&dias=7[&ordem=…][&pagina=N][&vista=mapa[&tela=lista]].
+ * `municipio` é o código IBGE (na API o mesmo valor se chama `ibge`). Os padrões ficam fora: vista Lista, página 1, ordem padrão.
  */
-export function urlDaBusca(f: FiltrosTela, tela: Tela = 'mapa'): string {
+export function urlDaBusca(f: FiltrosTela, estado: Partial<EstadoTela> = {}): string {
+  const e = { ...ESTADO_PADRAO, ...estado };
   const p = new URLSearchParams();
   const q = f.q.trim();
   if (q) p.set('q', q);
@@ -23,19 +29,27 @@ export function urlDaBusca(f: FiltrosTela, tela: Tela = 'mapa'): string {
   if (f.orgao) p.set('orgao', f.orgao.cnpj);
   if (f.cidade && f.raio) p.set('raio', String(f.raio));
   if (f.seteDias) p.set('dias', '7');
-  if (tela === 'lista') p.set('tela', 'lista');
+  if (e.ordem) p.set('ordem', e.ordem);
+  if (e.pagina > 1) p.set('pagina', String(e.pagina));
+  if (e.vista === 'mapa') {
+    p.set('vista', 'mapa');
+    if (e.tela === 'lista') p.set('tela', 'lista');
+  }
   const texto = p.toString();
   return texto ? `/?${texto}` : '/';
 }
 
-/** Lê a busca do endereço com as mesmas validações da API (`lerFiltros`); a página sempre começa do primeiro edital. */
-export function lerBuscaDaUrl(p: URLSearchParams): { busca: FiltrosBusca; tela: Tela } {
+/** Lê a busca do endereço com as mesmas validações da API (`lerFiltros`), com a página e a ordem; e a vista e a tela. */
+export function lerBuscaDaUrl(p: URLSearchParams): { busca: FiltrosBusca; estado: EstadoTela } {
   const api = new URLSearchParams(p);
   api.delete('ibge');
   api.delete('municipio');
   const municipio = p.get('municipio');
   if (municipio) api.set('ibge', municipio);
-  return { busca: { ...lerFiltros(api), deslocamento: 0 }, tela: p.get('tela') === 'lista' ? 'lista' : 'mapa' };
+  const busca = lerFiltros(api);
+  const vista: Vista = p.get('vista') === 'mapa' ? 'mapa' : 'lista';
+  const tela: Tela = vista === 'mapa' && p.get('tela') === 'lista' ? 'lista' : 'mapa';
+  return { busca, estado: { vista, tela, pagina: busca.pagina, ordem: busca.ordem } };
 }
 
 /**
@@ -65,11 +79,12 @@ export function paraUrlSearchParams(sp: Record<string, string | string[] | undef
   return p;
 }
 
-/** Mesmo endereço de busca, em outra tela (links Mapa e Lista da barra do celular). */
+/** Mesmo endereço de busca na vista Mapa ou na vista Lista (links Mapa e Lista da barra do celular nas outras páginas). */
 export function comTela(endereco: string, tela: Tela): string {
   const p = new URLSearchParams(endereco.split('?')[1] ?? '');
-  if (tela === 'lista') p.set('tela', 'lista');
-  else p.delete('tela');
+  p.delete('tela');
+  if (tela === 'mapa') p.set('vista', 'mapa');
+  else p.delete('vista');
   const texto = p.toString();
   return texto ? `/?${texto}` : '/';
 }

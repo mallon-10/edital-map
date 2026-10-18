@@ -29,7 +29,7 @@ const { buscarEditais, exportarEditais, itensDoEdital, orgaosAbertos, pontosDoMa
 
 const compra = (id: string) => ({ id, cnpj: '00394452000103', ano: 2026, sequencial: 21982 });
 const SEM_FILTRO: FiltrosBusca = {
-  q: null, uf: null, ibge: null, dias: null, deslocamento: 0, valorMin: null, modalidades: null, orgao: null, raio: null,
+  q: null, uf: null, ibge: null, dias: null, pagina: 1, ordem: null, valorMin: null, modalidades: null, orgao: null, raio: null,
 };
 const chaves = (args: Record<string, unknown>) => Object.keys(args).sort();
 
@@ -76,13 +76,13 @@ describe('contrato com as funções SQL (0007)', () => {
 
   it('buscarEditais chama buscar_editais com os argumentos da 0007', async () => {
     await buscarEditais({
-      q: 'luva', uf: 'SC', ibge: '4209102', dias: 7, deslocamento: 50, valorMin: 1000, modalidades: [6, 8], orgao: '83102244000102', raio: 100,
+      q: 'luva', uf: 'SC', ibge: '4209102', dias: 7, pagina: 3, ordem: null, valorMin: 1000, modalidades: [6, 8], orgao: '83102244000102', raio: 100,
     });
     expect(chamadas).toHaveLength(1);
     expect(chamadas[0].nome).toBe('buscar_editais');
     expect(chaves(chamadas[0].args)).toEqual(ARGS_BUSCA);
     expect(chamadas[0].args).toMatchObject({
-      q: 'luva', p_ufs: null, p_ibge: '4209102', p_valor_min: 1000, p_modalidades: [6, 8], p_limite: 50, p_deslocamento: 50,
+      q: 'luva', p_ufs: null, p_ibge: '4209102', p_valor_min: 1000, p_modalidades: [6, 8], p_limite: 20, p_deslocamento: 40,
       p_orgao: '83102244000102', p_raio_km: 100,
     });
   });
@@ -231,7 +231,7 @@ describe('exportarEditais (0007)', () => {
 
   it('lê em páginas de 1.000 até 2.000, desde o começo, com os mesmos filtros da busca', async () => {
     respostaRpc = (args: Record<string, unknown>) => Array.from({ length: 1000 }, (_, i) => linha(Number(args.p_deslocamento) + i));
-    const r = await exportarEditais({ ...SEM_FILTRO, q: 'luva', deslocamento: 50, orgao: '83102244000102' });
+    const r = await exportarEditais({ ...SEM_FILTRO, q: 'luva', pagina: 3, orgao: '83102244000102' });
     expect(r.editais).toHaveLength(2000);
     expect(r.total).toBe(2500);
     expect(chamadas.map((c) => [c.nome, c.args.p_limite, c.args.p_deslocamento])).toEqual([

@@ -11,9 +11,13 @@ describe('combinacaoBusca (o que conta como uma busca no dia)', () => {
   it('página inicial sem nada preenchido não conta', () => {
     expect(combinacaoBusca(busca(''))).toBeNull();
   });
-  it('prazo e "Carregar mais" não mudam a busca (e o prazo sozinho não conta)', () => {
-    expect(combinacaoBusca(busca('q=luva&dias=7&deslocamento=50'))).toBe(combinacaoBusca(busca('q=luva')));
+  it('prazo, página e ordem não mudam a busca (e sozinhos não contam)', () => {
+    expect(combinacaoBusca(busca('q=luva&dias=7&pagina=3&ordem=maior_valor'))).toBe(combinacaoBusca(busca('q=luva')));
     expect(combinacaoBusca(busca('dias=7'))).toBeNull();
+    expect(combinacaoBusca(busca('pagina=2&ordem=recentes'))).toBeNull();
+  });
+  it('termos excluídos ("-palavra") fazem outra busca', () => {
+    expect(combinacaoBusca(busca('q=luva -latex'))).not.toBe(combinacaoBusca(busca('q=luva')));
   });
   it('termo: maiúsculas, acentos e espaços não fazem outra busca', () => {
     expect(combinacaoBusca(busca('q=  Luva   Nitrílica '))).toBe(combinacaoBusca(busca('q=luva nitrilica')));

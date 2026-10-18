@@ -13,7 +13,9 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 /** Página inicial. A busca vem do endereço (/?q=luva&uf=SC&…) e conta no limite do dia como a de /api/busca. */
 export default async function Inicio({ searchParams }: Props) {
   await connection();
-  const { busca, tela } = lerBuscaDaUrl(paraUrlSearchParams(await searchParams));
+  const { busca, estado } = lerBuscaDaUrl(paraUrlSearchParams(await searchParams));
+  // Até a vista Lista existir (Task 9), a página inicial é a de hoje (vista Mapa).
+  const tela = estado.tela;
   const cnpj = busca.orgao;
   // Nomes para os chips; se a consulta falhar, o filtro só sai da tela.
   const [cidade, orgao] = await Promise.all([
@@ -40,7 +42,7 @@ export default async function Inicio({ searchParams }: Props) {
     <div className="flex flex-col lg:h-dvh">
       <Cabecalho uso={uso} />
       <Explorador
-        key={`${urlDaBusca(filtros, tela)}@${agora}`}
+        key={`${urlDaBusca(filtros, { vista: 'mapa', tela })}@${agora}`}
         filtrosIniciais={filtros}
         telaInicial={tela}
         inicial={inicial}

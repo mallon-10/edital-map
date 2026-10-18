@@ -24,7 +24,7 @@ const semAcento = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '');
 
 /**
  * Combinação que conta como "uma busca" no dia: termo (sem acento, minúsculo, espaços colapsados), UF, município,
- * valor, modalidades (em ordem), órgão e raio. Prazo (`dias`) e página (`deslocamento`) não entram; com raio a UF não
+ * valor, modalidades (em ordem), órgão e raio. Prazo (`dias`), página (`pagina`) e ordem (`ordem`) não entram (nem a vista, que nem chega à API); com raio a UF não
  * filtra (o raio atravessa a divisa), então também não entra. `null` = busca vazia (página inicial sem nada), que não conta.
  */
 export function combinacaoBusca(f: FiltrosBusca): string | null {

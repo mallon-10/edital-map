@@ -8,7 +8,10 @@ export type FiltrosBusca = {
   uf: string | null;
   ibge: string | null;
   dias: number | null;
-  deslocamento: number;
+  /** Página da lista (1..MAX_PAGINA), de POR_PAGINA editais. Mudar de página não conta como outra busca. */
+  pagina: number;
+  /** Ordem pedida; null = a padrão (relevância com termo, menor prazo sem termo). Não conta como outra busca. */
+  ordem: Ordem | null;
   valorMin: number | null;
   modalidades: number[] | null;
   /** CNPJ do órgão comprador (contratacoes.cnpj). */

@@ -6,7 +6,7 @@ import { registrar } from '@/lib/cliente/registrar';
 import { publicarUso } from '@/lib/cliente/uso';
 import { guardarUltimaBusca, guardarVolta, tomarVolta, type Volta } from '@/lib/cliente/volta';
 import type { Raio } from '@/lib/geo';
-import { buscaDoCampo, filtrosAtivos, normalizarTela, paraParametros, recursosUsados } from '@/lib/filtros';
+import { buscaDoCampo, filtrosAtivos, normalizarTela, paraParametros, POR_PAGINA, recursosUsados } from '@/lib/filtros';
 import { LimiteAtingido, lerLimite, type Limite, type RespostaBusca } from '@/lib/limites';
 import { resumirPontos } from '@/lib/painel';
 import type { Cidade, EditalResumo, FiltrosTela, PontoMapa, ResultadoBusca } from '@/lib/tipos';
@@ -128,7 +128,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
   /** Troca a tela do celular e escreve a busca no endereço (sem recarregar a página nem criar entrada no histórico). */
   const trocarTela = useCallback((nova: Tela, f: FiltrosTela) => {
     setTela(nova);
-    trocarEndereco(urlDaBusca(f, nova));
+    trocarEndereco(urlDaBusca(f, { vista: 'mapa', tela: nova }));
   }, []);
 
   /** Celular: leva a página ao mapa (topo) ou ao início da lista. No computador as duas estão na tela: não rola. */
@@ -286,7 +286,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
       void carregarMapa(volta.filtrosMapa);
     } else {
       // Endereço canônico (ordem dos parâmetros, valores inválidos fora): a volta compara por ele.
-      trocarEndereco(urlDaBusca(filtrosIniciais, telaInicial));
+      trocarEndereco(urlDaBusca(filtrosIniciais, { vista: 'mapa', tela: telaInicial }));
       // Celular com `tela=lista` no endereço (botão Lista de outra página, link compartilhado): abre rolada até a lista.
       if (telaInicial === 'lista') rolarPara('lista', 'auto');
       // Mesmos parâmetros da busca que o servidor já contou (a lista veio pronta): o mapa não conta de novo.
@@ -298,7 +298,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
       if (!atual) return;
       guardarVolta({
         ...atual,
-        endereco: urlDaBusca(atual.filtros, atual.tela),
+        endereco: urlDaBusca(atual.filtros, { vista: 'mapa', tela: atual.tela }),
         filtrosMapa: filtrosDoMapa.current,
         rolagem: rolagem.current,
         rolagemPagina: rolagemPagina.current,
@@ -343,7 +343,7 @@ export function Explorador({ filtrosIniciais, telaInicial, inicial, limiteInicia
     const id = pedidoLista.current;
     setCarregandoMais(true);
     try {
-      const mais = await obter<RespostaBusca>(`/api/busca?${paraParametros(filtros, { deslocamento: resultado.editais.length })}`, ERRO_LISTA);
+      const mais = await obter<RespostaBusca>(`/api/busca?${paraParametros(filtros, { pagina: Math.floor(resultado.editais.length / POR_PAGINA) + 1 })}`, ERRO_LISTA);
       // Busca ou filtro mudou enquanto esperava: essa página não pertence mais à lista na tela.
       if (id !== pedidoLista.current) return;
       setResultado((anterior) => {

@@ -2,7 +2,7 @@ import 'server-only';
 import type { ChaveCompra } from '@/worker/mapear';
 import { criarCache } from '../cache';
 import { MAX_EXPORTACAO } from '../csv';
-import { chaveFiltros } from '../filtros';
+import { chaveFiltros, POR_PAGINA } from '../filtros';
 import { nomeProprio } from '../texto';
 import type {
   ArquivoEdital, Edital, EditalExportado, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens,
@@ -12,7 +12,6 @@ import { itensDoPncp } from './itensPncp';
 import { supabaseServidor } from './supabase';
 
 const cache = criarCache(5 * 60 * 1000);
-export const POR_PAGINA = 50;
 export const LIMITE_RELACIONADOS = 6;
 export const LIMITE_ORGAOS = 20;
 type Linha = Record<string, unknown>;
@@ -60,7 +59,7 @@ export function buscarEditais(f: FiltrosBusca): Promise<ResultadoBusca> {
     const { data, error } = await supabaseServidor().rpc('buscar_editais', {
       ...argumentosBusca(f),
       p_limite: POR_PAGINA,
-      p_deslocamento: f.deslocamento,
+      p_deslocamento: (f.pagina - 1) * POR_PAGINA,
     });
     if (error) throw new Error(`buscar_editais: ${error.message}`);
     const linhas = (data ?? []) as Linha[];
@@ -74,7 +73,7 @@ export function buscarEditais(f: FiltrosBusca): Promise<ResultadoBusca> {
  */
 export function pontosDoMapa(f: FiltrosBusca): Promise<PontoMapa[]> {
   const ibge = f.raio ? f.ibge : null;
-  return cache(`mapa:${chaveFiltros({ ...f, ibge, deslocamento: 0 })}`, async () => {
+  return cache(`mapa:${chaveFiltros({ ...f, ibge, pagina: 1, ordem: null })}`, async () => {
     const pontos: PontoMapa[] = [];
     for (let de = 0; ; de += 1000) {
       const { data, error } = await supabaseServidor()

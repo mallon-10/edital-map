@@ -74,9 +74,9 @@ describe('decidirBusca', () => {
       { nome: 'registrar_uso', args: { p_visitante: CTX.visitante, p_tipo: 'busca', p_chave: chave('q=luva&uf=SC'), p_limite: 3 } },
     ]);
   });
-  it('lista, mapa, prazo e "Carregar mais" da mesma busca usam a mesma chave', async () => {
+  it('lista, mapa, prazo, página e ordem da mesma busca usam a mesma chave', async () => {
     await decidirBusca(CTX, busca('q=luva&ibge=4209102'), { avisar: true });
-    await decidirBusca(CTX, busca('q=luva&ibge=4209102&dias=7&deslocamento=50'), { avisar: false });
+    await decidirBusca(CTX, busca('q=luva&ibge=4209102&dias=7&pagina=3&ordem=maior_valor'), { avisar: false });
     expect(m.rpcs[0].args.p_chave).toBe(m.rpcs[1].args.p_chave);
   });
   it('não conta: página inicial vazia, navegador interno, sem visitante', async () => {

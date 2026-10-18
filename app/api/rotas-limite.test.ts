@@ -109,11 +109,11 @@ describe('/api/uso', () => {
 describe('/api/contagem', () => {
   it('só o total, com cache público, sem contar como busca', async () => {
     m.buscarEditais.mockResolvedValue({ total: 42, editais: [{ id: 'x' }] });
-    const r = await contagem.GET(pedido('/api/contagem?q=luva&deslocamento=50'));
+    const r = await contagem.GET(pedido('/api/contagem?q=luva&pagina=3'));
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({ total: 42 });
     expect(r.headers.get('cache-control')).toContain('s-maxage=300');
-    expect(m.buscarEditais).toHaveBeenCalledWith(expect.objectContaining({ q: 'luva', deslocamento: 0 }));
+    expect(m.buscarEditais).toHaveBeenCalledWith(expect.objectContaining({ q: 'luva', pagina: 1 }));
     expect(m.decidirBusca).not.toHaveBeenCalled();
   });
 });
