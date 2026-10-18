@@ -46,9 +46,9 @@ export const LINHAS_PLANOS: readonly LinhaPlanos[] = [
   { recurso: 'Filtros Pro (raio em km e órgão comprador)', gratis: { valor: false }, pro: { valor: true } },
   { recurso: 'Exportar a lista para planilha', gratis: { valor: false }, pro: { valor: true } },
   { recurso: 'Editais parecidos abertos', gratis: { valor: '3 primeiros' }, pro: { valor: true } },
-  { recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true, emBreve: true } },
-  { recurso: 'Alertas por e-mail às 7h (busca salva)', gratis: { valor: false }, pro: { valor: true, emBreve: true } },
-  { recurso: 'Editais salvos', gratis: { valor: false }, pro: { valor: 'Ilimitados', emBreve: true } },
+  { recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true } },
+  { recurso: 'Alertas por e-mail às 7h (busca salva)', gratis: { valor: false }, pro: { valor: 'Até 5' } },
+  { recurso: 'Editais salvos', gratis: { valor: false }, pro: { valor: 'Uso justo' } },
   { recurso: 'Preço de referência, quem venceu e resumo com IA', gratis: { valor: false }, pro: { valor: true, emBreve: true } },
 ];
 
