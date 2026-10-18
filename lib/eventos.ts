@@ -6,6 +6,9 @@ export type TipoEventoServidor = (typeof TIPOS_EVENTO_SERVIDOR)[number];
 /** Eventos da conta (Evolução, Fase 3), gravados só pelo servidor, sem e-mail no detalhe. */
 export const TIPOS_EVENTO_CONTA = ['conta_entrou', 'onboarding_iniciado', 'onboarding_concluido', 'radar_visto'] as const;
 export type TipoEventoConta = (typeof TIPOS_EVENTO_CONTA)[number];
+/** Minhas Oportunidades, alertas e resumo semanal (Evolução, Fase 4): só servidor e job dos alertas, sem e-mail. */
+export const TIPOS_EVENTO_OPORTUNIDADES = ['edital_salvo', 'edital_descartado', 'alerta_criado', 'alerta_enviado', 'resumo_enviado'] as const;
+export type TipoEventoOportunidades = (typeof TIPOS_EVENTO_OPORTUNIDADES)[number];
 
 export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia', 'plano_pro', 'filtros_pro', 'plano_basic'] as const;
 export type Recurso = (typeof RECURSOS)[number];

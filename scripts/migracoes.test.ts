@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { TIPOS_EVENTO, TIPOS_EVENTO_CONTA, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';
+import { TIPOS_EVENTO, TIPOS_EVENTO_CONTA, TIPOS_EVENTO_OPORTUNIDADES, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';
 import { ORDENS } from '../lib/filtros';
 import { PESOS } from '../lib/relevancia/pontuacao';
 import { SITUACOES_FORA_DAS_ABERTAS } from '../lib/situacao';
@@ -384,6 +384,206 @@ describe('migração 0014 (conta e Meu Radar)', () => {
       'buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int, text[], text[], text[], text, text[], numeric, boolean)',
       'radar_contagens(text[], text[], text[], text[], text[], numeric, numeric, int[], boolean, timestamptz)',
       'buscar_municipios(text, int)',
+    ]) {
+      expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
+    }
+  });
+});
+
+describe('migração 0016 (Minhas Oportunidades e alertas)', () => {
+  const sql = ler('supabase/migrations/0016_oportunidades_alertas.sql').replace(/\r\n/g, '\n');
+  const s14 = ler('supabase/migrations/0014_conta_radar.sql');
+  const corpo = (inicio: string) => {
+    const c = corpoDe(sql, inicio);
+    expect(c, inicio).not.toBe('');
+    return c;
+  };
+  const SEM_IDS = 'where p_sem_ids is null or u.id <> all(p_sem_ids)';
+
+  it('uma transação curta e o PostgREST relê as funções no fim', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql.trimEnd().endsWith("notify pgrst, 'reload schema';")).toBe(true);
+  });
+  it('salvos: status, observação até 500, atualizado_em, sem a chave estrangeira e com índices', () => {
+    for (const c of [
+      'alter table public.salvos drop constraint salvos_contratacao_id_fkey;',
+      "add column status text not null default 'salvo'",
+      'add column observacao text',
+      'add column atualizado_em timestamptz not null default now()',
+      "check (status in ('salvo', 'analise', 'participar', 'descartado'))",
+      'check (observacao is null or char_length(observacao) <= 500)',
+      'create index salvos_user_status_idx on public.salvos (user_id, status);',
+      'create index salvos_contratacao_idx on public.salvos (contratacao_id);',
+    ]) {
+      expect(sql).toContain(c);
+    }
+  });
+  it('alertas_enviados só sai vazia e volta por alerta, com chave dupla', () => {
+    expect(sql).toContain("raise exception 'alertas_enviados tem linhas; esperado vazio antes da 0016';");
+    expect(sql.indexOf('raise exception')).toBeLessThan(sql.indexOf('drop table public.alertas_enviados;'));
+    expect(sql).toContain('alerta_id       uuid not null references public.alertas(id) on delete cascade,');
+    expect(sql).toContain('primary key (alerta_id, contratacao_id)');
+  });
+  it('alertas com as checagens do radar; histórico com os 4 status', () => {
+    for (const c of [
+      'user_id         uuid not null references auth.users(id) on delete cascade,',
+      'check (char_length(nome) between 1 and 60)',
+      'check (cardinality(termos) between 1 and 10)',
+      'check (cardinality(termos_excluir) <= 10)',
+      'check (cardinality(municipios) <= 50)',
+      'check (cardinality(ufs) = 0 or cardinality(municipios) = 0)',
+      'check (valor_min is null or valor_max is null or valor_min <= valor_max)',
+      'ativo           boolean not null default true,',
+      'ultimo_envio_em timestamptz,',
+      'create index alertas_user_id_idx on public.alertas (user_id);',
+      "check (status in ('enviado', 'sem_novidades', 'falhou', 'pulado_plano'))",
+      'create index envios_alerta_alerta_idx on public.envios_alerta (alerta_id, iniciado_em desc);',
+    ]) {
+      expect(sql).toContain(c);
+    }
+  });
+  it('tabelas novas só pelo servidor: RLS ligado, sem políticas, sem anon/authenticated', () => {
+    expect(sql).not.toMatch(/create policy/i);
+    for (const t of ['alertas', 'alertas_enviados', 'envios_alerta', 'envios_resumo']) {
+      expect(sql).toContain(`alter table public.${t} enable row level security;`);
+      expect(sql).toContain(`revoke all on table public.${t} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant select, insert, update, delete on table public.${t} to service_role;`);
+    }
+  });
+  it('assinaturas antigas de buscar_editais e radar_contagens saem antes das novas', () => {
+    for (const d of [
+      'drop function public.buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int, text[], text[], text[], text, text[], numeric, boolean);',
+      'drop function public.radar_contagens(text[], text[], text[], text[], text[], numeric, numeric, int[], boolean, timestamptz);',
+    ]) {
+      expect(sql).toContain(d);
+      expect(sql.indexOf(d)).toBeLessThan(sql.indexOf('create function public.buscar_editais('));
+      expect(sql.indexOf(d)).toBeLessThan(sql.indexOf('create function public.radar_contagens('));
+    }
+  });
+  it('buscar_editais = corpo da 0014 + p_sem_ids nas duas ordens (antes do total e da página)', () => {
+    const c16 = corpo('create function public.buscar_editais(');
+    const c14 = corpoDe(s14, 'create function public.buscar_editais(');
+    expect(c16).toContain(`      cross join lateral public.acertos_busca(u.busca, u.itens_palavras, v_termos, v_tqs, v_frases, v_digitados, v_relacionados) a\n      ${SEM_IDS}\n      order by a.pontuacao desc`);
+    expect(c16).toContain(`p_ibges, p_valor_max, p_so_me_epp) u\n        ${SEM_IDS}\n        order by`);
+    const semNovos = c16
+      .replace('p_so_me_epp boolean default null,\n  p_sem_ids text[] default null)', 'p_so_me_epp boolean default null)')
+      .replace(`      ${SEM_IDS}\n`, '')
+      .replace(`        ${SEM_IDS}\n`, '');
+    expect(semNovos).toBe(c14);
+  });
+  it('radar_contagens = corpo da 0014 + p_sem_ids', () => {
+    const c16 = corpo('create function public.radar_contagens(');
+    const c14 = corpoDe(s14, 'create function public.radar_contagens(');
+    const semNovos = c16
+      .replace('p_desde timestamptz default null, p_sem_ids text[] default null)', 'p_desde timestamptz default null)')
+      .replace(`  ${SEM_IDS}\n`, '');
+    expect(semNovos).toBe(c14);
+  });
+  it('plano da conta: gratis ou pro (perfis.plano ou assinatura válida com o e-mail da conta; basic antigo = pro)', () => {
+    const c = corpo('create function public.plano_da_conta(');
+    expect(c).toContain("security definer set search_path = ''");
+    expect(c).toContain('select p.plano from public.perfis p where p.id = p_user');
+    expect(c).toContain('join public.assinaturas a on a.email = lower(u.email)');
+    expect(c).toContain("a.status <> 'estornada' and a.valido_ate > now()");
+    expect(c).toContain("select case when bool_or(plano in ('pro', 'basic')) then 'pro' else 'gratis' end");
+  });
+  it('resumo semanal: preferência ligada por padrão, histórico próprio, só Pro com radar e uma vez por semana', () => {
+    expect(sql).toContain('alter table public.perfis add column resumo_semanal boolean not null default true;');
+    expect(sql).toContain("status       text not null check (status in ('enviado', 'sem_novidades', 'falhou')),");
+    const contas = corpo('create function public.contas_para_resumo(');
+    expect(contas).toContain("security definer set search_path = ''");
+    expect(contas).toContain("where p.resumo_semanal and u.email is not null and public.plano_da_conta(r.user_id) = 'pro'");
+    expect(contas).toContain("e.status = 'enviado' and e.iniciado_em > now() - interval '6 days'");
+    expect(corpo('create function public.parar_resumo_semanal(')).toContain('update public.perfis set resumo_semanal = false where id = p_user returning true');
+  });
+  it('resumo do radar: as mesmas abertas do radar sem descartados; novas = publicação em 7 dias; prazo = conta de p_dias 7', () => {
+    const c = corpo('create function public.resumo_do_radar(');
+    expect(c).toContain('from public.abertas_unicas(v_tq, v_tq_excluir, p_ufs, p_valor_min, p_modalidades, null, null, null, null, p_ibges, p_valor_max, p_so_me_epp) u');
+    expect(c).toContain('cross join lateral public.acertos_busca(u.busca, u.itens_palavras, v_termos, v_tqs, v_frases, v_digitados, v_relacionados) a');
+    expect(c).toContain("s.status = 'descartado')");
+    expect(c).toContain("v_semana timestamptz := now() - interval '7 days';");
+    expect(c).toContain("(date_trunc('day', now() at time zone 'America/Sao_Paulo') + make_interval(days => 7 + 1)) at time zone 'America/Sao_Paulo'");
+    expect(c).toContain("'valor_total', (select coalesce(sum(nullif(b.valor_estimado, 0)), 0) from base b)");
+    for (const k of ['total', 'novas', 'prazo_proximo', 'com_valor', 'novos', 'encerrando', 'orgaos', 'cidades']) expect(c).toContain(`'${k}', `);
+  });
+  it('gravar_salvo: trava por conta, edital existe ao criar, limite fora dos descartados, descartados até 500', () => {
+    const c = corpo('create function public.gravar_salvo(');
+    expect(c).toContain("perform pg_advisory_xact_lock(hashtextextended('salvos:' || p_user::text, 0));");
+    expect(c).toContain("return 'sem_edital';");
+    expect(c).toContain("if p_status <> 'descartado' and (v_atual is null or v_atual = 'descartado') then");
+    expect(c).toContain("s.status <> 'descartado';");
+    expect(c).toContain('if v_usados >= 500 then');
+    expect(c).toContain('on conflict (user_id, contratacao_id) do update set status = excluded.status, atualizado_em = now();');
+  });
+  it('alertas_para_envio: só ativos, e-mail atual e plano da conta na hora', () => {
+    const c = corpo('create function public.alertas_para_envio(');
+    expect(c).toContain("security definer set search_path = ''");
+    expect(c).toContain('public.plano_da_conta(a.user_id)');
+    expect(c).toContain('where a.ativo and u.email is not null');
+  });
+  it('editais do alerta: a mesma busca do radar, janela, sem repetir e sem descartados', () => {
+    const c = corpo('create function public.editais_do_alerta(');
+    const lista = corpo('create function public.buscar_editais(');
+    const lateral = 'cross join lateral public.acertos_busca(u.busca, u.itens_palavras, v_termos, v_tqs, v_frases, v_digitados, v_relacionados) a';
+    expect(c).toContain(lateral);
+    expect(lista).toContain(lateral);
+    expect(c).toContain('from public.abertas_unicas(v_tq, v_tq_excluir, p_ufs, p_valor_min, p_modalidades, null, null, null, null, p_ibges, p_valor_max, p_so_me_epp) u');
+    expect(c).toContain('where greatest(u.sincronizada_em, u.atualizada_pncp_em) > p_desde');
+    expect(c).toContain('not exists (select 1 from public.alertas_enviados e where e.alerta_id = p_alerta and e.contratacao_id = u.id)');
+    expect(c).toContain("s.status = 'descartado')");
+    expect(c).toContain('order by a.pontuacao desc, u.encerramento_em, u.id');
+    expect(c).toContain('limit least(greatest(coalesce(p_limite, 20), 1), 50);');
+  });
+  it('registrar envio: histórico sempre; alertas_enviados e janela só quando enviado', () => {
+    const c = corpo('create function public.registrar_envio_alerta(');
+    expect(c).toContain('insert into public.envios_alerta');
+    expect(c).toContain("if p_status = 'enviado' then");
+    expect(c.indexOf("if p_status = 'enviado' then")).toBeLessThan(c.indexOf('insert into public.alertas_enviados'));
+    expect(c).toContain('on conflict do nothing;');
+    expect(c).toContain('set ultimo_envio_em = case when p_avancar then p_selecionado_em');
+  });
+  it('retenção: salvos seguram a contratação, descartados saem com ela, mantém o da 0015', () => {
+    const c = corpo('create or replace function public.aplicar_retencao(');
+    for (const l of [
+      "delete from public.uso_diario where dia < (now() at time zone 'America/Sao_Paulo')::date;",
+      "delete from public.checkouts where criado_em < now() - interval '30 days';",
+      "delete from public.cakto_eventos where recebido_em < now() - interval '180 days';",
+      "delete from public.envios_alerta where iniciado_em < now() - interval '180 days';",
+      "delete from public.envios_resumo where iniciado_em < now() - interval '180 days';",
+      "where s.contratacao_id = c.id and s.status = 'descartado'",
+      'and not exists (select 1 from public.salvos s where s.contratacao_id = c.id)',
+    ]) {
+      expect(c).toContain(l);
+    }
+    expect(c.indexOf("s.status = 'descartado'")).toBeLessThan(c.indexOf('with apagadas as'));
+    expect(c.trimEnd().endsWith('select count(*) from apagadas\n$$;')).toBe(true);
+  });
+  it('eventos: os 12 de antes (0014 + assinou) e os 5 da fase', () => {
+    const tipos = (texto: string) => {
+      const trecho = texto.slice(texto.indexOf('add constraint eventos_tipo_check'));
+      return [...trecho.slice(0, trecho.indexOf(';')).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    };
+    const depois = tipos(sql);
+    for (const t of [...tipos(s14), 'assinou', ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR, ...TIPOS_EVENTO_CONTA, ...TIPOS_EVENTO_OPORTUNIDADES]) {
+      expect(depois).toContain(t);
+    }
+    expect(depois).toHaveLength(17);
+  });
+  it('só o servidor executa (cada assinatura)', () => {
+    for (const f of [
+      'plano_da_conta(uuid)',
+      'gravar_salvo(uuid, text, text, int)',
+      'salvos_da_conta(uuid)',
+      'alertas_para_envio()',
+      'editais_do_alerta(uuid, timestamptz, text[], text[], text[], text[], text[], numeric, numeric, int[], boolean, int)',
+      'registrar_envio_alerta(uuid, text, int, int, text, text, text[], timestamptz, boolean)',
+      'contas_para_resumo()',
+      'resumo_do_radar(uuid, text[], text[], text[], text[], text[], numeric, numeric, int[], boolean)',
+      'parar_resumo_semanal(uuid)',
+      'buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int, text[], text[], text[], text, text[], numeric, boolean, text[])',
+      'radar_contagens(text[], text[], text[], text[], text[], numeric, numeric, int[], boolean, timestamptz, text[])',
+      'aplicar_retencao()',
     ]) {
       expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
       expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
