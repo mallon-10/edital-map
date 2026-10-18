@@ -8,8 +8,8 @@ import { entrarComCodigo } from '@/lib/servidor/sessao';
 
 /**
  * Confere o código; certo, a sessão vai nos cookies httpOnly desta resposta e o navegador segue para o destino.
- * Trava própria contra força bruta (lib/servidor/limiteTentativas.ts, por instância): 5 códigos errados por e-mail e
- * 20 por IP em 15 min; acima disso, 429 sem chamar o Supabase. Login certo zera as falhas do e-mail.
+ * Trava própria contra força bruta (lib/servidor/limiteTentativas.ts, por instância): 5 tentativas por e-mail e 20 por
+ * IP em 15 min (contadas antes de chamar o Auth); acima disso, 429 sem chamar o Supabase. Login certo zera o e-mail.
  */
 export async function POST(request: Request) {
   const recusa = recusaForaDoSite(request);
@@ -29,17 +29,14 @@ export async function POST(request: Request) {
   if (falhasPorEmail.excedido(email) || falhasPorIp.excedido(ip)) {
     return Response.json({ erro: MENSAGENS_CONTA.muitas }, { status: 429, headers: SEM_CACHE });
   }
+  // Conta a tentativa ANTES de chamar o Auth: uma rajada em paralelo não passa toda pelo excedido() antes da 1ª falha.
+  falhasPorEmail.registrar(email);
+  falhasPorIp.registrar(ip);
   try {
     const r = await entrarComCodigo(email, codigo);
     if (!r.ok) {
-      const status = statusErroAuth(r.erro);
-      if (status === 502) console.error('entrar:', r.erro);
-      else {
-        // Código errado/expirado (ou limite do Supabase): conta como falha. Pane do Supabase (502) não conta.
-        falhasPorEmail.registrar(email);
-        falhasPorIp.registrar(ip);
-      }
-      return Response.json({ erro: mensagemErroAuth(r.erro) }, { status, headers: SEM_CACHE });
+      if (statusErroAuth(r.erro) === 502) console.error('entrar:', r.erro);
+      return Response.json({ erro: mensagemErroAuth(r.erro) }, { status: statusErroAuth(r.erro), headers: SEM_CACHE });
     }
     falhasPorEmail.zerar(email);
     // Medição: login (sem e-mail). Falha só vai para o log.

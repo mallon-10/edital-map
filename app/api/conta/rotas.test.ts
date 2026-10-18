@@ -154,12 +154,17 @@ describe('limite próprio de tentativas (por instância; o Supabase é a segunda
     for (let i = 0; i < 5; i++) expect((await tentar('a@b.co', '9.9.9.9')).status).toBe(400);
     expect((await tentar('a@b.co', '9.9.9.9')).status).toBe(429);
   });
-  it('entrar: código certo, mal digitado ou falha do Supabase (502) não contam como falha', async () => {
+  it('entrar: código mal digitado (não chega ao Supabase) não conta como tentativa', async () => {
     for (let i = 0; i < 6; i++) await entrar.POST(post({ email: 'a@b.co', codigo: '12a' }));
-    m.entrarComCodigo.mockResolvedValue({ ok: false, erro: { code: 'unexpected_failure', status: 500 } });
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    for (let i = 0; i < 6; i++) expect((await tentar('a@b.co')).status).toBe(502);
     expect(LIMITES_CONTA.falhasPorEmail.excedido('a@b.co')).toBe(false);
+  });
+  it('entrar: rajada de 6 pedidos em paralelo no mesmo e-mail chama o Supabase no máximo 5 vezes', async () => {
+    m.entrarComCodigo.mockImplementation(
+      () => new Promise((ok) => setTimeout(() => ok({ ok: false, erro: { code: 'otp_expired', status: 403 } }), 10)),
+    );
+    const r = await Promise.all(Array.from({ length: 6 }, (_, i) => tentar('rajada@empresa.com.br', `10.2.0.${i}`)));
+    expect(m.entrarComCodigo.mock.calls.length).toBeLessThanOrEqual(5);
+    expect(r.map((x) => x.status)).toContain(429);
   });
   it('codigo: 5 pedidos por e-mail por hora → 6º leva 429 sem chamar o Supabase', async () => {
     for (let i = 0; i < 5; i++) expect((await codigo.POST(post({ email: 'a@b.co' }, { 'x-forwarded-for': `10.1.0.${i}` }))).status).toBe(200);
