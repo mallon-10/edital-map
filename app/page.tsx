@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { preload } from 'react-dom';
+import { URL_MAPA_BRASIL } from '@/lib/pontosMapa';
 import { connection } from 'next/server';
 import { AtalhoRadar } from '@/components/AtalhoRadar';
 import { Cabecalho } from '@/components/Cabecalho';
@@ -48,6 +50,8 @@ export default async function Inicio({ searchParams }: Props) {
     atualizadoEm(),
     usoDoDia(ctx),
   ]);
+  // Página sem busca: o navegador começa a baixar os pontos do mapa junto com o HTML (vêm da CDN, URL_MAPA_BRASIL).
+  if (!paraParametros(filtros).toString()) preload(URL_MAPA_BRASIL, { as: 'fetch', crossOrigin: 'anonymous' });
   const agora = new Date().toISOString();
   // Computador: uma tela só, as colunas ocupam a altura que sobra e cada uma rola por dentro.
   // Celular: a página rola, com o mapa em cima e a lista embaixo (a barra de baixo reserva o espaço dela no body).

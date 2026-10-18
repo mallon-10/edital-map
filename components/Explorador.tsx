@@ -10,6 +10,7 @@ import { buscaDoCampo, filtrosAtivos, normalizarTela, ordemEfetiva, paraParametr
 import { PainelCnpj } from '@/components/cnpj/PainelCnpj';
 import { consultarCnpj, type RespostaCnpj } from '@/lib/cliente/cnpj';
 import { medir } from '@/lib/cliente/medir';
+import { urlDosPontos } from '@/lib/pontosMapa';
 import { LimiteAtingido, lerLimite, lerRecursoPro, RecursoProBloqueado, type Limite, type RespostaBusca } from '@/lib/limites';
 import { resumirPontos } from '@/lib/painel';
 import { temTermo } from '@/lib/relevancia/termos';
@@ -238,7 +239,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
     filtrosDoMapa.current = f;
     try {
       // Os mesmos parâmetros da lista: a mesma busca no limite do dia (o servidor ignora a cidade sem raio no mapa).
-      const novos = await obter<PontoMapa[]>(`/api/mapa?${paraParametros(f)}`, ERRO_MAPA);
+      const novos = await obter<PontoMapa[]>(urlDosPontos(paraParametros(f)), ERRO_MAPA);
       if (id !== pedidoMapa.current) return;
       setPontos(novos);
       setCentros((anteriores) => {
