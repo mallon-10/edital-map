@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { lerFiltros } from './filtros';
 import {
   combinacaoBusca, CONVITE_PLANOS, corpoLimite, LIMITE_GRATIS, LimiteAtingido, lerLimite, mensagemLimite, STATUS_LIMITE,
-  bolinhas, leituraFaixa, textoFaixa, tomSelo,
+  bolinhas, leituraFaixa, LIMITES_PLANO, textoFaixa, tomSelo,
 } from './limites';
 
 const busca = (qs: string) => lerFiltros(new URLSearchParams(qs));
@@ -92,5 +92,28 @@ describe('sinal de limite (HTTP 402)', () => {
     expect(e).toBeInstanceOf(Error);
     expect(e.limite.tipo).toBe('edital');
     expect(e.message).toBe('Você abriu os 3 editais grátis de hoje.');
+  });
+});
+
+describe('limites por plano', () => {
+  it('grátis 3/3, Basic 15/15, Pro 300/300 (uso justo)', () => {
+    expect(LIMITES_PLANO.gratis).toEqual({ busca: 3, edital: 3 });
+    expect(LIMITES_PLANO.basic).toEqual({ busca: 15, edital: 15 });
+    expect(LIMITES_PLANO.pro).toEqual({ busca: 300, edital: 300 });
+  });
+  it('corpo do 402 com o máximo do plano', () => {
+    expect(corpoLimite('busca', 15, 'basic').limite).toEqual({ tipo: 'busca', usados: 15, maximo: 15 });
+    expect(corpoLimite('busca', 15, 'basic').erro).toContain('15 buscas do plano Basic');
+    expect(corpoLimite('edital', 300, 'pro').erro).toContain('uso justo');
+  });
+  it('faixa do Basic conta até 15', () => {
+    expect(textoFaixa('busca', 3, 15)).toBe('12 de 15');
+    expect(leituraFaixa('edital', 14, 15)).toBe('resta 1 de 15 editais hoje');
+    expect(tomSelo({ plano: 'basic', buscas: 3, editais: 0 })).toBe('normal');
+    expect(tomSelo({ plano: 'basic', buscas: 14, editais: 0 })).toBe('atencao');
+    expect(tomSelo({ plano: 'basic', buscas: 15, editais: 0 })).toBe('esgotado');
+  });
+  it('sem plano informado vale o grátis', () => {
+    expect(tomSelo({ buscas: 3, editais: 0 })).toBe('esgotado');
   });
 });

@@ -1,6 +1,8 @@
 /** Cookie do navegador anônimo (conta o uso do dia e agrupa os eventos) e marca do navegador interno (o dono). */
 export const COOKIE_VISITANTE = 'em_visitante';
 export const COOKIE_INTERNO = 'em_interno';
+/** Dono confiável (lib/dono.ts): libera tudo; o em_interno sozinho só tira as visitas das métricas. */
+export const COOKIE_DONO = 'em_dono';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 

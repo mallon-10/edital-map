@@ -4,8 +4,23 @@ import type { FiltrosBusca, ResultadoBusca } from './tipos';
 export const LIMITE_GRATIS = { busca: 3, edital: 3 } as const;
 export type TipoUso = keyof typeof LIMITE_GRATIS;
 
-/** Uso do dia que a faixa do plano grátis mostra. `interno`: navegador do dono, sem limite e sem faixa. */
-export type UsoHoje = { interno: boolean; buscas: number; editais: number };
+/** Plano do navegador (spec do pagamento, §5). */
+export type Plano = 'gratis' | 'basic' | 'pro';
+
+/** Limites por dia de cada plano. O Pro é "uso justo": sem teto na tela, 300 por trás contra abuso. */
+export const LIMITES_PLANO: Record<Plano, Record<TipoUso, number>> = {
+  gratis: { ...LIMITE_GRATIS },
+  basic: { busca: 15, edital: 15 },
+  pro: { busca: 300, edital: 300 },
+};
+
+const NOME_PLANO: Record<Plano, string> = { gratis: 'Grátis', basic: 'Basic', pro: 'Pro' };
+
+/**
+ * Uso do dia que a faixa mostra. `interno`: navegador do dono, sem limite e sem faixa. `plano` ausente = grátis
+ * (o servidor sempre manda; o ausente é para usos antigos e testes).
+ */
+export type UsoHoje = { interno: boolean; plano?: Plano; buscas: number; editais: number };
 /** Quantidades já usadas hoje. */
 type Usados = Pick<UsoHoje, 'buscas' | 'editais'>;
 
@@ -40,11 +55,12 @@ const PALAVRAS: Record<TipoUso, { varios: string; nenhum: string }> = {
   edital: { varios: 'editais', nenhum: 'nenhum edital' },
 };
 
-function restantes(uso: Usados): { buscas: number; editais: number } {
-  return { buscas: Math.max(0, LIMITE_GRATIS.busca - uso.buscas), editais: Math.max(0, LIMITE_GRATIS.edital - uso.editais) };
+function restantes(uso: Usados & { plano?: Plano }): { buscas: number; editais: number } {
+  const max = LIMITES_PLANO[uso.plano ?? 'gratis'];
+  return { buscas: Math.max(0, max.busca - uso.buscas), editais: Math.max(0, max.edital - uso.editais) };
 }
 
-const restam = (tipo: TipoUso, usados: number) => Math.min(LIMITE_GRATIS[tipo], Math.max(0, LIMITE_GRATIS[tipo] - usados));
+const restam = (usados: number, maximo: number) => Math.min(maximo, Math.max(0, maximo - usados));
 
 /** Bolinhas da faixa: `true` = ainda disponível (cheia), `false` = já usada (vazia). Sempre `maximo` bolinhas. */
 export function bolinhas(usados: number, maximo: number): boolean[] {
@@ -52,43 +68,45 @@ export function bolinhas(usados: number, maximo: number): boolean[] {
   return Array.from({ length: maximo }, (_, i) => i < sobra);
 }
 
-/** Texto ao lado das bolinhas: "2 de 3"; zerado, "nenhuma busca" ou "nenhum edital". */
-export function textoFaixa(tipo: TipoUso, usados: number): string {
-  const n = restam(tipo, usados);
-  return n === 0 ? PALAVRAS[tipo].nenhum : `${n} de ${LIMITE_GRATIS[tipo]}`;
+/** Texto ao lado das bolinhas: "2 de 3" (Basic: "12 de 15"); zerado, "nenhuma busca" ou "nenhum edital". */
+export function textoFaixa(tipo: TipoUso, usados: number, maximo: number = LIMITE_GRATIS[tipo]): string {
+  const n = restam(usados, maximo);
+  return n === 0 ? PALAVRAS[tipo].nenhum : `${n} de ${maximo}`;
 }
 
-/** O que o leitor de tela lê no lugar das bolinhas: "restam 2 de 3 buscas grátis hoje". */
-export function leituraFaixa(tipo: TipoUso, usados: number): string {
-  const n = restam(tipo, usados);
-  if (n === 0) return `${PALAVRAS[tipo].nenhum} grátis restante hoje`;
-  return `${n === 1 ? 'resta' : 'restam'} ${n} de ${LIMITE_GRATIS[tipo]} ${PALAVRAS[tipo].varios} grátis hoje`;
+/** O que o leitor de tela lê no lugar das bolinhas: "restam 2 de 3 buscas grátis hoje" (Basic, sem "grátis"). */
+export function leituraFaixa(tipo: TipoUso, usados: number, maximo: number = LIMITE_GRATIS[tipo]): string {
+  const n = restam(usados, maximo);
+  const gratis = maximo === LIMITE_GRATIS[tipo] ? ' grátis' : '';
+  if (n === 0) return `${PALAVRAS[tipo].nenhum}${gratis} restante hoje`;
+  return `${n === 1 ? 'resta' : 'restam'} ${n} de ${maximo} ${PALAVRAS[tipo].varios}${gratis} hoje`;
 }
 
 export type TomSelo = 'normal' | 'atencao' | 'esgotado';
 
 /** Laranja quando um dos dois zerou; amarelo quando falta 1 de qualquer um. */
-export function tomSelo(uso: Usados): TomSelo {
+export function tomSelo(uso: Usados & { plano?: Plano }): TomSelo {
   const r = restantes(uso);
   if (r.buscas === 0 || r.editais === 0) return 'esgotado';
   if (r.buscas === 1 || r.editais === 1) return 'atencao';
   return 'normal';
 }
 
-export function mensagemLimite(tipo: TipoUso): string {
-  return tipo === 'busca'
-    ? `Você usou as ${LIMITE_GRATIS.busca} buscas grátis de hoje.`
-    : `Você abriu os ${LIMITE_GRATIS.edital} editais grátis de hoje.`;
+export function mensagemLimite(tipo: TipoUso, plano: Plano = 'gratis'): string {
+  const max = LIMITES_PLANO[plano][tipo];
+  if (plano === 'pro') return `Você chegou ao uso justo de hoje do plano Pro (${max} ${PALAVRAS[tipo].varios}). Volta amanhã às 0h.`;
+  const de = plano === 'gratis' ? 'grátis' : `do plano ${NOME_PLANO[plano]}`;
+  return tipo === 'busca' ? `Você usou as ${max} buscas ${de} de hoje.` : `Você abriu os ${max} editais ${de} de hoje.`;
 }
 
 export const CONVITE_PLANOS = 'Volta amanhã às 0h, ou conheça os planos.';
 
 /** Corpo da resposta 402 (o `erro` em português aparece também onde a tela só mostra erros, como o botão Exportar). */
-export function corpoLimite(tipo: TipoUso, usados: number): CorpoLimite {
+export function corpoLimite(tipo: TipoUso, usados: number, plano: Plano = 'gratis'): CorpoLimite {
   return {
-    erro: `${mensagemLimite(tipo)} ${CONVITE_PLANOS}`,
+    erro: plano === 'pro' ? mensagemLimite(tipo, plano) : `${mensagemLimite(tipo, plano)} ${CONVITE_PLANOS}`,
     codigo: CODIGO_LIMITE,
-    limite: { tipo, usados, maximo: LIMITE_GRATIS[tipo] },
+    limite: { tipo, usados, maximo: LIMITES_PLANO[plano][tipo] },
   };
 }
 
