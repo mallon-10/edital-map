@@ -22,6 +22,10 @@ describe('página Meu Radar', () => {
     expect(pagina).toContain('<CartaoPreviaRadar');
     expect(pagina).toMatch(/!vista\.previa \? \(\s*<PaginacaoRadar/);
   });
+  it('a prévia usa o mesmo total do cartão (contagens, sem cache), não o total da lista em cache', () => {
+    expect(pagina).toContain('<CartaoPreviaRadar total={contagens.total} />');
+    expect(pagina).toContain('contagens.total > VISIVEIS_GRATIS');
+  });
   it('lista com os cards da Fase 2 e a visita registrada ao sair', () => {
     expect(pagina).toContain('<CardLista');
     expect(pagina).toContain('<RegistrarVisitaRadar />');
@@ -30,6 +34,19 @@ describe('página Meu Radar', () => {
     expect(visita).toContain("fetch('/api/radar/visita'");
     expect(visita).toContain('keepalive: true');
     expect(visita).toContain("'content-type': 'application/json'");
+    // Celular (iOS pula o pagehide): também ao esconder a aba; voltar do bfcache libera um novo registro.
+    expect(visita).toContain("addEventListener('visibilitychange'");
+    expect(visita).toContain("document.visibilityState === 'hidden'");
+    expect(visita).toContain("addEventListener('pageshow'");
+    expect(visita).toMatch(/persisted\) feito = false/);
+  });
+});
+
+describe('onboarding', () => {
+  it('onboarding_iniciado só uma vez por visitante (recarregar ou voltar não infla o funil)', () => {
+    const pagina = ler('app/radar/comecar/page.tsx');
+    expect(pagina).toContain("gravarEventoUmaVez(ctx, 'onboarding_iniciado'");
+    expect(pagina).not.toContain("gravarEvento(ctx, 'onboarding_iniciado'");
   });
 });
 

@@ -5,7 +5,7 @@ import { Cabecalho } from '@/components/Cabecalho';
 import { FormRadar } from '@/components/radar/FormRadar';
 import { rascunhoDoRadar } from '@/lib/radar';
 import { lerRadar } from '@/lib/servidor/conta';
-import { contextoDaPagina, gravarEvento } from '@/lib/servidor/registro';
+import { contextoDaPagina, gravarEventoUmaVez } from '@/lib/servidor/registro';
 import { usuarioAtual } from '@/lib/servidor/sessao';
 
 /** Página da conta: fora do Google. */
@@ -18,7 +18,8 @@ export default async function ComecarRadar() {
   if (!usuario) redirect('/entrar?voltar=/radar/comecar');
   if (await lerRadar(usuario)) redirect('/radar');
   const ctx = await contextoDaPagina();
-  if (ctx) after(() => gravarEvento(ctx, 'onboarding_iniciado', {}).catch((erro) => console.error('onboarding_iniciado:', erro)));
+  // Uma vez por visitante: recarregar ou voltar a esta página não conta outro início de onboarding.
+  if (ctx) after(() => gravarEventoUmaVez(ctx, 'onboarding_iniciado', {}).catch((erro) => console.error('onboarding_iniciado:', erro)));
   return (
     <>
       <Cabecalho />

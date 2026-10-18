@@ -73,6 +73,19 @@ export async function gravarEvento(ctx: Contexto, tipo: TipoEvento | TipoEventoS
   if (error) throw new Error(`gravar evento: ${error.message}`);
 }
 
+/**
+ * Grava o evento só se este visitante ainda não tem um do mesmo tipo (ex.: onboarding_iniciado: recarregar ou voltar
+ * à página não infla o funil). O visitante (cookie em_visitante, 1 ano) é o navegador: na prática, uma vez por conta;
+ * a mesma conta em outro navegador conta de novo. Usa o índice eventos_tipo_idx (tipo raro). true = gravou.
+ */
+export async function gravarEventoUmaVez(ctx: Contexto, tipo: TipoEventoConta, detalhe: Detalhe): Promise<boolean> {
+  const { data, error } = await supabaseServidor().from('eventos').select('id').eq('tipo', tipo).eq('visitante', ctx.visitante).limit(1);
+  if (error) throw new Error(`ler evento: ${error.message}`);
+  if (data && data.length > 0) return false;
+  await gravarEvento(ctx, tipo, detalhe);
+  return true;
+}
+
 export async function gravarPedido(ctx: Contexto, pedido: PedidoAlerta): Promise<string> {
   const { data, error } = await supabaseServidor()
     .from('pedidos_alerta')

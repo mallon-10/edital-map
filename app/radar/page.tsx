@@ -68,7 +68,7 @@ export default async function MeuRadar({ searchParams }: Props) {
             <h1 className="text-[28px] font-bold leading-tight tracking-[-0.015em]">Meu Radar</h1>
             <p className="text-sm text-ink-muted">Editais abertos para o que sua empresa vende, atualizados a cada 3 horas.</p>
           </div>
-          <Link href="/radar/editar" className="inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken">
+          <Link href="/radar/editar" prefetch={false} className="inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken">
             Editar meu radar
           </Link>
         </div>
@@ -78,7 +78,7 @@ export default async function MeuRadar({ searchParams }: Props) {
           <section className="flex flex-col gap-2 rounded-md border border-line bg-raised p-5">
             <h2 className="text-[17px] font-bold">Nenhum edital aberto para o seu radar agora.</h2>
             <p className="text-[15px] text-ink-muted">Novos editais entram a cada 3 horas. Você também pode ampliar o radar com mais produtos ou outra área.</p>
-            <Link href="/radar/editar" className="inline-flex h-11 w-fit items-center text-sm font-semibold text-pin-strong underline-offset-2 hover:underline">
+            <Link href="/radar/editar" prefetch={false} className="inline-flex h-11 w-fit items-center text-sm font-semibold text-pin-strong underline-offset-2 hover:underline">
               Editar meu radar
             </Link>
           </section>
@@ -91,7 +91,8 @@ export default async function MeuRadar({ searchParams }: Props) {
             {lista.editais.map((e) => (
               <CardLista key={e.id} edital={e} agora={agora} />
             ))}
-            {vista.previa && lista.total > VISIVEIS_GRATIS ? <CartaoPreviaRadar total={lista.total} /> : null}
+            {/* Mesmo número do cartão "Oportunidades" (contagens, sem cache); a lista vem do cache de 5 min. */}
+            {vista.previa && contagens.total > VISIVEIS_GRATIS ? <CartaoPreviaRadar total={contagens.total} /> : null}
             {!vista.previa ? (
               <PaginacaoRadar ordem={ordem} pagina={vista.pagina} total={lista.total} />
             ) : null}
