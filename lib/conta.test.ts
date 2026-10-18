@@ -35,6 +35,13 @@ describe('destinoSeguro', () => {
       expect(destinoSeguro(v)).toBe('/radar');
     }
   });
+  it('/api em qualquer forma (com ?, #, sozinho ou em maiúsculas) → /radar', () => {
+    for (const v of ['/api', '/api?x=1', '/api#x', '/api/', '/API/conta', '/Api?x', '/aPi#y']) {
+      expect(destinoSeguro(v)).toBe('/radar');
+    }
+    expect(destinoSeguro('/apis')).toBe('/apis');
+    expect(destinoSeguro('/apidoc')).toBe('/apidoc');
+  });
   it('controle, espaço e barra invertida (o navegador ignora TAB: "/\t/mal.com" vira "//mal.com")', () => {
     for (const v of ['/\t/mal.com', '/\n/mal.com', '/\\mal.com', ' //mal.com', '/radar x', '/a\u0000b', '/a\u007fb']) {
       expect(destinoSeguro(v)).toBe('/radar');

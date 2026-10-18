@@ -48,7 +48,7 @@ export function lerCodigo(v: unknown): string | null {
  */
 export function destinoSeguro(v: string | null | undefined): string {
   if (!v || !v.startsWith('/') || v.startsWith('//') || /[\u0000- \u007f\\]/.test(v)) return DESTINO_PADRAO;
-  if (v === '/entrar' || v.startsWith('/entrar?') || v.startsWith('/entrar/') || v.startsWith('/api/')) return DESTINO_PADRAO;
+  if (v === '/entrar' || v.startsWith('/entrar?') || v.startsWith('/entrar/') || /^\/api(\/|\?|#|$)/i.test(v)) return DESTINO_PADRAO;
   return v.slice(0, 200);
 }
 

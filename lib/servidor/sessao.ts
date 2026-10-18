@@ -1,6 +1,7 @@
 import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import { OPCOES_COOKIE_SESSAO, type ErroAuth } from '../conta';
 
 declare const MARCA_SESSAO: unique symbol;
@@ -44,9 +45,14 @@ const erroDe = (e: { code?: string | null; status?: number | null } | null | und
   status: e?.status ?? null,
 });
 const SEM_CHAVE: ErroAuth = { code: 'sem_chave', status: null };
+/** Exceção (cookies() fora de pedido, rede, supabase-js): mesmo formato de erro, a rota mostra a mensagem genérica. */
+const FALHA: ErroAuth = { code: 'falha', status: null };
 
-/** Usuário da sessão, conferido no Supabase Auth a cada chamada. null = sem sessão (ou Auth fora do ar). */
-export async function usuarioAtual(): Promise<Usuario | null> {
+/**
+ * Usuário da sessão, conferido no Supabase Auth. null = sem sessão (ou Auth fora do ar).
+ * cache() do React: layout e página do mesmo pedido fazem um getUser só.
+ */
+export const usuarioAtual = cache(async function usuarioAtual(): Promise<Usuario | null> {
   const env = envAuth();
   if (!env) return null;
   try {
@@ -57,7 +63,7 @@ export async function usuarioAtual(): Promise<Usuario | null> {
     console.error('sessão:', erro);
     return null;
   }
-}
+});
 
 /** Manda o código de 6 dígitos por e-mail (modelo "Magic Link"/"Confirm signup" com {{ .Token }}); cria a conta se for nova. */
 export async function enviarCodigo(email: string): Promise<{ ok: true } | { ok: false; erro: ErroAuth }> {
@@ -66,8 +72,13 @@ export async function enviarCodigo(email: string): Promise<{ ok: true } | { ok: 
     console.error('SUPABASE_ANON_KEY ausente: login desligado');
     return { ok: false, erro: SEM_CHAVE };
   }
-  const { error } = await (await clienteAuth(env)).auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
-  return error ? { ok: false, erro: erroDe(error) } : { ok: true };
+  try {
+    const { error } = await (await clienteAuth(env)).auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    return error ? { ok: false, erro: erroDe(error) } : { ok: true };
+  } catch (erro) {
+    console.error('enviar código:', erro);
+    return { ok: false, erro: FALHA };
+  }
 }
 
 /** Confere o código; certo, o cliente de sessão grava a sessão nos cookies (httpOnly) desta resposta. */
@@ -77,15 +88,26 @@ export async function entrarComCodigo(
 ): Promise<{ ok: true; usuario: Usuario } | { ok: false; erro: ErroAuth }> {
   const env = envAuth();
   if (!env) return { ok: false, erro: SEM_CHAVE };
-  const { data, error } = await (await clienteAuth(env)).auth.verifyOtp({ email, token: codigo, type: 'email' });
-  const usuario = paraUsuario(data?.user);
-  if (error || !usuario) return { ok: false, erro: erroDe(error) };
-  return { ok: true, usuario };
+  try {
+    const { data, error } = await (await clienteAuth(env)).auth.verifyOtp({ email, token: codigo, type: 'email' });
+    const usuario = paraUsuario(data?.user);
+    if (error || !usuario) return { ok: false, erro: erroDe(error) };
+    return { ok: true, usuario };
+  } catch (erro) {
+    console.error('entrar:', erro);
+    return { ok: false, erro: FALHA };
+  }
 }
 
 /** Encerra só esta sessão (neste navegador). */
-export async function sair(): Promise<void> {
+export async function sair(): Promise<{ ok: true } | { ok: false; erro: ErroAuth }> {
   const env = envAuth();
-  if (!env) return;
-  await (await clienteAuth(env)).auth.signOut({ scope: 'local' });
+  if (!env) return { ok: false, erro: SEM_CHAVE };
+  try {
+    const { error } = await (await clienteAuth(env)).auth.signOut({ scope: 'local' });
+    return error ? { ok: false, erro: erroDe(error) } : { ok: true };
+  } catch (erro) {
+    console.error('sair:', erro);
+    return { ok: false, erro: FALHA };
+  }
 }

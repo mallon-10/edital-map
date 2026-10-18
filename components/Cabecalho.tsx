@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import type { UsoHoje } from '@/lib/limites';
 import { Logo } from './Logo';
 import { FaixaPlano } from './FaixaPlano';
+import { MenuConta } from './conta/MenuConta';
 
 const ABA = 'rounded-sm px-3 py-1.5 text-sm font-semibold';
 
@@ -14,7 +15,7 @@ type Props = {
 };
 
 /**
- * Computador: logo, abas (Mapa, Alertas, Planos), Sobre e "Assinar Pro". Celular: logo e "Assinar" (Mapa, Lista,
+ * Computador: logo, abas (Mapa, Alertas, Planos), Sobre, conta e "Assinar Pro". Celular: logo, conta e "Assinar" (Mapa, Lista,
  * Alertas e Planos ficam na barra de baixo). Logo abaixo, a faixa do plano grátis (some no navegador interno).
  */
 export function Cabecalho({ uso }: Props) {
@@ -42,6 +43,7 @@ export function Cabecalho({ uso }: Props) {
           <Link href="/sobre" className="hidden text-sm font-semibold text-ink-muted hover:text-ink lg:inline">
             Sobre
           </Link>
+          <MenuConta />
           <Link
             href="/planos"
             className="inline-flex h-9 shrink-0 items-center rounded-sm bg-pin px-2.5 text-[13px] font-semibold text-on-pin lg:h-10 lg:px-4 lg:text-sm"

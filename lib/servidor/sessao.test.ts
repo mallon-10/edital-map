@@ -94,8 +94,16 @@ describe('código por e-mail', () => {
     m.verifyOtp.mockResolvedValueOnce({ data: { user: null }, error: { code: 'otp_expired', status: 403, message: 'x' } });
     expect(await entrarComCodigo('a@b.co', '000000')).toEqual({ ok: false, erro: { code: 'otp_expired', status: 403 } });
   });
+  it('exceção do Supabase ou dos cookies vira erro "falha" (sem estourar)', async () => {
+    m.signInWithOtp.mockRejectedValueOnce(new Error('rede'));
+    expect(await enviarCodigo('a@b.co')).toEqual({ ok: false, erro: { code: 'falha', status: null } });
+    m.verifyOtp.mockRejectedValueOnce(new Error('rede'));
+    expect(await entrarComCodigo('a@b.co', '123456')).toEqual({ ok: false, erro: { code: 'falha', status: null } });
+    m.signOut.mockRejectedValueOnce(new Error('rede'));
+    expect(await sair()).toEqual({ ok: false, erro: { code: 'falha', status: null } });
+  });
   it('sair encerra só a sessão local', async () => {
-    await sair();
+    expect(await sair()).toEqual({ ok: true });
     expect(m.signOut).toHaveBeenCalledTimes(1);
     expect(m.signOut).toHaveBeenCalledWith({ scope: 'local' });
   });
