@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { TIPOS_EVENTO, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';
+import { ORDENS } from '../lib/filtros';
+import { PESOS } from '../lib/relevancia/pontuacao';
+import { SITUACOES_FORA_DAS_ABERTAS } from '../lib/situacao';
 
 const ler = (caminho: string) => readFileSync(new URL(`../${caminho}`, import.meta.url), 'utf8');
 
@@ -263,5 +266,144 @@ describe('migração 0010 (período da lista de espera)', () => {
     expect(sql).toContain("add column periodo text not null default 'mensal'");
     expect(sql).toContain("constraint lista_espera_periodo_check check (periodo in ('mensal', 'anual'))");
     expect(sql).not.toMatch(/create |drop |grant |policy/i);
+  });
+});
+
+/** Do `inicio` (ex.: "create function public.x(") até o `$$;` que fecha o corpo, com fim de linha \n. */
+function corpoDe(texto: string, inicio: string): string {
+  const t = texto.replace(/\r\n/g, '\n');
+  const i = t.indexOf(inicio);
+  if (i < 0) return '';
+  const abre = t.indexOf('$$', i);
+  return t.slice(i, t.indexOf('$$;', abre + 2) + 3);
+}
+
+describe('migração 0011 (busca, relevância e situação)', () => {
+  const sql = ler('supabase/migrations/0011_busca_relevancia.sql');
+  const corpo = (inicio: string) => {
+    const c = corpoDe(sql, inicio);
+    expect(c, inicio).not.toBe('');
+    return c;
+  };
+
+  it('uma transação curta e o PostgREST relê as funções no fim', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql.trimEnd().endsWith("notify pgrst, 'reload schema';")).toBe(true);
+  });
+  it('as assinaturas antigas saem antes das novas (o site no ar segue chamando sem os parâmetros novos)', () => {
+    const antigas = [
+      'drop function public.buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int);',
+      'drop function public.mapa_editais(text, text[], int, numeric, int[], text, text, int);',
+      'drop function public.abertas_unicas(text, text[], numeric, int[], text);',
+    ];
+    for (const d of antigas) {
+      expect(sql).toContain(d);
+      expect(sql.indexOf(d)).toBeLessThan(sql.indexOf('create function public.buscar_editais('));
+    }
+    const busca = corpo('create function public.buscar_editais(');
+    for (const p of ["p_termos text[] default null", "p_relacionados text[] default null", "p_excluir text[] default null", "p_ordem text default null"]) {
+      expect(busca).toContain(p);
+    }
+    expect(busca).toContain('situacao_id int, pontuacao int, termos_objeto text[], termos_itens text[], frase boolean)');
+    const mapa = corpo('create function public.mapa_editais(');
+    for (const p of ["p_termos text[] default null", "p_relacionados text[] default null", "p_excluir text[] default null"]) {
+      expect(mapa).toContain(p);
+    }
+  });
+  it('aberta num lugar só: prazo no futuro e situação fora de revogada e anulada', () => {
+    expect(corpo('create function public.em_aberto(')).toContain(
+      `select p_encerramento > now() and coalesce(p_situacao, 0) not in (${SITUACOES_FORA_DAS_ABERTAS.join(', ')})`,
+    );
+    expect(sql.split('> now()').length - 1).toBe(1);
+  });
+  it('todas as funções que listam ou contam abertas usam em_aberto', () => {
+    for (const f of [
+      'create or replace function public.abertas(',
+      'create function public.abertas_unicas(',
+      'create or replace function public.orgaos_abertos(',
+      'create or replace function public.relacionados(',
+    ]) {
+      expect(corpo(f)).toContain('public.em_aberto(');
+    }
+    for (const f of ['create function public.buscar_editais(', 'create function public.mapa_editais(']) {
+      expect(corpo(f)).toContain('public.abertas_unicas(');
+      expect(corpo(f)).toContain('public.termos_da_busca(q, p_termos)');
+    }
+  });
+  it('abertas, orgaos_abertos e relacionados: o corpo de antes, só com em_aberto no lugar do prazo', () => {
+    const igual = (novo: string, antigo: string, aberta: string, prazo: string) =>
+      expect(novo.replace('create or replace function', 'create function').replace(aberta, prazo)).toBe(
+        antigo.replace('create or replace function', 'create function'),
+      );
+    igual(
+      corpo('create or replace function public.abertas('),
+      corpoDe(ler('supabase/migrations/0005_palavras_itens.sql'), 'create or replace function public.abertas('),
+      'public.em_aberto(c.encerramento_em, c.situacao_id)',
+      'c.encerramento_em > now()',
+    );
+    igual(
+      corpo('create or replace function public.orgaos_abertos('),
+      corpoDe(ler('supabase/migrations/0007_recursos_pro.sql'), 'create function public.orgaos_abertos('),
+      'public.em_aberto(c.encerramento_em, c.situacao_id)',
+      'c.encerramento_em > now()',
+    );
+    igual(
+      corpo('create or replace function public.relacionados('),
+      corpoDe(ler('supabase/migrations/0008_relacionados_leve.sql'), 'create or replace function public.relacionados('),
+      'public.em_aberto(a.encerramento_em, a.situacao_id)',
+      'a.encerramento_em > now()',
+    );
+  });
+  it('excluídos tiram pelo objeto; termos acham no objeto ou nas palavras dos itens', () => {
+    const unicas = corpo('create function public.abertas_unicas(');
+    expect(unicas).toContain('(p_tq is null or c.busca @@ p_tq or c.itens_palavras @@ p_tq)');
+    expect(unicas).toContain('(p_tq_excluir is null or not c.busca @@ p_tq_excluir)');
+    expect(unicas).toContain('(c.link_origem is null), c.atualizada_pncp_em desc, c.id');
+  });
+  it('pesos da pontuação iguais aos do site (PESOS)', () => {
+    const p = corpo('create function public.pontuacao_busca(');
+    expect(p).toContain(`select least(${PESOS.teto},`);
+    expect(p).toContain(`case when p_digitado_objeto then ${PESOS.digitadoObjeto} else 0 end`);
+    expect(p).toContain(`case when p_digitado_itens then ${PESOS.digitadoItens} else 0 end`);
+    expect(p).toContain(`case when p_relacionado_objeto then ${PESOS.relacionadoObjeto} else 0 end`);
+    expect(p).toContain(`case when p_relacionado_itens then ${PESOS.relacionadoItens} else 0 end`);
+    expect(p).toContain(`+ case when p_frase then ${PESOS.frase} else 0 end`);
+    expect(p).toContain(`+ ${PESOS.porTermo} * least(${PESOS.termosExtras}, greatest(0, coalesce(p_distintos, 0) - 1)))`);
+  });
+  it('acertos: termos dos itens são os que não estão no objeto; frase só dos digitados', () => {
+    const a = corpo('create function public.acertos_busca(');
+    expect(a).toContain('filter (where not coalesce(p_busca @@ u.tq, false) and p_itens @@ u.tq)');
+    expect(a).toContain('coalesce(bool_or(p_busca @@ u.fr), false) as frase');
+    expect(corpo('create function public.buscar_editais(')).toContain(
+      'case when t.n <= cardinality(v_digitados) then public.consulta_frase(t.termo) end',
+    );
+  });
+  it('ordens iguais às do site; relevância ordena todas, as outras só a página', () => {
+    const b = corpo('create function public.buscar_editais(');
+    expect(b).toContain(`p_ordem in (${ORDENS.map((o) => `'${o.id}'`).join(', ')})`);
+    expect(b).toContain('order by a.pontuacao desc, u.encerramento_em, u.id');
+    expect(b).toContain("case when v_ordem = 'recentes' then u.publicada_em end desc nulls last");
+    expect(b).toContain("case when v_ordem = 'maior_valor' then nullif(u.valor_estimado, 0) end desc nulls last");
+    expect(b).toContain("case when v_ordem = 'menor_valor' then nullif(u.valor_estimado, 0) end asc nulls last");
+    expect(b).toContain('set plan_cache_mode = force_custom_plan');
+  });
+  it('só o servidor executa (cada assinatura)', () => {
+    for (const f of [
+      'em_aberto(timestamptz, int)',
+      'termos_da_busca(text, text[])',
+      'consulta_termos(text[])',
+      'consulta_frase(text)',
+      'pontuacao_busca(boolean, boolean, boolean, boolean, boolean, int)',
+      'acertos_busca(tsvector, tsvector, text[], tsquery[], tsquery[], text[], text[])',
+      'abertas(text, text[], numeric)',
+      'abertas_unicas(tsquery, tsquery, text[], numeric, int[], text, text, int, int)',
+      'buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int, text[], text[], text[], text)',
+      'mapa_editais(text, text[], int, numeric, int[], text, text, int, text[], text[], text[])',
+      'orgaos_abertos(text, int)',
+      'relacionados(text, int)',
+    ]) {
+      expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
+    }
   });
 });

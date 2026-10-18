@@ -1,5 +1,5 @@
 import { UFS_BRASIL, type RecursoUsado } from './eventos';
-import type { FiltrosBusca, FiltrosTela } from './tipos';
+import type { FiltrosBusca, FiltrosTela, Ordem } from './tipos';
 
 /** As 27 UFs em ordem alfabética, para os seletores de UF. */
 export const UFS_ORDENADAS: readonly string[] = [...UFS_BRASIL].sort();
@@ -14,6 +14,14 @@ export const MODALIDADES: ReadonlyArray<{ id: number; nome: string }> = [
 const IDS_MODALIDADE = MODALIDADES.map((m) => m.id);
 /** Raios do filtro Pro, em km a partir da sede do município escolhido. */
 export const RAIOS_KM = [50, 100, 200] as const;
+/** Ordens da lista, na ordem do seletor. Os ids são os aceitos por buscar_editais (guarda em scripts/migracoes.test.ts). */
+export const ORDENS: ReadonlyArray<{ id: Ordem; rotulo: string }> = [
+  { id: 'relevancia', rotulo: 'Maior relevância' },
+  { id: 'recentes', rotulo: 'Mais recentes' },
+  { id: 'prazo', rotulo: 'Menor prazo' },
+  { id: 'maior_valor', rotulo: 'Maior valor' },
+  { id: 'menor_valor', rotulo: 'Menor valor' },
+];
 /** CNPJ do órgão comprador: 14 caracteres, os 12 primeiros podem ser letras (CNPJ alfanumérico), como em SLUG_EDITAL. */
 const CNPJ = /^[0-9A-Z]{12}\d{2}$/;
 

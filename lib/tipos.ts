@@ -1,5 +1,8 @@
 export type Cidade = { ibge: string; nome: string; uf: string };
 
+/** Ordem da lista (buscar_editais, 0011). Relevância só faz sentido com termo (sem termo vale "prazo"). */
+export type Ordem = 'relevancia' | 'recentes' | 'prazo' | 'maior_valor' | 'menor_valor';
+
 export type FiltrosBusca = {
   q: string | null;
   uf: string | null;
