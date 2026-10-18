@@ -12,7 +12,7 @@ async function paginas(): Promise<Array<{ url: string }>> {
   const contagens = await Promise.all(
     [null, ...ASSUNTOS].map(async (assunto) => ({ assunto, porUf: await abertosPorUf(assunto?.termo ?? null).catch(() => ({})) })),
   );
-  return ['/', '/planos', '/sobre', '/alertas', ...paginasFixas(contagens)].map((c) => ({ url: url(c) }));
+  return ['/', '/planos', '/sobre', '/alertas', '/cnpj', ...paginasFixas(contagens)].map((c) => ({ url: url(c) }));
 }
 
 export async function GET(_: Request, { params }: Contexto): Promise<Response> {

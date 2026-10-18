@@ -67,7 +67,7 @@ describe('validarEvento', () => {
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: {} }).ok).toBe(false);
   });
   it('os seis usos medidos e o limite de exportações por hora', () => {
-    expect(RECURSOS_USADOS).toEqual(['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'tentou_assinar']);
+    expect(RECURSOS_USADOS).toEqual(['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'tentou_assinar', 'consultou_cnpj']);
     // tentou_assinar é gravado só pela rota /api/assinar (que conta as tentativas por IP).
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'tentou_assinar' } }).ok).toBe(false);
     expect(LIMITES.assinaturasPorHora).toBe(10);

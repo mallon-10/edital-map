@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { UFS_ORDENADAS } from '@/lib/filtros';
 import { Lupa, PinoMini, Seta } from './Icones';
@@ -93,6 +94,9 @@ export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoA
           {carregando ? 'Buscando…' : 'Buscar no mapa'}
         </button>
       </div>
+      <Link href="/cnpj" prefetch={false} className="self-start text-[12px] font-semibold text-pin-strong hover:underline lg:text-[13px]">
+        Ou veja as licitações do seu CNPJ
+      </Link>
     </form>
   );
 }
