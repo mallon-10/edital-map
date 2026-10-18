@@ -1,23 +1,16 @@
 'use client';
 
-import Link from 'next/link';
 import { useId, useState, type FormEvent } from 'react';
-import { buscaDoCnpj } from '@/lib/cnpj';
-import { ASSUNTOS } from '@/lib/seo/assuntos';
+import { consultarCnpj, type RespostaCnpj } from '@/lib/cliente/cnpj';
+import { PainelCnpj } from './PainelCnpj';
 
-type Resposta = {
-  empresa: { razao: string; fantasia: string | null; uf: string | null; municipio: string | null; ativa: boolean; atividade: string | null };
-  assuntos: Array<{ slug: string; nome: string; principal: boolean }>;
-};
-
-/** Campo do CNPJ: mostra a empresa, os segmentos reconhecidos e leva à busca pronta (que conta como busca do dia). */
-export function BuscaCnpj({ compacto = false }: { compacto?: boolean }) {
+/** Campo do CNPJ da página /cnpj: mostra a empresa e os segmentos e leva à busca pronta (que conta como busca do dia). */
+export function BuscaCnpj() {
   const campo = useId();
   const [cnpj, setCnpj] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [r, setR] = useState<Resposta | null>(null);
-  const [marcados, setMarcados] = useState<Set<string>>(new Set());
+  const [r, setR] = useState<RespostaCnpj | null>(null);
 
   async function consultar(e: FormEvent) {
     e.preventDefault();
@@ -25,11 +18,7 @@ export function BuscaCnpj({ compacto = false }: { compacto?: boolean }) {
     setErro(null);
     setR(null);
     try {
-      const res = await fetch(`/api/cnpj/${encodeURIComponent(cnpj.replace(/\D/g, ''))}`, { cache: 'no-store' });
-      const j = (await res.json().catch(() => ({}))) as Resposta & { erro?: string };
-      if (!res.ok) throw new Error(j.erro ?? 'Não deu para consultar agora.');
-      setR(j);
-      setMarcados(new Set(j.assuntos.filter((a) => a.principal).map((a) => a.slug)));
+      setR(await consultarCnpj(cnpj));
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não deu para consultar agora.');
     } finally {
@@ -37,12 +26,8 @@ export function BuscaCnpj({ compacto = false }: { compacto?: boolean }) {
     }
   }
 
-  // Atividade fora dos segmentos: todos aparecem para a pessoa marcar o que vende (nada marcado de início).
-  const opcoes = r ? (r.assuntos.length ? r.assuntos : ASSUNTOS.map((a) => ({ slug: a.slug, nome: a.nome, principal: false }))) : [];
-  const busca = r ? buscaDoCnpj(ASSUNTOS.filter((a) => marcados.has(a.slug)), r.empresa.uf) : '/';
-  const local = r?.empresa.municipio && r.empresa.uf ? `${r.empresa.municipio}/${r.empresa.uf}` : r?.empresa.uf;
   return (
-    <div className={`flex flex-col gap-3 ${compacto ? '' : 'rounded-lg border border-line bg-raised p-5'}`}>
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-raised p-5">
       <form onSubmit={consultar} className="flex flex-col gap-2">
         <label htmlFor={campo} className="text-[15px] font-bold">CNPJ da sua empresa</label>
         <div className="flex flex-wrap gap-2">
@@ -66,50 +51,7 @@ export function BuscaCnpj({ compacto = false }: { compacto?: boolean }) {
           {erro}
         </p>
       ) : null}
-      {r ? (
-        <section role="status" className="flex flex-col gap-2 rounded-md bg-sunken p-4">
-          <span className="text-[15px] font-bold">{r.empresa.fantasia ?? r.empresa.razao}</span>
-          <span className="text-[13px] text-ink-muted">
-            {[r.empresa.atividade, local, r.empresa.ativa ? null : 'situação diferente de ativa'].filter(Boolean).join(' · ')}
-          </span>
-          <>
-              <fieldset className="flex flex-col gap-1.5">
-                <legend className="mb-1 text-[14px]">
-                  {r.assuntos.length
-                    ? 'Segmentos encontrados (marque os que sua empresa vende):'
-                    : 'A atividade registrada não é um dos segmentos que acompanhamos. Marque o que sua empresa vende:'}
-                </legend>
-                {opcoes.map((a) => (
-                  <label key={a.slug} className="flex items-center gap-2 text-[14px]">
-                    <input
-                      type="checkbox"
-                      checked={marcados.has(a.slug)}
-                      onChange={(e) => {
-                        const n = new Set(marcados);
-                        if (e.target.checked) n.add(a.slug);
-                        else n.delete(a.slug);
-                        setMarcados(n);
-                      }}
-                      className="size-4 accent-pin"
-                    />
-                    <span>
-                      {a.nome.replace(/^./, (c) => c.toUpperCase())}
-                      {a.principal ? <span className="text-ink-muted"> · atividade principal</span> : null}
-                    </span>
-                  </label>
-                ))}
-              </fieldset>
-              <Link
-                href={busca}
-                prefetch={false}
-                aria-disabled={marcados.size === 0}
-                className={`inline-flex h-11 items-center self-start rounded-sm bg-pin px-5 text-sm font-semibold text-on-pin ${marcados.size === 0 ? 'pointer-events-none opacity-50' : ''}`}
-              >
-                Ver editais {r.empresa.uf ? `em ${r.empresa.uf}` : ''}
-              </Link>
-          </>
-        </section>
-      ) : null}
+      {r ? <PainelCnpj key={r.empresa.razao} r={r} /> : null}
     </div>
   );
 }

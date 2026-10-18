@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { normalizarCnpj } from '@/lib/cnpj';
 import { UFS_ORDENADAS } from '@/lib/filtros';
 import { Lupa, PinoMini, Seta } from './Icones';
 
@@ -12,14 +12,16 @@ type Props = {
   /** Filtros valendo (botão "Filtros (n)" do celular). */
   filtrosAtivos: number;
   aoBuscar: (q: string, uf: string) => void;
+  /** O texto digitado é um CNPJ válido: consulta a empresa em vez de buscar o texto. */
+  aoCnpj: (cnpj: string) => void;
   aoAbrirFiltros: () => void;
 };
 
 /**
- * Computador: "O que sua empresa vende?" + local ("Todo o Brasil" ou UF) + "Buscar no mapa", numa barra só.
+ * Campo aceita o que a empresa vende ou o CNPJ (CNPJ válido consulta a empresa: aoCnpj). Computador: campo + local ("Todo o Brasil" ou UF) + "Buscar no mapa", numa barra só.
  * Celular: só o campo e o botão "Filtros (n)" (a UF e os outros filtros ficam na folha de Filtros).
  */
-export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoAbrirFiltros }: Props) {
+export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoCnpj, aoAbrirFiltros }: Props) {
   const [texto, setTexto] = useState(q);
   const [local, setLocal] = useState(uf);
   useEffect(() => setLocal(uf), [uf]);
@@ -31,12 +33,14 @@ export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoA
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
-        aoBuscar(texto, local);
+        const cnpj = normalizarCnpj(texto);
+        if (cnpj) aoCnpj(cnpj);
+        else aoBuscar(texto, local);
       }}
       className="flex flex-col gap-2"
     >
       <label htmlFor="q" className="sr-only text-[13px] font-semibold lg:not-sr-only">
-        O que sua empresa vende?
+        O que sua empresa vende? Ou digite o CNPJ
       </label>
       <div className="flex gap-2 lg:items-center lg:gap-0 lg:rounded-md lg:border lg:border-line-strong lg:bg-raised lg:p-1.5">
         <div className="relative flex min-w-0 flex-1 items-center">
@@ -55,7 +59,7 @@ export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoA
             enterKeyHint="search"
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            placeholder="Ex.: EPI, uniformes"
+            placeholder="O que você vende ou o CNPJ"
             autoComplete="off"
             maxLength={100}
             className="h-11 w-full rounded-sm border border-line-strong bg-raised pl-11 pr-3 lg:border-0 lg:bg-transparent lg:pl-10"
@@ -94,9 +98,6 @@ export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoA
           {carregando ? 'Buscando…' : 'Buscar no mapa'}
         </button>
       </div>
-      <Link href="/cnpj" prefetch={false} className="self-start text-[12px] font-semibold text-pin-strong hover:underline lg:text-[13px]">
-        Ou veja as licitações do seu CNPJ
-      </Link>
     </form>
   );
 }

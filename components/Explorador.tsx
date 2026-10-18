@@ -7,6 +7,8 @@ import { publicarUso } from '@/lib/cliente/uso';
 import { guardarUltimaBusca, guardarVolta, tomarVolta, type Volta } from '@/lib/cliente/volta';
 import type { Raio } from '@/lib/geo';
 import { buscaDoCampo, filtrosAtivos, normalizarTela, ordemEfetiva, paraParametros, recursosUsados } from '@/lib/filtros';
+import { PainelCnpj } from '@/components/cnpj/PainelCnpj';
+import { consultarCnpj, type RespostaCnpj } from '@/lib/cliente/cnpj';
 import { medir } from '@/lib/cliente/medir';
 import { LimiteAtingido, lerLimite, lerRecursoPro, RecursoProBloqueado, type Limite, type RespostaBusca } from '@/lib/limites';
 import { resumirPontos } from '@/lib/painel';
@@ -98,6 +100,18 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
   const [resultado, setResultado] = useState<ResultadoBusca>(inicial ?? SEM_RESULTADO);
   const [limite, setLimite] = useState<Limite | null>(limiteInicial);
   const [proBloqueado, setProBloqueado] = useState(proInicial);
+  // Campo da busca com um CNPJ: a empresa e os segmentos aparecem embaixo da barra (a busca só roda em "Ver editais").
+  const [cnpj, setCnpj] = useState<
+    { estado: 'carregando' } | { estado: 'erro'; erro: string } | { estado: 'ok'; r: RespostaCnpj } | null
+  >(null);
+  const verCnpj = useCallback(async (numero: string) => {
+    setCnpj({ estado: 'carregando' });
+    try {
+      setCnpj({ estado: 'ok', r: await consultarCnpj(numero) });
+    } catch (falha) {
+      setCnpj({ estado: 'erro', erro: falha instanceof Error ? falha.message : 'Não deu para consultar o CNPJ agora.' });
+    }
+  }, []);
   const [agora, setAgora] = useState(() => new Date(agoraInicial));
   const [carregandoLista, setCarregandoLista] = useState(false);
   const [erroLista, setErroLista] = useState<string | null>(null);
@@ -455,8 +469,35 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
           filtrosAtivos={filtrosAtivos(filtros)}
           // Celular: o campo não mostra o lugar, então município e raio continuam enquanto a UF for a mesma.
           aoBuscar={(q, uf) => aplicar(buscaDoCampo(filtros, q, uf, { manterCidade: ehCelular() }))}
+          aoCnpj={verCnpj}
           aoAbrirFiltros={() => setFolhaAberta(true)}
         />
+        {cnpj ? (
+          <div className="relative mt-3">
+            {cnpj.estado === 'carregando' ? (
+              <p role="status" className="rounded-md bg-sunken p-4 text-sm text-ink-muted">Consultando o CNPJ na Receita…</p>
+            ) : cnpj.estado === 'erro' ? (
+              <p role="alert" className="rounded-md bg-pin-soft p-4 pr-12 text-sm text-pin-strong">{cnpj.erro}</p>
+            ) : (
+              <PainelCnpj
+                key={cnpj.r.empresa.razao}
+                r={cnpj.r}
+                aoVer={(q, uf) => {
+                  setCnpj(null);
+                  aplicar(buscaDoCampo(filtros, q, uf, { manterCidade: false }));
+                }}
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => setCnpj(null)}
+              aria-label="Fechar"
+              className="absolute right-2 top-2 flex size-9 items-center justify-center rounded-sm text-lg text-ink-muted hover:bg-raised"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
         {/* Celular: os chips ficam na folha de Filtros. */}
         <div className="hidden lg:block">
           <Chips filtros={filtros} pontos={pontos} atualizadoEm={atualizadoEm} agora={agora} aoMudar={aplicar} />
