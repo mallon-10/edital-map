@@ -16,7 +16,8 @@ import { municipiosPorIbge } from '@/lib/servidor/municipios';
 import { contagensDoRadar, editaisDoRadar } from '@/lib/servidor/radar';
 import { contextoDaPagina, gravarEvento } from '@/lib/servidor/registro';
 import { usuarioAtual } from '@/lib/servidor/sessao';
-import { usoDoDia } from '@/lib/servidor/uso';
+import { planoAtual } from '@/lib/servidor/plano';
+import { semLimite, usoDoDia } from '@/lib/servidor/uso';
 import { paraUrlSearchParams } from '@/lib/urlBusca';
 
 /** Página da conta: fora do Google. */
@@ -38,7 +39,10 @@ export default async function MeuRadar({ searchParams }: Props) {
 
   const nav = lerNavegacaoRadar(paraUrlSearchParams(await searchParams));
   const ctx = await contextoDaPagina();
-  const vista = vistaDoRadar(perfil.plano, ctx?.interno ?? false, nav.pagina);
+  // Plano pago pela Cakto vale por navegador (planoAtual); o da conta (perfis.plano) também. Dono confiável vê tudo.
+  const planoNavegador = await planoAtual(ctx);
+  const plano = perfil.plano !== 'gratis' ? perfil.plano : planoNavegador;
+  const vista = vistaDoRadar(plano, ctx ? semLimite(ctx) : false, nav.pagina);
   const agora = new Date();
   const { desde, primeira } = desdeDaVisita(perfil.ultimaVisitaRadar, agora);
   const [contagens, lista, uso, cidades] = await Promise.all([
@@ -53,7 +57,7 @@ export default async function MeuRadar({ searchParams }: Props) {
   // Uma vez por chegada ao radar (não a cada troca de ordem ou página).
   if (ctx && nav.pagina === 1 && nav.ordem === null) {
     after(() =>
-      gravarEvento(ctx, 'radar_visto', { total: contagens.total, novas: contagens.novas, plano: perfil.plano }).catch((erro) =>
+      gravarEvento(ctx, 'radar_visto', { total: contagens.total, novas: contagens.novas, plano }).catch((erro) =>
         console.error('radar_visto:', erro),
       ),
     );

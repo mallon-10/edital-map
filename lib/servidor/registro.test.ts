@@ -32,7 +32,7 @@ vi.mock('./supabase', () => ({
 
 const { gravarEventoUmaVez } = await import('./registro');
 
-const CTX = { visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, ipHash: null };
+const CTX = { visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, dono: false, ipHash: null };
 
 beforeEach(() => {
   m.existentes = [];

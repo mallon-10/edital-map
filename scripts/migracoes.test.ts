@@ -374,7 +374,8 @@ describe('migração 0014 (conta e Meu Radar)', () => {
     };
     const antes = tipos(ler('supabase/migrations/0009_limites_lista_espera.sql'));
     const depois = tipos(sql);
-    for (const t of [...antes, ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR, ...TIPOS_EVENTO_CONTA]) expect(depois).toContain(t);
+    // 'assinou' nasce na 0015 (pagamento).
+    for (const t of [...antes, ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR.filter((x) => x !== 'assinou'), ...TIPOS_EVENTO_CONTA]) expect(depois).toContain(t);
   });
   it('só o servidor executa (cada assinatura)', () => {
     for (const f of [
@@ -536,7 +537,7 @@ describe('migração 0015 (pagamento pela Cakto)', () => {
   };
   it('eventos.tipo ganha assinou sem perder nenhum tipo (inclusive os da Fase 3, 0014)', () => {
     const depois = tipos(sql);
-    for (const t of ['conta_entrou', 'onboarding_iniciado', 'onboarding_concluido', 'radar_visto', ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR]) {
+    for (const t of [...TIPOS_EVENTO_CONTA, ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR]) {
       expect(depois).toContain(t);
     }
     expect(depois).toHaveLength(12);
