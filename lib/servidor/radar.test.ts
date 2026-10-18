@@ -48,6 +48,13 @@ describe('editaisDoRadar', () => {
     expect(m.chamadas[0].args).toMatchObject({ p_valor_max: null });
     expect(m.chamadas[0].args.p_relacionados).toHaveLength(12);
   });
+  it('descartados vão em p_sem_ids (sem descartados: nulo)', async () => {
+    m.dados = [];
+    await editaisDoRadar({ ...RADAR, termos: ['jaleco'] }, { ordem: null, pagina: 1, limite: 20 }, ['b', 'a']);
+    expect(m.chamadas[0].args).toMatchObject({ p_sem_ids: ['b', 'a'] });
+    await editaisDoRadar({ ...RADAR, termos: ['botina'] }, { ordem: null, pagina: 1, limite: 20 });
+    expect(m.chamadas[1].args).toMatchObject({ p_sem_ids: null });
+  });
 });
 
 describe('contagensDoRadar', () => {
@@ -58,12 +65,17 @@ describe('contagensDoRadar', () => {
     expect(m.chamadas[0].args).toMatchObject({ p_termos: ['uniforme'], p_ibges: ['4209102'], p_desde: '2026-10-17T10:00:00.000Z' });
     expect(Object.keys(m.chamadas[0].args)).not.toContain('p_ordem');
   });
-  it('argumentos são exatamente os de radar_contagens (0014); valor 0 vai como nulo', async () => {
+  it('contagens também sem os descartados', async () => {
+    m.dados = { total: 1, novas: 0, prazo_proximo: 0 };
+    await contagensDoRadar(RADAR, '2026-10-17T10:00:00.000Z', ['a']);
+    expect(m.chamadas[0].args).toMatchObject({ p_sem_ids: ['a'] });
+  });
+  it('argumentos são exatamente os de radar_contagens (0016: 0014 + p_sem_ids); valor 0 vai como nulo', async () => {
     m.dados = { total: 0, novas: 0, prazo_proximo: 0 };
     await contagensDoRadar({ ...RADAR, valorMin: 0, valorMax: 0 }, '2026-10-17T10:00:00.000Z');
     expect(Object.keys(m.chamadas[0].args).sort()).toEqual(
-      ['p_termos', 'p_relacionados', 'p_excluir', 'p_ufs', 'p_ibges', 'p_valor_min', 'p_valor_max', 'p_modalidades', 'p_so_me_epp', 'p_desde'].sort(),
+      ['p_termos', 'p_relacionados', 'p_excluir', 'p_ufs', 'p_ibges', 'p_valor_min', 'p_valor_max', 'p_modalidades', 'p_so_me_epp', 'p_desde', 'p_sem_ids'].sort(),
     );
-    expect(m.chamadas[0].args).toMatchObject({ p_valor_min: null, p_valor_max: null });
+    expect(m.chamadas[0].args).toMatchObject({ p_valor_min: null, p_valor_max: null, p_sem_ids: null });
   });
 });

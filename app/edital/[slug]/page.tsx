@@ -6,6 +6,8 @@ import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
 import { CartaoLimite } from '@/components/CartaoLimite';
 import { BotaoCompartilhar } from '@/components/edital/BotaoCompartilhar';
+import { BotaoDescartar } from '@/components/oportunidades/BotaoDescartar';
+import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
 import { DocumentosEdital } from '@/components/edital/DocumentosEdital';
 import { FichaEdital } from '@/components/edital/FichaEdital';
 import { ListaItens } from '@/components/edital/ListaItens';
@@ -163,10 +165,12 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             ) : null}
           </div>
           {/* "Abrir edital oficial" e "Compartilhar" ficam sempre à mão, inclusive com os editais grátis do dia esgotados:
-              o cartão dos planos esconde o detalhe, não a fonte oficial. */}
+              o cartão dos planos esconde o detalhe, não a fonte oficial. Salvar e Descartar também (a rota decide o plano). */}
           <div className="flex flex-wrap gap-2">
             <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} bloqueado={gratisComCadeado} />
             <BotaoCompartilhar titulo={titulo.titulo} slug={e.slug} />
+            <BotaoSalvar id={e.id} variante="botao" />
+            <BotaoDescartar id={e.id} />
             <Link
               href={`/alertas?uf=${e.uf}`}
               className="inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"

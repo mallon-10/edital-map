@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { EtiquetaSituacao } from '@/components/EtiquetaSituacao';
+import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
+import { MenuCardRadar } from '@/components/oportunidades/MenuCardRadar';
 import { data, dataHora, etiqueta, moeda } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
 import { assunto, nomeProprio } from '@/lib/texto';
@@ -13,9 +15,10 @@ const ROTULO = 'text-xs text-ink-muted';
 /**
  * Card largo da vista Lista: título descritivo com destaque, órgão, município/UF, valor, modalidade, prazo, publicação,
  * relevância com explicação (com termo) e "Suspensa". O título é o link (a área toda do card abre o edital);
- * o "?" da relevância fica por cima. Sem prefetch: cada edital aberto conta no limite do dia.
+ * o "?" da relevância fica por cima. Salvar (e, no radar, Descartar) fica por cima do link. Sem prefetch: cada edital
+ * aberto conta no limite do dia.
  */
-export function CardLista({ edital: e, agora }: { edital: EditalResumo; agora: Date }) {
+export function CardLista({ edital: e, agora, acoes = 'salvar' }: { edital: EditalResumo; agora: Date; acoes?: 'salvar' | 'radar' }) {
   const et = etiqueta(e, agora);
   const valor = moeda(e.valor_estimado);
   const { titulo, tipo } = assunto(e.objeto);
@@ -29,6 +32,12 @@ export function CardLista({ edital: e, agora }: { edital: EditalResumo; agora: D
         </span>
         <EtiquetaSituacao situacaoId={e.situacao_id} />
         {tipo ? <span className="rounded-xs bg-sunken px-2 py-0.5 text-xs font-semibold text-ink-muted">{tipo}</span> : null}
+        {/* Por cima do link que cobre o card (z-10; com foco, z-20 para o aviso passar por cima do card seguinte):
+            salvar e, no Meu Radar, o menu com "Descartar". */}
+        <span className="relative z-10 -my-2 ml-auto flex focus-within:z-20">
+          <BotaoSalvar id={e.id} />
+          {acoes === 'radar' ? <MenuCardRadar id={e.id} /> : null}
+        </span>
       </div>
       <h3 className="line-clamp-3 text-[16px] font-bold leading-snug">
         <Link href={`/edital/${e.slug}`} prefetch={false} className="link-esticado after:absolute after:inset-0 after:rounded-md">

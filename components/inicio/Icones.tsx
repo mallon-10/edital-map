@@ -85,3 +85,21 @@ export function SetaDireita({ className }: P) {
     </svg>
   );
 }
+
+export function IconeSalvar({ className, cheio = false }: P & { cheio?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={cheio ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M6 3h12v18l-6-4-6 4z" />
+    </svg>
+  );
+}
+
+export function IconeMais({ className }: P) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <circle cx="5" cy="12" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="19" cy="12" r="2" />
+    </svg>
+  );
+}

@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { esquecerConta, useConta } from '@/lib/cliente/conta';
+import { esquecerSalvos } from '@/lib/cliente/salvos';
 
 const ITEM = 'flex h-11 w-full items-center rounded-sm px-3 text-left text-sm font-semibold hover:bg-sunken';
 
 /**
- * "Entrar" sem sessão; com sessão, o menu da conta (e-mail, Meu Radar, Editar meu radar, Sair).
+ * "Entrar" sem sessão; com sessão, o menu da conta (e-mail, Meu Radar, Editar meu radar, Minhas Oportunidades, Alertas, Sair).
  * Sem prefetch: /entrar e /radar são dinâmicas e conferem a sessão no Supabase; o cabeçalho está em toda página.
  */
 export function MenuConta() {
@@ -57,6 +58,7 @@ export function MenuConta() {
     // JSON: a rota só aceita pedido do próprio site (proteção contra CSRF).
     await fetch('/api/conta/sair', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => undefined);
     esquecerConta();
+    esquecerSalvos();
     window.location.assign('/');
   }
 
@@ -126,6 +128,12 @@ export function MenuConta() {
           </Link>
           <Link role="menuitem" href="/radar/editar" prefetch={false} className={ITEM} onClick={() => setAberto(false)}>
             Editar meu radar
+          </Link>
+          <Link role="menuitem" href="/oportunidades" prefetch={false} className={ITEM} onClick={() => setAberto(false)}>
+            Minhas Oportunidades
+          </Link>
+          <Link role="menuitem" href="/alertas" prefetch={false} className={ITEM} onClick={() => setAberto(false)}>
+            Alertas
           </Link>
           <button role="menuitem" type="button" onClick={() => void sairDaConta()} className={ITEM}>
             Sair

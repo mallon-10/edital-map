@@ -13,8 +13,10 @@ import { ordemEfetiva } from '@/lib/filtros';
 import { desdeDaVisita, lerNavegacaoRadar, urlDoRadar, VISIVEIS_GRATIS, vistaDoRadar } from '@/lib/radar';
 import { lerRadar, perfilDaConta } from '@/lib/servidor/conta';
 import { municipiosPorIbge } from '@/lib/servidor/municipios';
+import { contarPorStatus, idsDescartados } from '@/lib/salvos';
 import { contagensDoRadar, editaisDoRadar } from '@/lib/servidor/radar';
 import { contextoDaPagina, gravarEvento } from '@/lib/servidor/registro';
+import { estadoDosSalvos } from '@/lib/servidor/salvos';
 import { usuarioAtual } from '@/lib/servidor/sessao';
 import { planoAtual } from '@/lib/servidor/plano';
 import { semLimite, usoDoDia } from '@/lib/servidor/uso';
@@ -34,7 +36,15 @@ export default async function MeuRadar({ searchParams }: Props) {
   await connection();
   const usuario = await usuarioAtual();
   if (!usuario) redirect('/entrar?voltar=/radar');
-  const [radar, perfil] = await Promise.all([lerRadar(usuario), perfilDaConta(usuario)]);
+  const [radar, perfil, salvos] = await Promise.all([
+    lerRadar(usuario),
+    perfilDaConta(usuario),
+    // Salvos fora do ar não derrubam o radar: a lista sai com os descartados e sem o cartão "Editais salvos".
+    estadoDosSalvos(usuario).catch((erro: unknown) => {
+      console.error('salvos no radar:', erro);
+      return null;
+    }),
+  ]);
   if (!radar) redirect('/radar/comecar');
 
   const nav = lerNavegacaoRadar(paraUrlSearchParams(await searchParams));
@@ -45,9 +55,11 @@ export default async function MeuRadar({ searchParams }: Props) {
   const vista = vistaDoRadar(plano, ctx ? semLimite(ctx) : false, nav.pagina);
   const agora = new Date();
   const { desde, primeira } = desdeDaVisita(perfil.ultimaVisitaRadar, agora);
+  // Descartados somem do radar (lista, total e cartões); ficam na aba Descartados de Minhas Oportunidades.
+  const descartados = salvos ? idsDescartados(salvos) : [];
   const [contagens, lista, uso, cidades] = await Promise.all([
-    contagensDoRadar(radar, desde),
-    editaisDoRadar(radar, { ordem: nav.ordem, pagina: vista.pagina, limite: vista.limite }),
+    contagensDoRadar(radar, desde, descartados),
+    editaisDoRadar(radar, { ordem: nav.ordem, pagina: vista.pagina, limite: vista.limite }, descartados),
     usoDoDia(ctx),
     municipiosPorIbge(radar.municipios),
   ]);
@@ -77,7 +89,11 @@ export default async function MeuRadar({ searchParams }: Props) {
           </Link>
         </div>
         <ResumoRadar radar={radar} cidades={cidades} />
-        <CartoesRadar contagens={contagens} primeiraVisita={primeira} />
+        <CartoesRadar
+          contagens={contagens}
+          primeiraVisita={primeira}
+          salvos={salvos ? contarPorStatus(Object.values(salvos).map((s) => s.status)) : undefined}
+        />
         {lista.total === 0 ? (
           <section className="flex flex-col gap-2 rounded-md border border-line bg-raised p-5">
             <h2 className="text-[17px] font-bold">Nenhum edital aberto para o seu radar agora.</h2>
@@ -93,7 +109,7 @@ export default async function MeuRadar({ searchParams }: Props) {
               <OrdemRadar ordem={ordem} />
             </div>
             {lista.editais.map((e) => (
-              <CardLista key={e.id} edital={e} agora={agora} />
+              <CardLista key={e.id} edital={e} agora={agora} acoes="radar" />
             ))}
             {/* Mesmo número do cartão "Oportunidades" (contagens, sem cache); a lista vem do cache de 5 min. */}
             {vista.previa && contagens.total > VISIVEIS_GRATIS ? <CartaoPreviaRadar total={contagens.total} /> : null}

@@ -6,6 +6,7 @@ import { etiqueta, moedaCurta } from '@/lib/formato';
 import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
 import { EtiquetaSituacao } from '@/components/EtiquetaSituacao';
+import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
 import { ESTILO_ETIQUETA, PONTO_ETIQUETA } from './estilos';
 import { PilulaRelevancia } from './Relevancia';
 import { TituloDestacado } from './TituloDestacado';
@@ -20,7 +21,7 @@ type Props = { edital: EditalResumo; agora: Date; selecionado: boolean; aoSeleci
  * Ctrl/⌘/Shift/Alt/botão do meio abrem em outra aba. Sem prefetch: cada edital aberto conta no limite do dia.
  * No computador, Enter e Espaço selecionam (como o botão de antes; abrir é o "Ver edital" da coluna da direita); no celular Enter segue o link e o card escolhido é o `aria-current`.
  * O link cobre o card inteiro (::after); a pílula da relevância é um botão e fica fora do link, por cima dele:
- * tocar nela abre o aviso sem abrir nem selecionar o edital.
+ * tocar nela abre o aviso sem abrir nem selecionar o edital. O "Salvar" também fica fora do link, por cima dele.
  */
 export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props) {
   const et = etiqueta(edital, agora);
@@ -89,6 +90,9 @@ export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props
             <PilulaRelevancia relevancia={edital.relevancia} />
           </span>
         ) : null}
+        <span className="relative z-10 -my-2 ml-auto inline-flex focus-within:z-20">
+          <BotaoSalvar id={edital.id} />
+        </span>
       </span>
     </div>
   );
