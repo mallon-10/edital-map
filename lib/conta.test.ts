@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  destinoSeguro, lerCodigo, lerEmail, MENSAGENS_CONTA, mensagemErroAuth, OPCOES_COOKIE_SESSAO, REENVIO_SEGUNDOS,
+  destinoSeguro, lerCodigo, lerCodigoDoLink, lerEmail, MENSAGENS_CONTA, mensagemErroAuth, OPCOES_COOKIE_SESSAO, REENVIO_SEGUNDOS,
   rotaComSessao, segundosParaReenvio, statusErroAuth, temCookieDeSessao,
 } from './conta';
 
@@ -78,7 +78,17 @@ describe('mensagens de erro do Supabase Auth', () => {
       falha: 'Não foi possível concluir agora. Tente de novo em instantes.',
       entrar: 'Entre para continuar.',
       carregar: 'Não deu para carregar agora. Tente de novo em instantes.',
+      link: 'Esse link de entrada não funcionou (vencido ou aberto em outro navegador). Peça um código novo abaixo.',
     });
+  });
+});
+
+describe('lerCodigoDoLink (?code= do link do e-mail)', () => {
+  it('aceita o código de troca do Supabase', () => {
+    expect(lerCodigoDoLink('0b6f8a52-3c1d-4e2f-9a7b-1c2d3e4f5a6b')).toBe('0b6f8a52-3c1d-4e2f-9a7b-1c2d3e4f5a6b');
+  });
+  it('recusa vazio, curto, longo e caracteres de fora', () => {
+    for (const v of [null, undefined, '', 'abc', 'a'.repeat(129), '<script>', 'a b c d e f g h', 123]) expect(lerCodigoDoLink(v)).toBeNull();
   });
 });
 

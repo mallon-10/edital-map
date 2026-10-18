@@ -19,6 +19,8 @@ export const MENSAGENS_CONTA = {
   entrar: 'Entre para continuar.',
   /** Lista da conta (salvos, alertas) fora do ar: a página fica, com este aviso no lugar da lista. */
   carregar: 'Não deu para carregar agora. Tente de novo em instantes.',
+  /** Link do e-mail vencido, já usado ou aberto em outro navegador. */
+  link: 'Esse link de entrada não funcionou (vencido ou aberto em outro navegador). Peça um código novo abaixo.',
 } as const;
 
 /** Erro do Supabase Auth reduzido ao que importa (AuthError.code e .status). */
@@ -42,6 +44,11 @@ export function lerCodigo(v: unknown): string | null {
   if (typeof v !== 'string') return null;
   const c = v.replace(/\s+/g, '');
   return new RegExp(`^\\d{${DIGITOS_CODIGO}}$`).test(c) ? c : null;
+}
+
+/** Código de troca (PKCE) que o link do e-mail traz em ?code=: só letras, números e hífen, tamanho de token. */
+export function lerCodigoDoLink(v: unknown): string | null {
+  return typeof v === 'string' && /^[A-Za-z0-9-]{8,128}$/.test(v) ? v : null;
 }
 
 /**

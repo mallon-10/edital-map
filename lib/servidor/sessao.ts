@@ -103,6 +103,23 @@ export async function entrarComCodigo(
   }
 }
 
+/**
+ * Entrada pelo link do e-mail (fluxo PKCE do @supabase/ssr): troca o ?code= pela sessão, usando o code_verifier que o
+ * pedido do código gravou neste navegador. Outro navegador ou link vencido: falha (a pessoa pede um código novo).
+ */
+export async function entrarComLink(codigo: string): Promise<{ ok: true } | { ok: false; erro: ErroAuth }> {
+  const env = envAuth();
+  if (!env) return { ok: false, erro: SEM_CHAVE };
+  try {
+    const { data, error } = await clienteAuth(env, await cookies()).auth.exchangeCodeForSession(codigo);
+    if (error || !paraUsuario(data?.user)) return { ok: false, erro: erroDe(error) };
+    return { ok: true };
+  } catch (erro) {
+    console.error('entrar pelo link:', erro);
+    return { ok: false, erro: FALHA };
+  }
+}
+
 /** Apaga à mão os cookies sb-* da sessão (quando o signOut do Auth falha, o visitante sai do mesmo jeito). */
 function apagarCookiesDeSessao(jarro: Jarro): void {
   try {

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { ehRobo } from '@/lib/robos';
-import { rotaComSessao, temCookieDeSessao } from '@/lib/conta';
+import { lerCodigoDoLink, rotaComSessao, temCookieDeSessao } from '@/lib/conta';
 import { renovarSessao } from '@/lib/sessaoProxy';
 import { COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie } from '@/lib/visitante';
 
@@ -14,6 +14,13 @@ import { COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie } from '@/lib/visita
 export async function proxy(request: NextRequest) {
   // Robô de busca não devolve cookie: cada visita viraria um visitante novo gravando uso_diario. Sem cookie, nada conta.
   if (ehRobo(request.headers.get('user-agent'))) return NextResponse.next();
+  // Link do e-mail de entrar (modelo com link em vez do código): o Supabase devolve para a inicial com ?code= (PKCE).
+  const codigoDoLink = request.nextUrl.pathname === '/' ? lerCodigoDoLink(request.nextUrl.searchParams.get('code')) : null;
+  if (codigoDoLink) {
+    const destino = new URL('/entrar/confirmar', request.nextUrl);
+    destino.searchParams.set('code', codigoDoLink);
+    return NextResponse.redirect(destino);
+  }
   const { visitante, novo } = visitanteDoCookie(request.cookies.get(COOKIE_VISITANTE)?.value, () => crypto.randomUUID());
   if (novo) request.cookies.set(COOKIE_VISITANTE, visitante);
   const renova = rotaComSessao(request.nextUrl.pathname) && temCookieDeSessao(request.cookies.getAll().map((c) => c.name));
