@@ -164,4 +164,12 @@ describe('celular', () => {
     }
     expect(ler('components/Explorador.tsx')).toContain('trocarEndereco(urlDaBusca(f, estadoAtual.current))');
   });
+
+  it('voltar ao Mapa recarrega pontos que falharam; na vista Lista a rolagem não acende Mapa', () => {
+    const explorador = ler('components/Explorador.tsx');
+    expect(explorador).toContain("if (v === 'mapa' && (erroMapa !== null || !pontosProntos)) void carregarMapa(filtrosDoMapa.current);");
+    expect(explorador).toContain("if (estadoAtual.current.vista === 'lista') return;");
+    // Barra: Mapa numa vista Lista troca de vista (uma escrita no endereço), não troca e depois rola de novo.
+    expect(explorador).not.toMatch(/if \(vista !== 'mapa'\) mudarVista\('mapa'\);\s*irPara\('mapa'/);
+  });
 });

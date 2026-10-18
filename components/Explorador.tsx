@@ -251,6 +251,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
       quadro = 0;
       const inicio = inicioLista.current;
       if (!inicio || !ehCelular() || Date.now() < ignorarRolagemAte.current) return;
+      // Vista Lista: não há mapa na página; a barra fica em Lista.
+      if (estadoAtual.current.vista === 'lista') return;
       const raiz = document.documentElement;
       const nova = telaPelaRolagem({
         topoLista: inicio.getBoundingClientRect().top,
@@ -364,22 +366,29 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
     setSelecionadoId(e.id);
   }
 
-  /** Lista | Mapa: só troca a tela (os pontos do mapa já estão carregados) e escreve a vista no endereço. Não conta. */
+  /**
+   * Lista | Mapa: troca a tela e escreve a vista no endereço (uma escrita). Não busca de novo nem conta: os pontos
+   * do mapa já estão carregados; se o mapa tinha falhado (ou não chegou), ir ao Mapa pede de novo a mesma busca dele.
+   */
   function mudarVista(v: Vista) {
     if (v === vista) return;
     setVista(v);
-    // Na Lista a "tela" do celular não existe; no Mapa a página começa no mapa.
-    setTela('mapa');
-    escreverEndereco(filtros, { vista: v, tela: 'mapa' });
+    // Na Lista a "tela" do celular não existe (fica como está); no Mapa a página começa no mapa.
+    if (v === 'mapa') setTela('mapa');
+    escreverEndereco(filtros, v === 'mapa' ? { vista: v, tela: 'mapa' } : { vista: v });
     setAtivoBarra(v === 'lista' ? 'lista' : 'mapa');
-    if (ehCelular()) window.scrollTo({ top: 0 });
+    if (ehCelular()) {
+      ignorarRolagemAte.current = Date.now() + ESPERA_ROLAGEM_MS;
+      window.scrollTo({ top: 0 });
+    }
+    if (v === 'mapa' && (erroMapa !== null || !pontosProntos)) void carregarMapa(filtrosDoMapa.current);
   }
 
   /** Barra do celular: Mapa leva à vista Mapa (no topo); Lista leva à vista Lista (no começo da lista). */
   function aoBarra(t: Tela) {
     if (t === 'mapa') {
       if (vista !== 'mapa') mudarVista('mapa');
-      irPara('mapa', filtros);
+      else irPara('mapa', filtros);
     } else if (vista !== 'lista') {
       mudarVista('lista');
     } else {
