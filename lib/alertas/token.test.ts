@@ -22,6 +22,15 @@ describe('token de descadastro', () => {
     expect(lerTokenDescadastro(`${t.slice(0, -1)}${ultimo}`, SEGREDO)).toBeNull();
     for (const v of ['', 'a.b.c', null, 5, `${t}x`, t.toUpperCase(), ` ${t}`]) expect(lerTokenDescadastro(v, SEGREDO)).toBeNull();
   });
+  it('segredo com espaço ou quebra de linha nas pontas vale o mesmo (lerSegredo nas duas funções)', () => {
+    const alvo = { tipo: 'alerta', id: ALERTA } as const;
+    const comQuebra = SEGREDO + String.fromCharCode(10);
+    expect(lerTokenDescadastro(criarTokenDescadastro(alvo, comQuebra), SEGREDO)).toEqual(alvo);
+    expect(lerTokenDescadastro(criarTokenDescadastro(alvo, SEGREDO), ' ' + comQuebra)).toEqual(alvo);
+    expect(criarTokenDescadastro(alvo, comQuebra)).toBe(criarTokenDescadastro(alvo, SEGREDO));
+    expect(() => criarTokenDescadastro(alvo, 'curto')).toThrow();
+    expect(() => criarTokenDescadastro(alvo, ' '.repeat(40))).toThrow();
+  });
   it('sem segredo (ou curto) nada vale', () => {
     const t = criarTokenDescadastro({ tipo: 'todos', conta: CONTA }, SEGREDO);
     expect(lerTokenDescadastro(t, null)).toBeNull();

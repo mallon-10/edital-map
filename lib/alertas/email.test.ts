@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dataHora, moeda } from '../formato';
 import { assunto, nomeProprio } from '../texto';
-import { assuntoDoEmail, escapar, linkSair, linkUmClique, montarEmail, type EditalDoEmail, type SecaoEmail } from './email';
+import { assuntoDoEmail, editalTexto, escapar, linkSair, linkUmClique, montarEmail, type EditalDoEmail, type SecaoEmail } from './email';
 
 const ED: EditalDoEmail = {
   slug: '00394452000103-2026-21982', objeto: 'Aquisição de luvas nitrílicas para a Secretaria de Saúde', orgao_nome: 'PREFEITURA MUNICIPAL DE JOINVILLE',
@@ -44,6 +44,12 @@ describe('e-mail dos alertas', () => {
     expect(e.html).not.toContain('<b>');
     expect(e.html).not.toContain('<img');
     expect(e.html).toContain('&lt;b&gt;&quot;EPI&quot;&lt;/b&gt;');
+  });
+  it('texto puro: título e órgão numa linha só', () => {
+    const quebra = String.fromCharCode(13, 10);
+    const t = editalTexto({ ...ED, objeto: 'Aquisição de luvas' + quebra + 'nitrílicas', orgao_nome: 'Prefeitura' + quebra + 'de Joinville' });
+    expect(t.split(String.fromCharCode(10))).toHaveLength(4);
+    expect(t).not.toContain(String.fromCharCode(13));
   });
   it('sobra: diz quantos ficam para o próximo e-mail', () => {
     const e = montarEmail({ secoes: [secao('EPI', [ED, ED], 25)], tokenSairTodos: 't' });

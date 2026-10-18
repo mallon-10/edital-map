@@ -71,7 +71,7 @@ export function editalHtml(e: EditalDoEmail): string {
 
 export function editalTexto(e: EditalDoEmail): string {
   const l = linhaDoEdital(e);
-  return [`- ${l.titulo}${l.situacao ? ` (${l.situacao})` : ''}`, `  ${l.orgao} · ${l.local}`, `  ${l.valor} · ${l.prazo}`, `  ${l.link}`].join('\n');
+  return [`- ${umaLinha(l.titulo)}${l.situacao ? ` (${l.situacao})` : ''}`, `  ${umaLinha(l.orgao)} · ${umaLinha(l.local)}`, `  ${l.valor} · ${l.prazo}`, `  ${l.link}`].join('\n');
 }
 
 /** Moldura comum (alertas e resumo): cabeçalho com a marca, conteúdo, rodapé com os links de descadastro. */

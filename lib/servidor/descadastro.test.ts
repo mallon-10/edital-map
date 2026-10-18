@@ -54,6 +54,7 @@ describe('descadastro pelo link (sem sessão, só com o alvo do token)', () => {
     m.respostas.push({ data: [{ id: 'a' }, { id: 'b' }], error: null });
     expect(await aplicarDescadastro({ tipo: 'todos', conta: CONTA })).toBe(2);
     expect(m.chamadas).toContainEqual(['alertas.eq', 'user_id', CONTA]);
+    expect(m.chamadas).toContainEqual(['alertas.eq', 'ativo', true]);
     m.respostas.push({ data: true, error: null });
     expect(await aplicarDescadastro({ tipo: 'resumo', conta: CONTA })).toBe(1);
     expect(m.chamadas).toContainEqual(['rpc.parar_resumo_semanal', { p_user: CONTA }]);

@@ -22,7 +22,7 @@ export async function textoDoDescadastro(alvo: AlvoDescadastro): Promise<string 
   return (count ?? 0) > 0 ? 'todos os seus alertas' : null;
 }
 
-/** Quantos alertas pausou (resumo: 1 se havia perfil). */
+/** Quantos alertas pausou (todos: só os ativos; resumo: 1 se havia perfil). */
 export async function aplicarDescadastro(alvo: AlvoDescadastro, agora: Date = new Date()): Promise<number> {
   const sb = supabaseServidor();
   if (alvo.tipo === 'resumo') {
@@ -31,7 +31,7 @@ export async function aplicarDescadastro(alvo: AlvoDescadastro, agora: Date = ne
     return data === true ? 1 : 0;
   }
   const pausar = sb.from('alertas').update({ ativo: false, atualizado_em: agora.toISOString() });
-  const filtrado = alvo.tipo === 'alerta' ? pausar.eq('id', alvo.id) : pausar.eq('user_id', alvo.conta);
+  const filtrado = alvo.tipo === 'alerta' ? pausar.eq('id', alvo.id) : pausar.eq('user_id', alvo.conta).eq('ativo', true);
   const { data, error } = await filtrado.select('id');
   if (error) throw new Error(`descadastro: ${error.message}`);
   return ((data ?? []) as unknown[]).length;

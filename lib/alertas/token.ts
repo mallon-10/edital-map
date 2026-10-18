@@ -21,19 +21,22 @@ const assinar = (conteudo: string, segredo: string) => createHmac('sha256', segr
 
 /** Lança erro (sem o id na mensagem) se o segredo for curto ou o alvo não for um uuid minúsculo. */
 export function criarTokenDescadastro(alvo: AlvoDescadastro, segredo: string): string {
-  if (!lerSegredo(segredo)) throw new Error('ALERTAS_SEGREDO ausente ou curto.');
+  // O mesmo segredo normalizado (lerSegredo) na criação e na leitura: um \n no fim da variável não invalida os links.
+  const chave = lerSegredo(segredo);
+  if (!chave) throw new Error('ALERTAS_SEGREDO ausente ou curto.');
   const conteudo = alvo.tipo === 'alerta' ? `a.${alvo.id}` : `${alvo.tipo === 'todos' ? 't' : 'r'}.${alvo.conta}`;
-  const token = `${conteudo}.${assinar(conteudo, segredo)}`;
+  const token = `${conteudo}.${assinar(conteudo, chave)}`;
   if (!FORMATO.test(token)) throw new Error('Alvo de descadastro inválido.');
   return token;
 }
 
 /** Alvo do token, ou null se malformado, adulterado, de outro segredo ou sem segredo válido. Comparação em tempo constante. */
 export function lerTokenDescadastro(token: unknown, segredo: string | null): AlvoDescadastro | null {
-  if (!segredo || !lerSegredo(segredo) || typeof token !== 'string' || token.length > 120) return null;
+  const chave = lerSegredo(segredo ?? undefined);
+  if (!chave || typeof token !== 'string' || token.length > 120) return null;
   const m = FORMATO.exec(token);
   if (!m) return null;
-  const esperado = Buffer.from(assinar(`${m[1]}.${m[2]}`, segredo));
+  const esperado = Buffer.from(assinar(`${m[1]}.${m[2]}`, chave));
   const recebido = Buffer.from(m[3]);
   if (esperado.length !== recebido.length || !timingSafeEqual(esperado, recebido)) return null;
   if (m[1] === 'a') return { tipo: 'alerta', id: m[2] };

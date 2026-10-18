@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import Script from 'next/script';
 import { useEffect, useState } from 'react';
 import { escolherConsentimento } from '@/lib/cliente/medir';
@@ -8,15 +9,20 @@ import { CHAVE_CONSENTIMENTO, ID_GA4, ID_GOOGLE_ADS, lerConsentimento } from '@/
 
 /**
  * Tag do Google com Consent Mode v2: o padrão negado roda antes da tag; a escolha guardada (aceito/recusado) é aplicada
- * logo em seguida. Sem escolha, o aviso aparece no rodapé, acima da barra do celular.
+ * logo em seguida. Sem escolha, o aviso aparece no rodapé, acima da barra do celular. Fora de /alertas/sair (o token
+ * de descadastro do e-mail fica no endereço) e page_location sempre sem o parâmetro `t`.
  */
-const PADRAO = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;
+export const tagNaPagina = (caminho: string | null) => !caminho?.startsWith('/alertas/sair');
+
+export const PADRAO = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;
 gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});
 try{var c=localStorage.getItem('${CHAVE_CONSENTIMENTO}');if(c==='aceito'){gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});}}catch(e){}
-gtag('js',new Date());gtag('config','${ID_GOOGLE_ADS}');${ID_GA4 ? `gtag('config','${ID_GA4}');` : ''}`;
+var u=new URL(location.href);u.searchParams.delete('t');var p={page_location:u.href};
+gtag('js',new Date());gtag('config','${ID_GOOGLE_ADS}',p);${ID_GA4 ? `gtag('config','${ID_GA4}',p);` : ''}`;
 
 export function TagGoogle() {
   const [mostrar, setMostrar] = useState(false);
+  const comTag = tagNaPagina(usePathname());
   useEffect(() => {
     try {
       setMostrar(lerConsentimento(window.localStorage) === null);
@@ -30,10 +36,14 @@ export function TagGoogle() {
   };
   return (
     <>
-      <Script id="consentimento-google" strategy="afterInteractive">
-        {PADRAO}
-      </Script>
-      <Script src={`https://www.googletagmanager.com/gtag/js?id=${ID_GOOGLE_ADS}`} strategy="afterInteractive" />
+      {comTag ? (
+        <>
+          <Script id="consentimento-google" strategy="afterInteractive">
+            {PADRAO}
+          </Script>
+          <Script src={`https://www.googletagmanager.com/gtag/js?id=${ID_GOOGLE_ADS}`} strategy="afterInteractive" />
+        </>
+      ) : null}
       {mostrar ? (
         <div
           role="dialog"
