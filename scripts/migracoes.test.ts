@@ -226,7 +226,8 @@ describe('migração 0009 (limites do grátis e lista de espera)', () => {
     const antes = tipos(ler('supabase/migrations/0007_recursos_pro.sql'));
     const depois = tipos(sql);
     expect(antes).toHaveLength(6);
-    for (const t of [...antes, ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR]) expect(depois).toContain(t);
+    // 'assinou' nasce na 0015 (pagamento).
+    for (const t of [...antes, ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR.filter((x) => x !== 'assinou')]) expect(depois).toContain(t);
     expect(depois).toContain('limite_atingido');
   });
   it('a retenção diária apaga o uso dos dias anteriores e continua apagando as contratações', () => {
@@ -524,5 +525,27 @@ describe('migração 0011 (busca, relevância e situação)', () => {
       expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
       expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
     }
+  });
+});
+
+describe('migração 0015 (pagamento pela Cakto)', () => {
+  const sql = ler('supabase/migrations/0015_pagamento.sql');
+  const tipos = (texto: string) => {
+    const trecho = texto.slice(texto.indexOf('add constraint eventos_tipo_check'));
+    return [...trecho.slice(0, trecho.indexOf(';')).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  };
+  it('eventos.tipo ganha assinou sem perder nenhum tipo (inclusive os da Fase 3, 0014)', () => {
+    const depois = tipos(sql);
+    for (const t of ['conta_entrou', 'onboarding_iniciado', 'onboarding_concluido', 'radar_visto', ...TIPOS_EVENTO, ...TIPOS_EVENTO_SERVIDOR]) {
+      expect(depois).toContain(t);
+    }
+    expect(depois).toHaveLength(12);
+  });
+  it('tabelas só do servidor e retenção mantida', () => {
+    for (const t of ['checkouts', 'assinaturas', 'assinatura_navegadores', 'cakto_eventos']) {
+      expect(sql).toContain(`alter table public.${t} enable row level security;`);
+    }
+    expect(sql).toContain("where encerramento_em is null or encerramento_em < now() - interval '7 days'");
+    expect(sql).toContain("delete from public.checkouts where criado_em < now() - interval '30 days';");
   });
 });
