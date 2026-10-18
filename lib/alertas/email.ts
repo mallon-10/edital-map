@@ -30,7 +30,7 @@ export function escapar(t: string): string {
 
 /** Texto numa linha só (assunto, títulos do texto puro): sem quebras nem caracteres de controle, espaços juntados. */
 const CONTROLES = /[\x00-\x1f\x7f-\x9f]+/g; // o \s abaixo cobre U+2028/U+2029
-function umaLinha(t: string): string {
+export function umaLinha(t: string): string {
   return t.replace(CONTROLES, ' ').replace(/\s+/g, ' ').trim();
 }
 
