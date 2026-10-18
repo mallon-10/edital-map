@@ -10,15 +10,17 @@ import { CHAVE_CONSENTIMENTO, ID_GA4, ID_GOOGLE_ADS, lerConsentimento } from '@/
 /**
  * Tag do Google com Consent Mode v2: o padrão negado roda antes da tag; a escolha guardada (aceito/recusado) é aplicada
  * logo em seguida. Sem escolha, o aviso aparece no rodapé, acima da barra do celular. Fora de /alertas/sair (o token
- * de descadastro do e-mail fica no endereço) e page_location sempre sem o parâmetro `t`.
+ * de descadastro do e-mail fica no endereço). Só quando o endereço traz o parâmetro `t` o config leva page_location
+ * sem ele; nos outros casos o config é o de sempre (um page_location fixo no config valeria para as navegações seguintes).
  */
 export const tagNaPagina = (caminho: string | null) => !caminho?.startsWith('/alertas/sair');
 
 export const PADRAO = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;
 gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});
 try{var c=localStorage.getItem('${CHAVE_CONSENTIMENTO}');if(c==='aceito'){gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});}}catch(e){}
-var u=new URL(location.href);u.searchParams.delete('t');var p={page_location:u.href};
-gtag('js',new Date());gtag('config','${ID_GOOGLE_ADS}',p);${ID_GA4 ? `gtag('config','${ID_GA4}',p);` : ''}`;
+var p=null;try{var u=new URL(location.href);if(u.searchParams.has('t')){u.searchParams.delete('t');p={page_location:u.href};}}catch(e){}
+function cfg(id){if(p){gtag('config',id,p);}else{gtag('config',id);}}
+gtag('js',new Date());cfg('${ID_GOOGLE_ADS}');${ID_GA4 ? `cfg('${ID_GA4}');` : ''}`;
 
 export function TagGoogle() {
   const [mostrar, setMostrar] = useState(false);
