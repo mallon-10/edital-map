@@ -38,9 +38,10 @@ describe('workflow dos envios por e-mail', () => {
     expect(iSegunda).toBeGreaterThan(0);
     expect(iSegunda).toBeLessThan(iAlertas);
     expect(semComentarios).toContain('$GITHUB_OUTPUT');
-    // o resumo roda mesmo se os alertas falharem
+    // o resumo roda mesmo se os alertas falharem (mas não depois de um cancelamento à mão); `!` no começo de um valor
+    // YAML vira tag, então a condição vai dentro de ${{ }}
     const condResumo = semComentarios.slice(semComentarios.lastIndexOf('if:', iResumo), iResumo);
-    expect(condResumo).toMatch(/^if: always\(\) && \(/);
+    expect(condResumo).toMatch(/^if: \$\{\{ !cancelled\(\) && \(/);
     expect(condResumo).toContain("github.event_name == 'schedule'");
     expect(condResumo).toContain("== '1'");
     expect(condResumo).toContain("inputs.modo == 'resumo'");

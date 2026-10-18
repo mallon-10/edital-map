@@ -7,7 +7,7 @@ name: Alertas por e-mail
 # conta, e esse teto também serve aos códigos de login. O resumo calcula o orçamento dele como 60 menos os e-mails de
 # alerta já aceitos hoje; se os dois rodassem ao mesmo tempo, esse número sairia errado e os dois estourariam o teto
 # juntos. Por isso é uma agenda só, um job só e dois passos em sequência (e o concurrency impede duas rodadas juntas).
-# O resumo roda mesmo se os alertas falharem (always), mas só na segunda (calculada em UTC: às 10:00 UTC já é o mesmo
+# O resumo roda mesmo se os alertas falharem (!cancelled: só não roda se a rodada for cancelada à mão), mas só na segunda (calculada em UTC: às 10:00 UTC já é o mesmo
 # dia em Brasília) ou quando escolhido à mão.
 #
 # Log público: os segredos entram só pelo ambiente de cada passo de envio e nada os imprime.
@@ -55,7 +55,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ALERTAS_SEGREDO: ${{ secrets.ALERTAS_SEGREDO }}
       - name: Resumo semanal
-        if: always() && ((github.event_name == 'schedule' && steps.hoje.outputs.dia_da_semana == '1') || inputs.modo == 'resumo' || inputs.modo == 'ambos')
+        if: ${{ !cancelled() && ((github.event_name == 'schedule' && steps.hoje.outputs.dia_da_semana == '1') || inputs.modo == 'resumo' || inputs.modo == 'ambos') }}
         run: npm run worker:resumo
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
