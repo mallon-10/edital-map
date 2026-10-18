@@ -134,12 +134,37 @@ async function gravarNoEnv(valores: Record<string, string>) {
   await writeFile('.env', texto);
 }
 
+/** Troca o preço de uma oferta mantendo o resto (o PUT de oferta precisa dos campos da criação). */
+async function precoOferta(access: string, ofertaId: string, preco: number) {
+  const o = (await chamar(access, 'GET', `/offers/${ofertaId}/`)) as Oferta & { product?: string | { id: string } };
+  const produto = typeof o.product === 'string' ? o.product : o.product?.id;
+  const r = (await chamar(access, 'PUT', `/offers/${ofertaId}/`, {
+    product: produto, name: o.name, price: preco, type: o.type, intervalType: o.intervalType, interval: 1,
+    recurrence_period: o.recurrence_period, status: o.status ?? 'active',
+  })) as Oferta;
+  console.log(`oferta ${r.id} · ${r.name} · R$ ${r.price} · ${r.intervalType} · ${r.status}`);
+}
+
+/** Desativa as ofertas de um produto (o produto não aceita status desativado; sem oferta ativa, o checkout para de vender). */
+async function desativarProduto(access: string, produtoId: string) {
+  const lista = (await chamar(access, 'GET', `/offers/?product=${produtoId}&limit=50`)) as Pagina<Oferta & { product?: string }>;
+  for (const o of (lista.results ?? []).filter((x) => !x.product || x.product === produtoId)) {
+    const r = (await chamar(access, 'PUT', `/offers/${o.id}/`, {
+      product: produtoId, name: o.name, price: o.price, type: o.type, intervalType: o.intervalType, interval: 1,
+      recurrence_period: o.recurrence_period, status: 'disabled',
+    })) as Oferta;
+    console.log(`oferta ${r.id} · ${r.name} · ${r.status}`);
+  }
+}
+
 const comando = process.argv[2];
 const { access, escopos } = await token();
 console.log(`escopos: ${escopos}`);
 if (comando === 'listar') await listar(access);
 else if (comando === 'criar-produto') await criarProduto(access, process.argv[3], Number(process.argv[4]));
 else if (comando === 'ajustar') await ajustar(access, process.argv[3], Number(process.argv[4]), Number(process.argv[5]));
+else if (comando === 'preco-oferta') await precoOferta(access, process.argv[3], Number(process.argv[4]));
+else if (comando === 'desativar-produto') await desativarProduto(access, process.argv[3]);
 else if (comando === 'criar-webhook') await criarWebhook(access, process.argv[3], process.argv.slice(4));
 else if (comando === 'gravar-ofertas') {
   const [bm, ba, pm, pa] = process.argv.slice(3);
