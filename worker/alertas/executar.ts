@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { montarEmail } from '../../lib/alertas/email';
 import { criarTokenDescadastro } from '../../lib/alertas/token';
 import { LIMITES_CONTA } from '../../lib/limitesConta';
+import { hojeBrasilia, inicioDoDia } from '../datas';
 import type { AlertaParaEnvio, BancoAlertas, EditalAlerta, RegistroEnvio } from './banco';
 import { curto, limparLog } from './log';
 import type { Enviar } from './resend';
@@ -10,8 +11,9 @@ import type { Enviar } from './resend';
  * Uma rodada dos alertas (Fase 4, §3): por conta, o plano no momento do envio (Grátis: nenhum; Pro: até 5, pelo mais
  * antigo), os editais novos de cada alerta desde o último envio (primeiro: 24 h), sem repetir (banco), até 20 por
  * alerta; um e-mail por conta; alertas_enviados só depois do aceite do Resend; histórico de tudo em envios_alerta.
- * Uma conta com erro não derruba as outras. Cota do Resend (§1b): no máximo 60 e-mails aceitos por rodada e cota
- * esgotada encerra a rodada; as contas que sobram não são registradas (a janela não avança) e vão primeiro amanhã.
+ * Uma conta com erro não derruba as outras. Cota do Resend (§1b): no máximo 60 e-mails de alertas aceitos por dia de
+ * Brasília (a rodada desconta os que uma rodada anterior do mesmo dia já mandou, como um disparo à mão) e cota esgotada
+ * encerra a rodada; as contas que sobram não são registradas (a janela não avança) e vão primeiro amanhã.
  * Logs públicos (repositório aberto): sem e-mail, sem token, ids com 8 caracteres.
  */
 
@@ -19,6 +21,8 @@ export const LIMITE_EDITAIS_EMAIL = 20;
 export const PAUSA_ENTRE_EMAILS_MS = 600;
 /** Plano grátis do Resend: 100 por dia, divididos com os códigos de login. */
 export const MAX_EMAILS_POR_RODADA = 60;
+/** Ler quantos e-mails de alertas já saíram hoje: 2 tentativas, com esta espera entre elas; depois a rodada para. */
+export const ESPERA_CONTAGEM_MS = 2000;
 /** Gravar o enviado depois do aceite: 3 tentativas (registrar_envio_alerta é idempotente nos editais e na janela). */
 export const ESPERAS_REGISTRO_MS = [2000, 4000] as const;
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -46,7 +50,28 @@ export type ResumoAlertas = {
   cotaEsgotada: boolean;
   /** Seções aceitas pelo Resend cujo registro não gravou (ACEITO_SEM_REGISTRO no log): podem repetir amanhã. */
   aceitosSemRegistro: number;
+  /** E-mails de alertas aceitos hoje (dia de Brasília), antes desta rodada. */
+  alertasHoje: number;
+  /** Quantos e-mails esta rodada podia mandar. */
+  teto: number;
 };
+
+/** O que sobra dos 60 por dia depois dos e-mails de alertas já aceitos hoje (alertas refeitos e resumo da segunda). */
+export const tetoDoDia = (alertasHoje: number) => Math.max(0, MAX_EMAILS_POR_RODADA - alertasHoje);
+
+/**
+ * E-mails de alertas aceitos hoje (desde a meia-noite de Brasília), com uma nova tentativa depois de 2 s. Falhou duas
+ * vezes: lança (a rodada não envia sem saber quanto da cota sobrou; o job anota ::error:: e sai com 1).
+ */
+export async function lerAlertasDeHoje(ler: (desde: string) => Promise<number>, d: Pick<DepsEnvio, 'agora' | 'esperar'>): Promise<number> {
+  const desde = inicioDoDia(hojeBrasilia(d.agora()));
+  try {
+    return await ler(desde);
+  } catch {
+    await d.esperar(ESPERA_CONTAGEM_MS);
+    return ler(desde);
+  }
+}
 
 /**
  * Desde quando procurar editais. Com envio: desde ele. Nunca enviado: 24 h antes da criação, ancorado (não no relógio),
@@ -106,7 +131,10 @@ type ComNovidade = { alerta: AlertaParaEnvio; editais: EditalAlerta[]; total: nu
 export function avisosDoResumo(r: ResumoAlertas): string[] {
   const avisos: string[] = [];
   if (r.cotaEsgotada) avisos.push(`::warning::Cota do Resend esgotada: ${r.adiados} contas ficaram para amanhã`);
-  else if (r.adiados > 0) avisos.push(`::warning::Teto de ${MAX_EMAILS_POR_RODADA} e-mails atingido: ${r.adiados} contas ficaram para amanhã`);
+  else if (r.adiados > 0) {
+    const jaHoje = r.alertasHoje > 0 ? ` (${r.alertasHoje} já enviados hoje, de ${MAX_EMAILS_POR_RODADA} por dia)` : '';
+    avisos.push(`::warning::Teto de ${r.teto} e-mails atingido${jaHoje}: ${r.adiados} contas ficaram para amanhã`);
+  }
   if (r.aceitosSemRegistro > 0) {
     avisos.push(`::error::${r.aceitosSemRegistro} alertas enviados sem registro (podem repetir amanhã): procure ACEITO_SEM_REGISTRO no log`);
   }
@@ -114,12 +142,14 @@ export function avisosDoResumo(r: ResumoAlertas): string[] {
 }
 
 export async function executarAlertas(d: DepsAlertas): Promise<ResumoAlertas> {
-  const r: ResumoAlertas = {
-    contas: 0, emails: 0, enviados: 0, semNovidades: 0, falhas: 0, puladosPlano: 0, editais: 0, adiados: 0, cotaEsgotada: false, aceitosSemRegistro: 0,
-  };
   const log = (linha: string) => d.log(limparLog(linha));
   const contas = porEspera(porConta(await d.banco.alertasParaEnvio()), d.agora());
-  r.contas = contas.length;
+  const alertasHoje = await lerAlertasDeHoje((desde) => d.banco.emailsDeAlertasHoje(desde), d);
+  const r: ResumoAlertas = {
+    contas: contas.length, emails: 0, enviados: 0, semNovidades: 0, falhas: 0, puladosPlano: 0, editais: 0, adiados: 0, cotaEsgotada: false, aceitosSemRegistro: 0,
+    alertasHoje, teto: tetoDoDia(alertasHoje),
+  };
+  log(`[alertas] e-mails de alertas já aceitos hoje: ${alertasHoje}; teto desta rodada: ${r.teto}`);
   const semEnvio = motivoSemEnvio(d);
   if (semEnvio) log(`[alertas] envio desligado: ${semEnvio}; os alertas com novidade ficam como falhou`);
   let aceitos = 0;
@@ -128,7 +158,7 @@ export async function executarAlertas(d: DepsAlertas): Promise<ResumoAlertas> {
     // Só conta o que o Resend confirmou. Um tempo esgotado ou 5xx que o Resend tenha aceito mesmo assim (as novas
     // tentativas voltam o mesmo id pela Idempotency-Key, mas a que desistiu não) gasta a cota dividida com os códigos de
     // login sem entrar nestes 60: a folga de 40 por dia cobre isso.
-    if (r.cotaEsgotada || aceitos >= MAX_EMAILS_POR_RODADA) {
+    if (r.cotaEsgotada || aceitos >= r.teto) {
       r.adiados = contas.length - i;
       break;
     }
@@ -240,6 +270,6 @@ export async function executarAlertas(d: DepsAlertas): Promise<ResumoAlertas> {
   }
 
   if (r.cotaEsgotada) log(`[alertas] cota do Resend esgotada: rodada encerrada, ${r.adiados} contas ficam para amanhã`);
-  else if (r.adiados > 0) log(`[alertas] limite de ${MAX_EMAILS_POR_RODADA} e-mails na rodada: ${r.adiados} contas ficam para amanhã`);
+  else if (r.adiados > 0) log(`[alertas] limite de ${r.teto} e-mails na rodada: ${r.adiados} contas ficam para amanhã`);
   return r;
 }

@@ -88,6 +88,13 @@ describe('workflow dos envios por e-mail', () => {
     expect(exemplo).toMatch(/^RESEND_API_KEY=$/m);
     expect(exemplo).toMatch(/^ALERTAS_SEGREDO=$/m);
   });
+
+  it('rodada interrompida (ex.: a contagem de hoje falhou duas vezes) vira anotação ::error:: e código 1', () => {
+    const fonte = ler('worker/enviar-alertas.ts');
+    const pegar = fonte.slice(fonte.lastIndexOf('} catch (erro) {'));
+    expect(pegar).toMatch(/log\(`::error::\[\$\{rotulo\}\] rodada interrompida: \$\{mensagemDeErro\(erro\)\}`\)/);
+    expect(pegar).toContain('process.exitCode = 1');
+  });
 });
 
 describe('isolamento: salvos, alertas e resumo', () => {

@@ -40,6 +40,8 @@ export const VISITANTE_JOB = '00000000-0000-4000-8000-000000000001';
 
 export interface BancoAlertas {
   alertasParaEnvio(): Promise<AlertaParaEnvio[]>;
+  /** Contas distintas com alerta aceito pelo Resend desde `desde` (o teto do dia desconta uma rodada refeita). */
+  emailsDeAlertasHoje(desde: string): Promise<number>;
   editaisDoAlerta(a: AlertaParaEnvio, desde: string, limite: number): Promise<{ editais: EditalAlerta[]; total: number }>;
   registrarEnvio(r: RegistroEnvio): Promise<void>;
   gravarEventoEnvio(detalhe: { qtd: number; alertas: number }): Promise<void>;
@@ -77,6 +79,17 @@ const falhar = (contexto: string, erro: { message: string } | null) => {
   if (erro) throw new Error(`${contexto}: ${erro.message}`);
 };
 
+/**
+ * E-mails de alertas aceitos desde `desde`: contas distintas com envio 'enviado' em envios_alerta (uma linha por alerta,
+ * um e-mail por conta e por rodada). Os dois modos usam: o teto dos alertas e o do resumo. O limit explícito passa do
+ * teto de linhas padrão da API (60 contas × 5 alertas por rodada, poucas rodadas por dia).
+ */
+export async function contarEmailsDeAlertas(sb: SupabaseClient, desde: string): Promise<number> {
+  const { data, error } = await sb.from('envios_alerta').select('user_id').eq('status', 'enviado').gte('iniciado_em', desde).limit(10000);
+  falhar('envios_alerta de hoje', error);
+  return new Set(((data ?? []) as Array<{ user_id: unknown }>).map((l) => String(l.user_id))).size;
+}
+
 export function criarBancoAlertas(sb: SupabaseClient): BancoAlertas {
   return {
     async alertasParaEnvio() {
@@ -84,6 +97,7 @@ export function criarBancoAlertas(sb: SupabaseClient): BancoAlertas {
       falhar('alertas_para_envio', error);
       return ((data ?? []) as Array<Record<string, unknown>>).map(alertaDaLinhaEnvio);
     },
+    emailsDeAlertasHoje: (desde) => contarEmailsDeAlertas(sb, desde),
     async editaisDoAlerta(a, desde, limite) {
       const { data, error } = await sb.rpc('editais_do_alerta', { p_alerta: a.id, p_desde: desde, ...filtrosDoRadar(a.radar), p_limite: limite });
       falhar('editais_do_alerta', error);

@@ -49,6 +49,7 @@ try {
   }
   process.exitCode = falhas > 0 || motivoSemEnvio(deps) ? 1 : 0;
 } catch (erro) {
-  log(`[${rotulo}] rodada interrompida: ${mensagemDeErro(erro)}`);
+  // Anotação do GitHub: a rodada nem começou ou parou no meio (ex.: a contagem dos e-mails de hoje falhou duas vezes).
+  log(`::error::[${rotulo}] rodada interrompida: ${mensagemDeErro(erro)}`);
   process.exitCode = 1;
 }

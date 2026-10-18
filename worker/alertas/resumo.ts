@@ -2,9 +2,18 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { montarResumo, resumoDaResposta, temNovidade, type ResumoSemanal } from '../../lib/alertas/resumo';
 import { criarTokenDescadastro } from '../../lib/alertas/token';
 import { filtrosDoRadar, radarDaLinha, type Radar } from '../../lib/radar';
-import { hojeBrasilia, inicioDoDia } from '../datas';
-import { VISITANTE_JOB } from './banco';
-import { chaveIdempotencia, ESPERAS_REGISTRO_MS, MAX_EMAILS_POR_RODADA, mensagemDeErro, motivoSemEnvio, PAUSA_ENTRE_EMAILS_MS, type DepsEnvio } from './executar';
+import { contarEmailsDeAlertas, VISITANTE_JOB } from './banco';
+import {
+  chaveIdempotencia,
+  ESPERAS_REGISTRO_MS,
+  lerAlertasDeHoje,
+  MAX_EMAILS_POR_RODADA,
+  mensagemDeErro,
+  motivoSemEnvio,
+  PAUSA_ENTRE_EMAILS_MS,
+  tetoDoDia,
+  type DepsEnvio,
+} from './executar';
 import { curto, limparLog } from './log';
 
 /**
@@ -47,12 +56,7 @@ export function criarBancoResumo(sb: SupabaseClient): BancoResumo {
       falhar('contas_para_resumo', error);
       return ((data ?? []) as Array<Record<string, unknown>>).map((l) => ({ userId: String(l.user_id), email: String(l.email), radar: radarDaLinha(l) }));
     },
-    async emailsDeAlertasHoje(desde) {
-      // Uma linha por alerta enviado; o e-mail é um por conta. No máximo 60 contas × 5 alertas: cabe numa página.
-      const { data, error } = await sb.from('envios_alerta').select('user_id').eq('status', 'enviado').gte('iniciado_em', desde);
-      falhar('envios_alerta de hoje', error);
-      return new Set(((data ?? []) as Array<{ user_id: unknown }>).map((l) => String(l.user_id))).size;
-    },
+    emailsDeAlertasHoje: (desde) => contarEmailsDeAlertas(sb, desde),
     async resumoDaConta(c) {
       const { data, error } = await sb.rpc('resumo_do_radar', { p_user: c.userId, ...filtrosDoRadar(c.radar) });
       falhar('resumo_do_radar', error);
@@ -89,7 +93,7 @@ export type ResultadoResumo = {
 };
 
 /** O resumo divide os 60 por dia com os alertas (que rodam antes, na mesma manhã). */
-export const tetoDoResumo = (alertasHoje: number) => Math.max(0, MAX_EMAILS_POR_RODADA - alertasHoje);
+export const tetoDoResumo = tetoDoDia;
 
 /** Anotações do GitHub Actions no fim da rodada (só contagens). Adiar sozinho é aviso, não falha (código de saída 0). */
 export function avisosDoResumoSemanal(r: ResultadoResumo): string[] {
@@ -109,7 +113,7 @@ export function avisosDoResumoSemanal(r: ResultadoResumo): string[] {
 export async function executarResumo(d: DepsEnvio & { banco: BancoResumo }): Promise<ResultadoResumo> {
   const log = (linha: string) => d.log(limparLog(linha));
   const contas = await d.banco.contasParaResumo();
-  const alertasHoje = await d.banco.emailsDeAlertasHoje(inicioDoDia(hojeBrasilia(d.agora())));
+  const alertasHoje = await lerAlertasDeHoje((desde) => d.banco.emailsDeAlertasHoje(desde), d);
   const r: ResultadoResumo = {
     contas: contas.length, emails: 0, enviados: 0, semNovidades: 0, falhas: 0, adiados: 0, cotaEsgotada: false, aceitosSemRegistro: 0,
     alertasHoje, teto: tetoDoResumo(alertasHoje),

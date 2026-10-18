@@ -3,7 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { lerTokenDescadastro } from '../../lib/alertas/token';
 import type { ResumoSemanal } from '../../lib/alertas/resumo';
 import type { Radar } from '../../lib/radar';
-import { ESPERAS_REGISTRO_MS, MAX_EMAILS_POR_RODADA, PAUSA_ENTRE_EMAILS_MS } from './executar';
+import { criarBancoAlertas } from './banco';
+import { ESPERA_CONTAGEM_MS, ESPERAS_REGISTRO_MS, MAX_EMAILS_POR_RODADA, PAUSA_ENTRE_EMAILS_MS } from './executar';
 import type { Mensagem, ResultadoEnvio } from './resend';
 import {
   avisosDoResumoSemanal,
@@ -160,6 +161,26 @@ describe('cota do Resend dividida com os alertas', () => {
     expect(r).toMatchObject({ alertasHoje: 12, teto: 48, enviados: 1 });
     expect(t.logs).toContain('[resumo] alertas de hoje: 12 e-mails; teto do resumo nesta rodada: 48');
   });
+  it('contagem dos alertas de hoje: 2 tentativas, 2 s entre elas; depois a rodada para sem enviar', async () => {
+    const t = montar([conta('u1')], { u1: resumo(1, 0) });
+    let falhas = 1;
+    const umaFalha = async () => {
+      if (falhas-- > 0) throw new Error('envios_alerta de hoje: timeout');
+      return 3;
+    };
+    expect(await executarResumo({ ...t.deps, banco: { ...t.deps.banco, emailsDeAlertasHoje: umaFalha } })).toMatchObject({ alertasHoje: 3, enviados: 1 });
+    expect(t.esperar.mock.calls[0]).toEqual([ESPERA_CONTAGEM_MS]);
+
+    const u = montar([conta('u1')], { u1: resumo(1, 0) });
+    const sempre = vi.fn(async (_desde: string): Promise<number> => {
+      throw new Error('envios_alerta de hoje: timeout');
+    });
+    await expect(executarResumo({ ...u.deps, banco: { ...u.deps.banco, emailsDeAlertasHoje: sempre } })).rejects.toThrow('envios_alerta de hoje: timeout');
+    expect(sempre).toHaveBeenCalledTimes(2);
+    expect(u.esperar.mock.calls).toEqual([[ESPERA_CONTAGEM_MS]]);
+    expect(u.enviar).not.toHaveBeenCalled();
+    expect(u.registros).toEqual([]);
+  });
   it('acima do teto: não envia nem registra (a regra dos 6 dias deixa a conta para a próxima segunda)', async () => {
     const t = montar([conta('u1'), conta('u2'), conta('u3'), conta('u4')], { u1: resumo(1, 0), u2: resumo(0, 0), u3: resumo(2, 0), u4: resumo(1, 0) }, { alertasHoje: MAX_EMAILS_POR_RODADA - 2 });
     const r = await executarResumo(t.deps);
@@ -269,13 +290,17 @@ describe('banco do resumo', () => {
     const consulta = {
       select: (c: string) => (filtros.push(['select', c]), consulta),
       eq: (c: string, v: unknown) => (filtros.push(['eq', c, v]), consulta),
-      gte: (c: string, v: unknown) => {
-        filtros.push(['gte', c, v]);
+      gte: (c: string, v: unknown) => (filtros.push(['gte', c, v]), consulta),
+      limit: (n: number) => {
+        filtros.push(['limit', n]);
         return Promise.resolve({ data: [{ user_id: 'a' }, { user_id: 'a' }, { user_id: 'b' }], error: null });
       },
     };
     const sb = { from: vi.fn((t: string) => (filtros.push(['from', t]), consulta)) } as unknown as SupabaseClient;
     expect(await criarBancoResumo(sb).emailsDeAlertasHoje(INICIO_DO_DIA)).toBe(2);
-    expect(filtros).toEqual([['from', 'envios_alerta'], ['select', 'user_id'], ['eq', 'status', 'enviado'], ['gte', 'iniciado_em', INICIO_DO_DIA]]);
+    // os dois modos leem a mesma contagem (o teto do resumo e o dos alertas)
+    expect(await criarBancoAlertas(sb).emailsDeAlertasHoje(INICIO_DO_DIA)).toBe(2);
+    const umaLeitura = [['from', 'envios_alerta'], ['select', 'user_id'], ['eq', 'status', 'enviado'], ['gte', 'iniciado_em', INICIO_DO_DIA], ['limit', 10000]];
+    expect(filtros).toEqual([...umaLeitura, ...umaLeitura]);
   });
 });

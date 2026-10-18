@@ -7,17 +7,21 @@ import {
   executarAlertas,
   avisosDoResumo,
   desdeDoAlerta,
+  ESPERA_CONTAGEM_MS,
   MAX_EMAILS_POR_RODADA,
   motivoSemEnvio,
   PAUSA_ENTRE_EMAILS_MS,
   porConta,
   porEspera,
+  tetoDoDia,
   type DepsAlertas,
 } from './executar';
 import type { Enviar, Mensagem, ResultadoEnvio } from './resend';
 
 const SEGREDO = 'x'.repeat(40);
 const AGORA = new Date('2026-10-19T10:00:00Z');
+/** Meia-noite de 19/10 em Brasília (UTC−3). */
+const INICIO_DO_DIA = '2026-10-19T03:00:00.000Z';
 const RADAR: Radar = { termos: ['luva'], termosExcluir: [], ufs: [], municipios: [], valorMin: null, valorMax: null, modalidades: [], soMeEpp: false };
 /** Os tokens de descadastro só aceitam uuid: 'a' → 61000000-0000-4000-8000-000000000000. */
 const id = (s: string) => `${Buffer.from(s).toString('hex').padEnd(8, '0').slice(0, 8)}-0000-4000-8000-000000000000`;
@@ -36,9 +40,14 @@ function montar(alertas: AlertaParaEnvio[], editais: Record<string, { editais: E
   const eventos: unknown[] = [];
   const logs: string[] = [];
   const consultas: Array<{ id: string; desde: string; limite: number }> = [];
+  const desdesHoje: string[] = [];
   const porId = new Map(Object.entries(editais).map(([k, v]) => [id(k), v]));
   const banco: BancoAlertas = {
     alertasParaEnvio: async () => alertas,
+    emailsDeAlertasHoje: async (desde) => {
+      desdesHoje.push(desde);
+      return 0;
+    },
     editaisDoAlerta: async (a, desde, limite) => {
       consultas.push({ id: a.id, desde, limite });
       const r = porId.get(a.id) ?? { editais: [], total: 0 };
@@ -61,7 +70,7 @@ function montar(alertas: AlertaParaEnvio[], editais: Record<string, { editais: E
     ordem.push('esperar');
   });
   const deps: DepsAlertas = { banco, enviar, segredo: SEGREDO, agora: () => AGORA, esperar, log: (l) => void logs.push(l) };
-  return { deps, ordem, registros, eventos, consultas, enviar, esperar, logs };
+  return { deps, ordem, registros, eventos, consultas, enviar, esperar, logs, desdesHoje };
 }
 
 describe('rodada dos alertas', () => {
@@ -280,6 +289,56 @@ describe('rodada dos alertas', () => {
     expect(r).toMatchObject({ falhas: 1, enviados: 0, adiados: 2, cotaEsgotada: true });
     expect(t.logs.filter((l) => l.includes('amanhã'))).toEqual(['[alertas] cota do Resend esgotada: rodada encerrada, 2 contas ficam para amanhã']);
   });
+  it('teto do dia: 60 menos os e-mails de alertas já aceitos hoje (dia de Brasília), nunca negativo', () => {
+    expect(tetoDoDia(0)).toBe(MAX_EMAILS_POR_RODADA);
+    expect(tetoDoDia(45)).toBe(15);
+    expect(tetoDoDia(MAX_EMAILS_POR_RODADA)).toBe(0);
+    expect(tetoDoDia(80)).toBe(0);
+  });
+  it('rodada refeita no mesmo dia: o teto desconta os e-mails de alertas já aceitos hoje', async () => {
+    const contas = ['c0', 'c1', 'c2', 'c3'];
+    const t = montar(contas.map((c) => al(c, c, 'pro', '2026-10-01T00:00:00Z')), Object.fromEntries(contas.map((c) => [c, { editais: [ed(`e${c}`)], total: 1 }])));
+    const lerHoje = async (desde: string) => {
+      t.desdesHoje.push(desde);
+      return MAX_EMAILS_POR_RODADA - 2;
+    };
+    const r = await executarAlertas({ ...t.deps, banco: { ...t.deps.banco, emailsDeAlertasHoje: lerHoje } });
+    expect(t.desdesHoje).toEqual([INICIO_DO_DIA]);
+    expect(t.enviar).toHaveBeenCalledTimes(2);
+    expect(r).toMatchObject({ alertasHoje: MAX_EMAILS_POR_RODADA - 2, teto: 2, enviados: 2, adiados: 2, falhas: 0 });
+    expect(t.registros).toHaveLength(2);
+    expect(t.logs).toContain(`[alertas] e-mails de alertas já aceitos hoje: ${MAX_EMAILS_POR_RODADA - 2}; teto desta rodada: 2`);
+    expect(t.logs).toContain('[alertas] limite de 2 e-mails na rodada: 2 contas ficam para amanhã');
+  });
+  it('o teto do dia já gasto: nenhuma conta é lida, enviada nem registrada', async () => {
+    const t = montar([al('a', 'u1', 'pro', '2026-10-01T00:00:00Z')], { a: { editais: [ed('e1')], total: 1 } });
+    const r = await executarAlertas({ ...t.deps, banco: { ...t.deps.banco, emailsDeAlertasHoje: async () => 75 } });
+    expect(t.consultas).toEqual([]);
+    expect(t.enviar).not.toHaveBeenCalled();
+    expect(t.registros).toEqual([]);
+    expect(r).toMatchObject({ contas: 1, teto: 0, adiados: 1, falhas: 0 });
+  });
+  it('contagem de hoje: falha uma vez, espera 2 s e tenta de novo; falha duas vezes, a rodada para antes de enviar', async () => {
+    expect(ESPERA_CONTAGEM_MS).toBe(2000);
+    const t = montar([al('a', 'u1', 'pro', '2026-10-01T00:00:00Z')], { a: { editais: [ed('e1')], total: 1 } });
+    let falhas = 1;
+    const umaFalha = async () => {
+      if (falhas-- > 0) throw new Error('envios_alerta de hoje: timeout');
+      return 0;
+    };
+    expect(await executarAlertas({ ...t.deps, banco: { ...t.deps.banco, emailsDeAlertasHoje: umaFalha } })).toMatchObject({ enviados: 1 });
+    expect(t.esperar.mock.calls[0]).toEqual([ESPERA_CONTAGEM_MS]);
+
+    const u = montar([al('a', 'u1', 'pro', '2026-10-01T00:00:00Z')], { a: { editais: [ed('e1')], total: 1 } });
+    const sempre = vi.fn(async (_desde: string): Promise<number> => {
+      throw new Error('envios_alerta de hoje: timeout');
+    });
+    await expect(executarAlertas({ ...u.deps, banco: { ...u.deps.banco, emailsDeAlertasHoje: sempre } })).rejects.toThrow('envios_alerta de hoje: timeout');
+    expect(sempre).toHaveBeenCalledTimes(2);
+    expect(u.esperar.mock.calls).toEqual([[ESPERA_CONTAGEM_MS]]);
+    expect(u.enviar).not.toHaveBeenCalled();
+    expect(u.registros).toEqual([]);
+  });
   it('quem espera há mais tempo vai primeiro (o que ficou de ontem não fica para sempre)', async () => {
     const t = montar(
       [al('a', 'u1', 'pro', '2026-10-01T00:00:00Z'), al('b', 'u2', 'pro', '2026-10-01T00:00:00Z', { ultimoEnvioEm: '2026-10-05T10:00:00Z' }), al('c', 'u3', 'pro', '2026-10-01T00:00:00Z')],
@@ -303,9 +362,15 @@ describe('rodada dos alertas', () => {
     expect(dia2.consultas[0]).toEqual({ id: id('n'), desde: '2026-10-17T12:00:00.000Z', limite: 20 });
   });
   it('avisos do GitHub: só contagens; adiar sozinho não é falha', () => {
-    const base = { contas: 70, emails: 60, enviados: 60, semNovidades: 0, falhas: 0, puladosPlano: 0, editais: 60, adiados: 0, cotaEsgotada: false, aceitosSemRegistro: 0 };
+    const base = {
+      contas: 70, emails: 60, enviados: 60, semNovidades: 0, falhas: 0, puladosPlano: 0, editais: 60, adiados: 0, cotaEsgotada: false, aceitosSemRegistro: 0,
+      alertasHoje: 0, teto: MAX_EMAILS_POR_RODADA,
+    };
     expect(avisosDoResumo(base)).toEqual([]);
     expect(avisosDoResumo({ ...base, adiados: 10 })).toEqual([`::warning::Teto de ${MAX_EMAILS_POR_RODADA} e-mails atingido: 10 contas ficaram para amanhã`]);
+    expect(avisosDoResumo({ ...base, adiados: 4, alertasHoje: 50, teto: 10 })).toEqual([
+      `::warning::Teto de 10 e-mails atingido (50 já enviados hoje, de ${MAX_EMAILS_POR_RODADA} por dia): 4 contas ficaram para amanhã`,
+    ]);
     expect(avisosDoResumo({ ...base, adiados: 3, cotaEsgotada: true })).toEqual(['::warning::Cota do Resend esgotada: 3 contas ficaram para amanhã']);
     expect(avisosDoResumo({ ...base, aceitosSemRegistro: 2 })).toEqual(['::error::2 alertas enviados sem registro (podem repetir amanhã): procure ACEITO_SEM_REGISTRO no log']);
   });
