@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { paraParametros } from '@/lib/filtros';
 import { numero } from '@/lib/formato';
 import type { FiltrosTela } from '@/lib/tipos';
-import { descreverVazio, escolherSugestoes, limitarContagens, sugestoesVazio } from '@/lib/vazio';
+import { chaveVazio, descreverVazio, escolherSugestoes, limitarContagens, sugestoesVazio } from '@/lib/vazio';
 
 type Props = { filtros: FiltrosTela; aoAplicar: (f: FiltrosTela) => void };
 
-async function contar(f: FiltrosTela): Promise<number | null> {
+async function contar(f: FiltrosTela, signal: AbortSignal): Promise<number | null> {
   try {
-    const r = await fetch(`/api/contagem?${paraParametros(f)}`);
+    const r = await fetch(`/api/contagem?${paraParametros(f)}`, { signal });
     if (!r.ok) return null;
     const corpo = (await r.json()) as { total?: unknown };
     return typeof corpo.total === 'number' ? corpo.total : null;
@@ -21,17 +21,17 @@ async function contar(f: FiltrosTela): Promise<number | null> {
 
 /** Lista vazia: diz o que foi buscado e propõe outras buscas que trazem editais (com o número, por /api/contagem; no máximo 4 chamadas). */
 export function EstadoVazio({ filtros, aoAplicar }: Props) {
-  const candidatas = useMemo(() => limitarContagens(sugestoesVazio(filtros)), [filtros]);
+  const chave = chaveVazio(filtros);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- só a mudança real dos filtros (a chave) refaz as contagens
+  const candidatas = useMemo(() => limitarContagens(sugestoesVazio(filtros)), [chave]);
   const [totais, setTotais] = useState<Array<number | null> | null>(null);
   useEffect(() => {
-    let valendo = true;
+    const ctl = new AbortController();
     setTotais(null);
-    void Promise.all(candidatas.map((c) => contar(c.filtros))).then((t) => {
-      if (valendo) setTotais(t);
+    void Promise.all(candidatas.map((c) => contar(c.filtros, ctl.signal))).then((t) => {
+      if (!ctl.signal.aborted) setTotais(t);
     });
-    return () => {
-      valendo = false;
-    };
+    return () => ctl.abort();
   }, [candidatas]);
   const boas = totais ? escolherSugestoes(candidatas, totais) : [];
   return (

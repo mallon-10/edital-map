@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FiltrosTela } from './tipos';
-import { descreverVazio, escolherSugestoes, limitarContagens, MAX_CONTAGENS, MAX_SUGESTOES, sugestoesVazio } from './vazio';
+import { chaveVazio, descreverVazio, escolherSugestoes, limitarContagens, MAX_CONTAGENS, MAX_SUGESTOES, sugestoesVazio } from './vazio';
 
 const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
 const JOINVILLE = { ibge: '4209102', nome: 'Joinville', uf: 'SC' };
@@ -59,6 +59,13 @@ describe('escolherSugestoes (só as que trazem editais, as que mais trazem prime
       ['Todas as modalidades', 40], ['Todo o estado (SC)', 12], ['Todos os prazos', 7],
     ]);
     expect(escolhidas).toHaveLength(MAX_SUGESTOES);
+  });
+});
+
+describe('chaveVazio', () => {
+  it('mesmo conteúdo, mesma chave; outro filtro, outra chave', () => {
+    expect(chaveVazio({ ...CHEIO })).toBe(chaveVazio(structuredClone(CHEIO)));
+    expect(chaveVazio(CHEIO)).not.toBe(chaveVazio({ ...CHEIO, valorMin: null }));
   });
 });
 

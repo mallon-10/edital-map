@@ -7,6 +7,11 @@ export const MAX_SUGESTOES = 3;
 /** Teto de chamadas a /api/contagem por busca vazia (a rota tem limite por IP). */
 export const MAX_CONTAGENS = 4;
 
+/** Chave estável dos filtros: objetos novos com o mesmo conteúdo não refazem as contagens. */
+export function chaveVazio(f: FiltrosTela): string {
+  return JSON.stringify(f);
+}
+
 /** Uma sugestão por filtro ligado (cada uma tira só aquele), sem os excluídos, e termos parecidos do catálogo. */
 export function sugestoesVazio(f: FiltrosTela): Sugestao[] {
   const s: Sugestao[] = [];
