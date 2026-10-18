@@ -8,6 +8,8 @@ const m = vi.hoisted(() => ({
   enviarCodigo: vi.fn(),
   entrarComCodigo: vi.fn(),
   sair: vi.fn(),
+  gravarEvento: vi.fn(async (..._a: unknown[]) => undefined),
+  lerRadar: vi.fn(),
 }));
 vi.mock('@/lib/servidor/sessao', () => ({
   usuarioAtual: async () => m.usuario,
@@ -15,6 +17,11 @@ vi.mock('@/lib/servidor/sessao', () => ({
   entrarComCodigo: m.entrarComCodigo,
   sair: m.sair,
 }));
+vi.mock('@/lib/servidor/registro', () => ({
+  contexto: async () => ({ visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, ipHash: null }),
+  gravarEvento: m.gravarEvento,
+}));
+vi.mock('@/lib/servidor/conta', () => ({ lerRadar: m.lerRadar }));
 
 const conta = await import('./route');
 const codigo = await import('./codigo/route');
@@ -34,6 +41,7 @@ beforeEach(() => {
   m.enviarCodigo.mockResolvedValue({ ok: true });
   m.entrarComCodigo.mockResolvedValue({ ok: true, usuario: { id: 'u-1', email: 'dono@empresa.com.br' } });
   m.sair.mockResolvedValue(undefined);
+  m.lerRadar.mockResolvedValue(null);
 });
 
 describe('GET /api/conta', () => {
@@ -92,6 +100,22 @@ describe('POST /api/conta/entrar', () => {
     const r = await entrar.POST(post({ email: 'a@b.co', codigo: '000000' }));
     expect(r.status).toBe(400);
     expect(await r.json()).toEqual({ erro: MENSAGENS_CONTA.codigoErrado });
+  });
+  it('grava conta_entrou sem e-mail, dizendo se a conta já tem radar', async () => {
+    m.lerRadar.mockResolvedValue({ termos: ['luva'] });
+    await entrar.POST(post({ email: 'dono@empresa.com.br', codigo: '123456' }));
+    expect(m.gravarEvento).toHaveBeenCalledWith(expect.objectContaining({ interno: false }), 'conta_entrou', { radar: 'sim' });
+    expect(JSON.stringify(m.gravarEvento.mock.calls)).not.toContain('@');
+  });
+  it('falha ao gravar o evento não impede de entrar', async () => {
+    m.gravarEvento.mockRejectedValue(new Error('fora'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect((await entrar.POST(post({ email: 'a@b.co', codigo: '123456' }))).status).toBe(200);
+  });
+  it('código errado não grava evento', async () => {
+    m.entrarComCodigo.mockResolvedValue({ ok: false, erro: { code: 'otp_expired', status: 403 } });
+    await entrar.POST(post({ email: 'a@b.co', codigo: '000000' }));
+    expect(m.gravarEvento).not.toHaveBeenCalled();
   });
 });
 

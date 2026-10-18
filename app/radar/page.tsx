@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { connection } from 'next/server';
+import { after, connection } from 'next/server';
 import { Cabecalho } from '@/components/Cabecalho';
 import { CardLista } from '@/components/inicio/CardLista';
 import { CartaoPreviaRadar } from '@/components/radar/CartaoPreviaRadar';
@@ -14,7 +14,7 @@ import { desdeDaVisita, lerNavegacaoRadar, urlDoRadar, VISIVEIS_GRATIS, vistaDoR
 import { lerRadar, perfilDaConta } from '@/lib/servidor/conta';
 import { municipiosPorIbge } from '@/lib/servidor/municipios';
 import { contagensDoRadar, editaisDoRadar } from '@/lib/servidor/radar';
-import { contextoDaPagina } from '@/lib/servidor/registro';
+import { contextoDaPagina, gravarEvento } from '@/lib/servidor/registro';
 import { usuarioAtual } from '@/lib/servidor/sessao';
 import { usoDoDia } from '@/lib/servidor/uso';
 import { paraUrlSearchParams } from '@/lib/urlBusca';
@@ -50,6 +50,14 @@ export default async function MeuRadar({ searchParams }: Props) {
   // Página além do fim (endereço antigo ou digitado): o total vem das linhas, então volta para a primeira.
   if (lista.editais.length === 0 && vista.pagina > 1) redirect(urlDoRadar({ ordem: nav.ordem, pagina: 1 }));
   const ordem = ordemEfetiva(nav.ordem, true);
+  // Uma vez por chegada ao radar (não a cada troca de ordem ou página).
+  if (ctx && nav.pagina === 1 && nav.ordem === null) {
+    after(() =>
+      gravarEvento(ctx, 'radar_visto', { total: contagens.total, novas: contagens.novas, plano: perfil.plano }).catch((erro) =>
+        console.error('radar_visto:', erro),
+      ),
+    );
+  }
 
   return (
     <>

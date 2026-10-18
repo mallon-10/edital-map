@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
+import { AtalhoRadar } from '@/components/AtalhoRadar';
 import { Cabecalho } from '@/components/Cabecalho';
 import { Explorador } from '@/components/Explorador';
 import { lerFiltros, paraParametros } from '@/lib/filtros';
@@ -51,6 +52,7 @@ export default async function Inicio({ searchParams }: Props) {
   return (
     <div className="flex flex-col lg:h-dvh">
       <Cabecalho uso={uso} />
+      <AtalhoRadar />
       <Explorador
         key={`${urlDaBusca(filtros, estado)}@${agora}`}
         filtrosIniciais={filtros}

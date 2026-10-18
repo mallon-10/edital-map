@@ -6,9 +6,14 @@ vi.mock('server-only', () => ({}));
 const m = vi.hoisted(() => ({
   usuario: { id: 'u-sessao', email: 'dono@empresa.com.br' } as null | { id: string; email: string },
   salvarRadar: vi.fn(),
+  gravarEvento: vi.fn(async (..._a: unknown[]) => undefined),
 }));
 vi.mock('@/lib/servidor/sessao', () => ({ usuarioAtual: async () => m.usuario }));
 vi.mock('@/lib/servidor/conta', () => ({ salvarRadar: m.salvarRadar }));
+vi.mock('@/lib/servidor/registro', () => ({
+  contexto: async () => ({ visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, ipHash: null }),
+  gravarEvento: m.gravarEvento,
+}));
 
 const { POST } = await import('./route');
 const enviar = (corpo: unknown, cabecalhos: Record<string, string> = {}) =>
@@ -61,6 +66,15 @@ describe('POST /api/radar', () => {
     expect(quebrado.status).toBe(400);
     expect(await quebrado.json()).toEqual({ erro: MENSAGENS_RADAR.formulario });
     expect(m.salvarRadar).not.toHaveBeenCalled();
+  });
+  it('radar novo: onboarding_concluido com as contagens (sem e-mail nem termos)', async () => {
+    await enviar({ termos: ['luva', 'botina'], municipios: ['4209102'] });
+    expect(m.gravarEvento).toHaveBeenCalledWith(expect.anything(), 'onboarding_concluido', { termos: 2, ufs: 0, municipios: 1 });
+  });
+  it('edição (radar já existia): sem onboarding_concluido', async () => {
+    m.salvarRadar.mockResolvedValue('atualizado');
+    await enviar({ termos: ['luva'] });
+    expect(m.gravarEvento).not.toHaveBeenCalled();
   });
   it('banco fora: 502', async () => {
     m.salvarRadar.mockRejectedValue(new Error('fora'));

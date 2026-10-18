@@ -1,6 +1,8 @@
 import { destinoSeguro, lerCodigo, lerEmail, MENSAGENS_CONTA, mensagemErroAuth, statusErroAuth } from '@/lib/conta';
 import { SEM_CACHE } from '@/lib/http';
+import { lerRadar } from '@/lib/servidor/conta';
 import { recusaForaDoSite } from '@/lib/servidor/mesmaOrigem';
+import { contexto, gravarEvento } from '@/lib/servidor/registro';
 import { entrarComCodigo } from '@/lib/servidor/sessao';
 
 /** Confere o código; certo, a sessão vai nos cookies httpOnly desta resposta e o navegador segue para o destino. */
@@ -22,6 +24,13 @@ export async function POST(request: Request) {
     if (!r.ok) {
       if (statusErroAuth(r.erro) === 502) console.error('entrar:', r.erro);
       return Response.json({ erro: mensagemErroAuth(r.erro) }, { status: statusErroAuth(r.erro), headers: SEM_CACHE });
+    }
+    // Medição: login (sem e-mail). Falha só vai para o log.
+    try {
+      const temRadar = (await lerRadar(r.usuario)) !== null;
+      await gravarEvento(await contexto(), 'conta_entrou', { radar: temRadar ? 'sim' : 'nao' });
+    } catch (erro) {
+      console.error('conta_entrou:', erro);
     }
     return Response.json({ destino: destinoSeguro(typeof corpo.destino === 'string' ? corpo.destino : null) }, { headers: SEM_CACHE });
   } catch (erro) {

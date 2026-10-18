@@ -15,7 +15,7 @@ type Props = {
 };
 
 /**
- * Computador: logo, abas (Mapa, Alertas, Planos), Sobre, conta e "Assinar Pro". Celular: logo, conta e "Assinar" (Mapa, Lista,
+ * Computador: logo, abas (Mapa, Meu Radar, Alertas, Planos), Sobre, conta e "Assinar Pro". Celular: logo, conta e "Assinar" (Mapa, Lista,
  * Alertas e Planos ficam na barra de baixo). Logo abaixo, a faixa do plano grátis (some no navegador interno).
  */
 export function Cabecalho({ uso }: Props) {
@@ -31,6 +31,9 @@ export function Cabecalho({ uso }: Props) {
         <nav aria-label="Principal" className="hidden items-center gap-1 lg:flex">
           <Link href="/" aria-current={ativa('/') ? 'page' : undefined} className={estilo('/')}>
             Mapa
+          </Link>
+          <Link href="/radar" prefetch={false} aria-current={ativa('/radar') ? 'page' : undefined} className={estilo('/radar')}>
+            Meu Radar
           </Link>
           <Link href="/alertas" aria-current={ativa('/alertas') ? 'page' : undefined} className={estilo('/alertas')}>
             Alertas

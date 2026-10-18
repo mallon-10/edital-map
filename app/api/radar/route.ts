@@ -2,6 +2,7 @@ import { SEM_CACHE } from '@/lib/http';
 import { MENSAGENS_RADAR, validarRadar } from '@/lib/radar';
 import { salvarRadar } from '@/lib/servidor/conta';
 import { recusaForaDoSite } from '@/lib/servidor/mesmaOrigem';
+import { contexto, gravarEvento } from '@/lib/servidor/registro';
 import { usuarioAtual } from '@/lib/servidor/sessao';
 
 /**
@@ -22,7 +23,18 @@ export async function POST(request: Request) {
   const v = validarRadar(corpo);
   if (!v.ok) return Response.json({ erro: v.erro }, { status: 400, headers: SEM_CACHE });
   try {
-    await salvarRadar(usuario, v.valor);
+    const resultado = await salvarRadar(usuario, v.valor);
+    if (resultado === 'criado') {
+      try {
+        await gravarEvento(await contexto(), 'onboarding_concluido', {
+          termos: v.valor.termos.length,
+          ufs: v.valor.ufs.length,
+          municipios: v.valor.municipios.length,
+        });
+      } catch (erro) {
+        console.error('onboarding_concluido:', erro);
+      }
+    }
     return Response.json({ ok: true }, { headers: SEM_CACHE });
   } catch (erro) {
     console.error(erro);
