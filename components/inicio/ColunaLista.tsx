@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type RefObject } from 'react';
 import { CartaoLimite } from '@/components/CartaoLimite';
+import { FONTE_COBERTURA } from '@/lib/cobertura';
 import { moedaCurta, numero } from '@/lib/formato';
 import type { Limite } from '@/lib/limites';
 import type { Painel } from '@/lib/painel';
@@ -148,7 +149,7 @@ export function ColunaLista(p: Props) {
       <div className="mt-3 flex flex-col lg:min-h-0 lg:flex-1">
         {vista === 'mapa' ? (
           <p className="mb-3 shrink-0 font-mono text-[11px] text-ink-muted lg:hidden">
-            Editais abertos de todo o Brasil · o ponto é a sede do órgão, não o local de entrega
+            O ponto é a sede do órgão, não o local de entrega
           </p>
         ) : null}
         {p.erro ? <p role="alert" className="mb-3 shrink-0 rounded-sm bg-pin-soft px-3 py-2 text-sm text-pin-strong">{p.erro}</p> : null}
@@ -176,6 +177,7 @@ export function ColunaLista(p: Props) {
             ),
           )}
           <Paginacao pagina={p.pagina} total={total} carregando={p.carregandoLista} aoIr={p.aoIrPagina} />
+          <p className="shrink-0 px-1 pb-2 pt-1 text-center font-mono text-[11px] text-ink-muted">{FONTE_COBERTURA}</p>
         </div>
       </div>
     </>

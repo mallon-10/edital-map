@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Cabecalho } from '@/components/Cabecalho';
 import { MarcarInterno } from '@/components/MarcarInterno';
+import { FONTE_COBERTURA } from '@/lib/cobertura';
 
 export const metadata: Metadata = { title: 'Sobre' };
 
@@ -18,8 +19,11 @@ export default async function PaginaSobre({ searchParams }: Props) {
           <h2 className="text-lg font-bold">De onde vêm os dados</h2>
           <p>
             Do PNCP, o Portal Nacional de Contratações Públicas, onde os órgãos publicam as contratações da Lei 14.133. O Edital Map copia esses
-            dados a cada 3 horas: editais abertos de todo o Brasil.
+            dados a cada 3 horas: editais abertos de todo o Brasil nas modalidades Pregão, Concorrência, Dispensa e Credenciamento. Licitações
+            publicadas só em outros portais, ou em outras modalidades (como leilão e concurso), não aparecem aqui. Revogadas e anuladas saem da
+            lista; suspensas aparecem com a etiqueta &quot;Suspensa&quot;.
           </p>
+          <p className="text-[13px] text-ink-muted">{FONTE_COBERTURA}</p>
         </section>
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-bold">O que o site faz e o que não faz</h2>
