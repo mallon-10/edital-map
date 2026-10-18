@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { TAG_PRAZO } from '@/components/estilosPrazo';
 import { irParaEntrar } from '@/lib/cliente/pedido';
 import { atualizarSalvo, mudarSalvo } from '@/lib/cliente/salvos';
@@ -16,7 +16,9 @@ const CAMPO = 'w-full rounded-sm border border-line-strong bg-raised px-3 text-[
 /**
  * Um edital salvo: título, órgão, município/UF, valor, prazo, situação oficial, o status pessoal (seletor), a observação
  * (salva ao sair do campo; só texto), "Abrir edital" e "Remover". Mudar o status ou remover recarrega a página (contagens
- * das abas); recusado, o status volta ao que era e a mensagem da rota aparece.
+ * das abas); recusado, o status volta ao que era e a mensagem da rota aparece. Antes de mudar o status ou remover, a
+ * observação pendente é gravada (se não gravar, nada muda: a linha não sai da aba levando o texto não salvo). O seletor
+ * fica desligado durante o pedido e recebe o foco de volta no fim (teclado não se perde).
  */
 export function LinhaOportunidade({ salvo: s, agora }: { salvo: SalvoDaConta; agora: string }) {
   const router = useRouter();
@@ -24,10 +26,22 @@ export function LinhaOportunidade({ salvo: s, agora }: { salvo: SalvoDaConta; ag
   const idObs = useId();
   const [status, setStatus] = useState<StatusSalvo>(s.status);
   const [obs, setObs] = useState(s.observacao ?? '');
-  const [gravada, setGravada] = useState(s.observacao ?? '');
+  // Refs: o texto atual e o gravado valem também depois de um await (o estado da renderização ficaria velho).
+  const obsAtual = useRef(s.observacao ?? '');
+  const gravada = useRef(s.observacao ?? '');
+  const emCurso = useRef<Promise<boolean> | null>(null);
+  const refStatus = useRef<HTMLSelectElement>(null);
   const [estadoObs, setEstadoObs] = useState<'quieto' | 'salvando' | 'salvo'>('quieto');
   const [ocupado, setOcupado] = useState(false);
+  const focarStatus = useRef(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  // O seletor desligado perde o foco; religado depois de uma mudança de status, o foco volta para ele.
+  useEffect(() => {
+    if (ocupado || !focarStatus.current) return;
+    focarStatus.current = false;
+    refStatus.current?.focus();
+  }, [ocupado]);
   const quando = new Date(agora);
   const e = s.edital;
   const sit = situacaoOficial(e, quando);
@@ -44,6 +58,12 @@ export function LinhaOportunidade({ salvo: s, agora }: { salvo: SalvoDaConta; ag
     setErro(null);
     setStatus(novo);
     setOcupado(true);
+    focarStatus.current = true;
+    if (!(await salvarObservacao())) {
+      setStatus(anterior);
+      setOcupado(false);
+      return;
+    }
     const r = await atualizarSalvo(s.id, { status: novo });
     setOcupado(false);
     if (!r.ok) {
@@ -53,22 +73,39 @@ export function LinhaOportunidade({ salvo: s, agora }: { salvo: SalvoDaConta; ag
     router.refresh();
   }
 
-  async function salvarObservacao() {
-    if (obs.trim() === gravada.trim()) return;
-    setErro(null);
-    setEstadoObs('salvando');
-    const r = await atualizarSalvo(s.id, { observacao: obs });
-    if (!r.ok) {
-      setEstadoObs('quieto');
-      return falhou(r);
-    }
-    setGravada(obs);
-    setEstadoObs('salvo');
+  /**
+   * Grava a observação se mudou. true: gravada (ou nada a gravar); false: falhou (mensagem já na tela). Um pedido por
+   * vez: quem chega durante outro (o blur do campo e logo o status) espera por ele e confere de novo o que falta.
+   */
+  function salvarObservacao(): Promise<boolean> {
+    if (emCurso.current) return emCurso.current.then((ok) => (ok ? salvarObservacao() : false));
+    const texto = obsAtual.current;
+    if (texto.trim() === gravada.current.trim()) return Promise.resolve(true);
+    const pedido = (async () => {
+      setErro(null);
+      setEstadoObs('salvando');
+      const r = await atualizarSalvo(s.id, { observacao: texto });
+      if (!r.ok) {
+        setEstadoObs('quieto');
+        falhou(r);
+        return false;
+      }
+      gravada.current = texto;
+      // Digitou durante o pedido: o que está no campo ainda não foi gravado.
+      setEstadoObs(obsAtual.current === texto ? 'salvo' : 'quieto');
+      return true;
+    })().finally(() => {
+      emCurso.current = null;
+    });
+    emCurso.current = pedido;
+    return pedido;
   }
 
   async function remover() {
-    if (precisaConfirmar({ status, nota: gravada.trim().length > 0 }) && !window.confirm(CONFIRMAR_REMOVER)) return;
     setErro(null);
+    const salvou = await salvarObservacao();
+    if (!salvou) return;
+    if (precisaConfirmar({ status, nota: gravada.current.trim().length > 0 }) && !window.confirm(CONFIRMAR_REMOVER)) return;
     setOcupado(true);
     const r = await mudarSalvo(s.id, { remover: true });
     setOcupado(false);
@@ -107,6 +144,7 @@ export function LinhaOportunidade({ salvo: s, agora }: { salvo: SalvoDaConta; ag
         <label htmlFor={idStatus} className="flex flex-col gap-1.5 text-[13px] font-semibold">
           Meu status
           <select
+            ref={refStatus}
             id={idStatus}
             value={status}
             disabled={ocupado}
@@ -130,6 +168,7 @@ export function LinhaOportunidade({ salvo: s, agora }: { salvo: SalvoDaConta; ag
             maxLength={MAX_OBSERVACAO}
             rows={2}
             onChange={(ev) => {
+              obsAtual.current = ev.target.value;
               setObs(ev.target.value);
               setEstadoObs('quieto');
             }}
@@ -137,9 +176,12 @@ export function LinhaOportunidade({ salvo: s, agora }: { salvo: SalvoDaConta; ag
             placeholder="Ex.: pedir amostra, conferir atestado"
             className={`${CAMPO} py-2`}
           />
-          <span aria-live="polite" className="text-xs text-ink-muted">
-            {estadoObs === 'salvando' ? 'Salvando…' : estadoObs === 'salvo' ? 'Salvo ✓' : `${obs.length}/${MAX_OBSERVACAO}`}
-          </span>
+          <div className="flex justify-between gap-2 text-xs text-ink-muted">
+            <span aria-live="polite">{estadoObs === 'salvando' ? 'Salvando…' : estadoObs === 'salvo' ? 'Salvo ✓' : ''}</span>
+            <span className="font-mono">
+              {obs.length}/{MAX_OBSERVACAO}
+            </span>
+          </div>
         </div>
       </div>
       {erro ? (

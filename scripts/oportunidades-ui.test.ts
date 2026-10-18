@@ -87,6 +87,34 @@ describe('Minhas Oportunidades', () => {
     expect(linha).toContain('window.confirm(CONFIRMAR_REMOVER)');
     expect(linha).toContain('situacaoOficial(');
   });
+  it('mudar o status ou remover grava antes a observação pendente e para se ela não gravar', () => {
+    const fonte = linha.replace(/\r\n/g, '\n');
+    const corpo = (nome: string) => fonte.slice(fonte.indexOf(`async function ${nome}(`), fonte.indexOf('\n  }\n', fonte.indexOf(`async function ${nome}(`)));
+    for (const [nome, pedido] of [
+      ['mudarStatus', 'atualizarSalvo(s.id, { status: novo })'],
+      ['remover', 'mudarSalvo(s.id, { remover: true })'],
+    ] as const) {
+      const f = corpo(nome);
+      const iObs = f.indexOf('await salvarObservacao()');
+      expect(iObs, nome).toBeGreaterThan(0);
+      expect(f.indexOf(pedido), nome).toBeGreaterThan(iObs);
+      expect(f, nome).toMatch(/if \(!(\(await salvarObservacao\(\)\)|salvou)\)/);
+    }
+    // um salvamento da observação por vez (o blur do campo e o status não mandam dois pedidos juntos)
+    expect(linha).toContain('emCurso.current');
+  });
+  it('o seletor de status recebe o foco de volta depois do pedido (desligado durante ele)', () => {
+    expect(linha).toContain('ref={refStatus}');
+    expect(linha).toContain('refStatus.current?.focus()');
+  });
+  it('a região aria-live só anuncia "Salvando…" / "Salvo ✓", não o contador de caracteres', () => {
+    const viva = linha.slice(linha.indexOf('aria-live="polite"'), linha.indexOf('</span>', linha.indexOf('aria-live="polite"')));
+    expect(viva).toContain('Salvando…');
+    expect(viva).toContain('Salvo ✓');
+    expect(viva).not.toContain('MAX_OBSERVACAO');
+    expect(viva).not.toContain('obs.length');
+    expect(linha).toContain('{obs.length}/{MAX_OBSERVACAO}');
+  });
   it('observação só como texto (nada de HTML vindo da conta)', () => {
     expect(linha).not.toContain('dangerouslySetInnerHTML');
     expect(pagina).not.toContain('dangerouslySetInnerHTML');
