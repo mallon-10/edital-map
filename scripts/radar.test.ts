@@ -32,3 +32,17 @@ describe('página Meu Radar', () => {
     expect(visita).toContain("'content-type': 'application/json'");
   });
 });
+
+describe('editar radar', () => {
+  const pagina = ler('app/radar/editar/page.tsx');
+  it('exige conta; sem radar vai ao onboarding; formulário no modo editar com os municípios pelo nome', () => {
+    expect(pagina).toContain('await usuarioAtual()');
+    expect(pagina).toContain("redirect('/entrar?voltar=/radar/editar')");
+    expect(pagina).toContain("redirect('/radar/comecar')");
+    expect(pagina).toContain('<FormRadar modo="editar"');
+    expect(pagina).toContain('municipiosPorIbge(radar.municipios)');
+  });
+  it('fora do Google', () => {
+    expect(pagina).toContain('robots: { index: false, follow: false }');
+  });
+});
