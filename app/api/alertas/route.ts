@@ -1,25 +1,51 @@
-import { LIMITES, validarPedidoAlerta } from '@/lib/eventos';
-import { contexto, dentroDoLimite, gravarEvento, gravarPedido } from '@/lib/servidor/registro';
+import { MENSAGENS_ALERTA, validarAlerta } from '@/lib/alertas/regras';
+import { SEM_CACHE } from '@/lib/http';
+import { bloqueioAlerta, MENSAGENS_LIMITE_CONTA, planoIncerto } from '@/lib/limitesConta';
+import { contarAlertas, criarAlerta } from '@/lib/servidor/alertas';
+import { planoDaConta } from '@/lib/servidor/conta';
+import { recusaForaDoSite } from '@/lib/servidor/mesmaOrigem';
+import { contexto, gravarEvento } from '@/lib/servidor/registro';
+import { usuarioAtual } from '@/lib/servidor/sessao';
 
+const json = (corpo: unknown, status = 200) => Response.json(corpo, { status, headers: SEM_CACHE });
+
+/**
+ * Cria um alerta na conta da sessão (Fase 4, §3). Só JSON do próprio site (CSRF); o dono vem só de usuarioAtual().
+ * Plano da conta (manual, assinatura com o e-mail da conta ou navegador): Grátis nenhum, Pro até 5 (pausados contam).
+ * Plano não confirmado (banco fora na conta): 503 para tentar de novo, não o convite ao Pro.
+ * O antigo pedido de alerta por e-mail (pedidos_alerta) saiu; os pedidos antigos continuam guardados no banco.
+ */
 export async function POST(request: Request) {
+  const recusa = recusaForaDoSite(request);
+  if (recusa) return recusa;
+  const usuario = await usuarioAtual();
+  if (!usuario) return json({ erro: MENSAGENS_ALERTA.entrar, codigo: 'entrar' }, 401);
   let corpo: unknown;
   try {
     corpo = await request.json();
   } catch {
-    return Response.json({ erro: 'Formulário inválido.' }, { status: 400 });
+    return json({ erro: MENSAGENS_ALERTA.formulario }, 400);
   }
-  const v = validarPedidoAlerta(corpo);
-  if (!v.ok) return v.silencioso ? Response.json({ ok: true }) : Response.json({ erro: v.erro }, { status: 400 });
+  const v = validarAlerta(corpo);
+  if (!v.ok) return json({ erro: v.erro }, 400);
   try {
     const ctx = await contexto();
-    if (!(await dentroDoLimite('pedidos_alerta', ctx.ipHash, LIMITES.alertasPorHora))) {
-      return Response.json({ erro: 'Muitos pedidos deste endereço. Tente de novo mais tarde.' }, { status: 429 });
+    const [p, qtd] = await Promise.all([planoDaConta(usuario, ctx), contarAlertas(usuario)]);
+    if (planoIncerto(p)) return json({ erro: MENSAGENS_LIMITE_CONTA.planoIndisponivel }, 503);
+    const bloqueio = bloqueioAlerta(p.plano, qtd);
+    if (bloqueio) return json({ erro: bloqueio.mensagem, codigo: bloqueio.codigo }, 402);
+    const id = await criarAlerta(usuario, v.valor);
+    const origem = (corpo as { origem?: unknown }).origem === 'radar' ? 'radar' : 'manual';
+    try {
+      await gravarEvento(ctx, 'alerta_criado', {
+        termos: v.valor.termos.length, ufs: v.valor.ufs.length, municipios: v.valor.municipios.length, origem, plano: p.plano,
+      });
+    } catch (erro) {
+      console.error('alerta_criado:', erro);
     }
-    const id = await gravarPedido(ctx, v.valor);
-    await gravarEvento(ctx, 'pediu_alerta', { pedido: id });
-    return Response.json({ ok: true }, { status: 201 });
+    return json({ ok: true, id }, 201);
   } catch (erro) {
     console.error(erro);
-    return Response.json({ erro: 'Não deu para registrar agora. Tente de novo.' }, { status: 500 });
+    return json({ erro: MENSAGENS_ALERTA.falha }, 502);
   }
 }
