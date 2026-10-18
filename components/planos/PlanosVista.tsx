@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { LINHAS_PLANOS, PLANOS, type Celula, type Periodo } from '@/lib/planos';
 import { AlternadorPeriodo } from './AlternadorPeriodo';
-import { BotaoQueroPlano } from './BotaoQueroPlano';
+import type { Plano } from '@/lib/limites';
+import { AcaoDoPlano } from './AcaoDoPlano';
 import { CartoesPlanos } from './CartoesPlanos';
 import { PrecoDoPlano } from './PrecoDoPlano';
 
@@ -32,12 +33,12 @@ function Valor({ c }: { c: Celula }) {
 }
 
 /** Alternador Mensal | Anual + cartões (celular) + tabela (a partir de md). */
-export function PlanosVista() {
+export function PlanosVista({ pagamento = false, atual = 'gratis' }: { pagamento?: boolean; atual?: Plano }) {
   const [periodo, setPeriodo] = useState<Periodo>('mensal');
   return (
     <>
       <AlternadorPeriodo periodo={periodo} onChange={setPeriodo} />
-      <CartoesPlanos periodo={periodo} />
+      <CartoesPlanos periodo={periodo} pagamento={pagamento} atual={atual} />
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[640px] border-separate border-spacing-0 overflow-hidden rounded-lg border border-line bg-raised text-[14px]">
           <caption className="sr-only">Comparação dos planos Grátis, Basic e Pro</caption>
@@ -53,11 +54,7 @@ export function PlanosVista() {
                     <PrecoDoPlano centavosMes={p.centavosMes} periodo={periodo} />
                   </span>
                   <span className="mt-3 block">
-                    {p.id === 'gratis' ? (
-                      <span className="text-[12px] font-normal text-ink-muted">Seu plano hoje</span>
-                    ) : (
-                      <BotaoQueroPlano plano={p.id} periodo={periodo} destaque={p.id === 'pro'} />
-                    )}
+                    <AcaoDoPlano plano={p.id} periodo={periodo} pagamento={pagamento} atual={atual} />
                   </span>
                 </th>
               ))}

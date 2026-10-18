@@ -2,6 +2,9 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { EtiquetaPro } from '@/components/EtiquetaPro';
+import { LinkPro } from '@/components/LinkPro';
+import { useUso } from '@/lib/cliente/uso';
+import { cadeadoPro } from '@/lib/limites';
 import { MODALIDADES, RAIOS_KM, UFS_ORDENADAS, ufIgnoradaPeloRaio, VALORES_MINIMOS } from '@/lib/filtros';
 import { haQuanto, numero } from '@/lib/formato';
 import type { Cidade, FiltrosTela, PontoMapa } from '@/lib/tipos';
@@ -142,6 +145,8 @@ function PainelMunicipio({ ordenados, cidade, aoEscolher }: { ordenados: { p: Po
 }
 
 export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha = false }: Props) {
+  // Grátis e Basic com o pagamento ligado: órgão e raio viram cadeado (o servidor também barra).
+  const bloqueado = cadeadoPro(useUso());
   // Mais editais primeiro, depois ordem alfabética; a chave normalizada é calculada uma vez por lista de pontos.
   const ordenados = useMemo(
     () =>
@@ -235,44 +240,52 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha =
             })}
           </fieldset>
         </Popover>
-        <Popover
-          grande={emFolha}
-          nome="Órgão"
-          ativo={Boolean(filtros.orgao)}
-          rotulo={
-            <>
-              <span className="max-w-[14rem] truncate">{filtros.orgao ? `Órgão: ${filtros.orgao.nome}` : 'Órgão'}</span>
-              <EtiquetaPro />
-            </>
-          }
-        >
-          {(fechar) => (
-            <PainelOrgao
-              orgao={filtros.orgao}
-              aoEscolher={(o) => {
-                aoMudar({ ...filtros, orgao: o });
-                fechar();
-              }}
-            />
-          )}
-        </Popover>
-        <ChipSelect
-          grande={emFolha}
-          rotulo="Raio"
-          textoValor={!cidade ? 'escolha um município' : filtros.raio ? `${filtros.raio} km` : 'só o município'}
-          ativo={Boolean(cidade && filtros.raio)}
-          valor={cidade && filtros.raio ? String(filtros.raio) : ''}
-          desabilitado={!cidade}
-          pro
-          aoMudar={(v) => aoMudar({ ...filtros, raio: v ? Number(v) : null })}
-        >
-          <option value="">só o município</option>
-          {RAIOS_KM.map((km) => (
-            <option key={km} value={km}>
-              {km} km
-            </option>
-          ))}
-        </ChipSelect>
+        {bloqueado ? (
+          <LinkPro rotulo="Órgão" className={`${chip(false, emFolha)} gap-1.5`} />
+        ) : (
+          <Popover
+            grande={emFolha}
+            nome="Órgão"
+            ativo={Boolean(filtros.orgao)}
+            rotulo={
+              <>
+                <span className="max-w-[14rem] truncate">{filtros.orgao ? `Órgão: ${filtros.orgao.nome}` : 'Órgão'}</span>
+                <EtiquetaPro />
+              </>
+            }
+          >
+            {(fechar) => (
+              <PainelOrgao
+                orgao={filtros.orgao}
+                aoEscolher={(o) => {
+                  aoMudar({ ...filtros, orgao: o });
+                  fechar();
+                }}
+              />
+            )}
+          </Popover>
+        )}
+        {bloqueado ? (
+          <LinkPro rotulo="Raio" className={`${chip(false, emFolha)} gap-1.5`} />
+        ) : (
+          <ChipSelect
+            grande={emFolha}
+            rotulo="Raio"
+            textoValor={!cidade ? 'escolha um município' : filtros.raio ? `${filtros.raio} km` : 'só o município'}
+            ativo={Boolean(cidade && filtros.raio)}
+            valor={cidade && filtros.raio ? String(filtros.raio) : ''}
+            desabilitado={!cidade}
+            pro
+            aoMudar={(v) => aoMudar({ ...filtros, raio: v ? Number(v) : null })}
+          >
+            <option value="">só o município</option>
+            {RAIOS_KM.map((km) => (
+              <option key={km} value={km}>
+                {km} km
+              </option>
+            ))}
+          </ChipSelect>
+        )}
       </div>
       {emFolha ? null : (
         <p className="hidden shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted xl:block">

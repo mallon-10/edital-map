@@ -7,7 +7,7 @@ import { publicarUso } from '@/lib/cliente/uso';
 import { guardarUltimaBusca, guardarVolta, tomarVolta, type Volta } from '@/lib/cliente/volta';
 import type { Raio } from '@/lib/geo';
 import { buscaDoCampo, filtrosAtivos, normalizarTela, ordemEfetiva, paraParametros, recursosUsados } from '@/lib/filtros';
-import { LimiteAtingido, lerLimite, type Limite, type RespostaBusca } from '@/lib/limites';
+import { LimiteAtingido, lerLimite, lerRecursoPro, RecursoProBloqueado, type Limite, type RespostaBusca } from '@/lib/limites';
 import { resumirPontos } from '@/lib/painel';
 import { temTermo } from '@/lib/relevancia/termos';
 import type { Cidade, EditalResumo, FiltrosTela, Ordem, PontoMapa, ResultadoBusca } from '@/lib/tipos';
@@ -55,6 +55,8 @@ async function obter<T>(url: string, padrao: string): Promise<T> {
     // Limite do grátis (402): a tela mostra o cartão dos planos, não um erro.
     const limite = lerLimite(resposta.status, corpo);
     if (limite) throw new LimiteAtingido(limite);
+    // Raio ou órgão sem o Pro: a tela mostra o cartão do Pro.
+    if (lerRecursoPro(resposta.status, corpo)) throw new RecursoProBloqueado();
     const erro = typeof corpo === 'object' && corpo !== null ? (corpo as { erro?: unknown }).erro : null;
     throw new Error(typeof erro === 'string' && erro.trim() ? erro : padrao);
   }
@@ -71,6 +73,8 @@ type Props = {
   /** null quando a busca do endereço já bateu no limite do dia. */
   inicial: ResultadoBusca | null;
   limiteInicial: Limite | null;
+  /** A busca do endereço usa raio ou órgão sem o Pro. */
+  proInicial?: boolean;
   agoraInicial: string;
   atualizadoEm: string | null;
 };
@@ -78,7 +82,7 @@ type Props = {
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
 type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'limite' | 'tela' | 'selecionadoId'>;
 
-export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInicial, agoraInicial, atualizadoEm }: Props) {
+export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInicial, proInicial = false, agoraInicial, atualizadoEm }: Props) {
   const [filtros, setFiltros] = useState<FiltrosTela>(filtrosIniciais);
   // Celular: a parte da página pedida por último (botão da barra, cidade escolhida, aviso ou limite na lista), guardada
   // no endereço (`tela=lista` abre a página rolada até a lista). Só muda por ação explícita, nunca pela rolagem.
@@ -92,6 +96,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
   const [ativoBarra, setAtivoBarra] = useState<Tela>(estadoInicial.vista === 'lista' ? 'lista' : estadoInicial.tela);
   const [resultado, setResultado] = useState<ResultadoBusca>(inicial ?? SEM_RESULTADO);
   const [limite, setLimite] = useState<Limite | null>(limiteInicial);
+  const [proBloqueado, setProBloqueado] = useState(proInicial);
   const [agora, setAgora] = useState(() => new Date(agoraInicial));
   const [carregandoLista, setCarregandoLista] = useState(false);
   const [erroLista, setErroLista] = useState<string | null>(null);
@@ -182,6 +187,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         if (id !== pedidoLista.current) return 'velho';
         setResultado({ total: novo.total, editais: novo.editais });
         setLimite(null);
+        setProBloqueado(false);
         if (novo.buscasUsadas !== null) publicarUso({ buscas: novo.buscasUsadas });
         setSelecionadoId(novo.editais[0]?.id ?? null);
         setAgora(new Date());
@@ -189,7 +195,10 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         return 'ok';
       } catch (e) {
         if (id !== pedidoLista.current) return 'velho';
-        if (e instanceof LimiteAtingido) {
+        if (e instanceof RecursoProBloqueado) {
+          setProBloqueado(true);
+          setErroLista(null);
+        } else if (e instanceof LimiteAtingido) {
           // Busca nova além do limite do dia: o cartão dos planos no lugar da lista (o mapa fica com a última permitida).
           setLimite(e.limite);
           publicarUso({ buscas: e.limite.usados });
@@ -226,7 +235,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
     } catch (e) {
       if (id !== pedidoMapa.current) return;
       // Limite do dia: o mapa fica com a última busca permitida, sem aviso (o cartão aparece na lista).
-      if (e instanceof LimiteAtingido) {
+      if (e instanceof LimiteAtingido || e instanceof RecursoProBloqueado) {
         filtrosDoMapa.current = anterior;
         return;
       }
@@ -289,7 +298,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
     () => () => {
       rolagemPagina.current = window.scrollY;
     },
-    [carregarMapa, filtrosIniciais, estadoInicial, limiteInicial],
+    [carregarMapa, filtrosIniciais, estadoInicial, limiteInicial, proInicial],
   );
 
   // Montagem: voltando do edital (mesmo endereço), restaura busca, lista, tela e posições; senão, vale o que o servidor
@@ -316,7 +325,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
       if (estadoInicial.tela === 'lista') rolarPara('lista', 'auto');
       // Mesmos parâmetros da busca que o servidor já contou (a lista veio pronta): o mapa não conta de novo.
       // Busca do endereço bloqueada pelo limite: o mapa do Brasil todo, que não conta.
-      void carregarMapa(limiteInicial ? VAZIO : filtrosIniciais);
+      void carregarMapa(limiteInicial || proInicial ? VAZIO : filtrosIniciais);
     }
     return () => {
       const atual = paraGuardar.current;
@@ -329,7 +338,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         rolagemPagina: rolagemPagina.current,
       });
     };
-  }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial, limiteInicial]);
+  }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial, limiteInicial, proInicial]);
 
   /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança conta como busca. */
   function aplicar(pedido: FiltrosTela, opcoes: { abrirLista?: boolean } = {}) {
@@ -481,6 +490,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
             carregandoLista={carregandoLista}
             erro={erroLista}
             limite={limite}
+            proBloqueado={proBloqueado}
+            aoTirarFiltrosPro={() => aplicar({ ...filtros, orgao: null, raio: null })}
             pagina={pagina}
             ordem={ordemEfetiva(ordem, comTermo)}
             temTermo={comTermo}

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { lerFiltros } from './filtros';
 import {
   combinacaoBusca, CONVITE_PLANOS, corpoLimite, LIMITE_GRATIS, LimiteAtingido, lerLimite, mensagemLimite, STATUS_LIMITE,
-  bolinhas, leituraFaixa, LIMITES_PLANO, planoDoLimite, textoFaixa, tomSelo,
+  bolinhas, cadeadoPro, corpoRecursoPro, leituraFaixa, lerRecursoPro, LIMITES_PLANO, planoDoLimite, precisaPro, textoFaixa, tomSelo,
 } from './limites';
 
 const busca = (qs: string) => lerFiltros(new URLSearchParams(qs));
@@ -122,4 +122,28 @@ it('planoDoLimite pelo máximo do 402', () => {
   expect(planoDoLimite({ tipo: 'busca', maximo: 3 })).toBe('gratis');
   expect(planoDoLimite({ tipo: 'edital', maximo: 15 })).toBe('basic');
   expect(planoDoLimite({ tipo: 'busca', maximo: 300 })).toBe('pro');
+});
+
+describe('recursos Pro', () => {
+  const f = (qs: string) => lerFiltros(new URLSearchParams(qs));
+  it('raio e órgão pedem o Pro', () => {
+    expect(precisaPro(f('q=luva&uf=SC'))).toBe(false);
+    expect(precisaPro(f('q=luva&ibge=4209102&raio=50'))).toBe(true);
+    expect(precisaPro(f('q=luva&orgao=00394452000103'))).toBe(true);
+  });
+  it('402 de recurso Pro: lido como tal, nunca como limite do dia', () => {
+    const corpo: unknown = JSON.parse(JSON.stringify(corpoRecursoPro()));
+    expect(lerRecursoPro(402, corpo)).toBe(true);
+    expect(lerLimite(402, corpo)).toBeNull();
+    expect(lerRecursoPro(402, corpoLimite('busca', 3))).toBe(false);
+    expect(lerRecursoPro(429, corpo)).toBe(false);
+  });
+  it('cadeado na tela: só com o pagamento ligado, fora do Pro e fora do dono', () => {
+    expect(cadeadoPro(null)).toBe(false);
+    expect(cadeadoPro({ interno: false, plano: 'gratis', pagamento: false, buscas: 0, editais: 0 })).toBe(false);
+    expect(cadeadoPro({ interno: false, plano: 'gratis', pagamento: true, buscas: 0, editais: 0 })).toBe(true);
+    expect(cadeadoPro({ interno: false, plano: 'basic', pagamento: true, buscas: 0, editais: 0 })).toBe(true);
+    expect(cadeadoPro({ interno: false, plano: 'pro', pagamento: true, buscas: 0, editais: 0 })).toBe(false);
+    expect(cadeadoPro({ interno: true, plano: 'pro', pagamento: true, buscas: 0, editais: 0 })).toBe(false);
+  });
 });

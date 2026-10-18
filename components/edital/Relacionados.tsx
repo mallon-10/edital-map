@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { EtiquetaPro } from '@/components/EtiquetaPro';
 import { ESTILO_ETIQUETA, PONTO_ETIQUETA } from '@/components/inicio/estilos';
 import { etiqueta, moedaCurta } from '@/lib/formato';
@@ -5,10 +6,10 @@ import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalRelacionado } from '@/lib/tipos';
 import { LinkRelacionado } from './LinkRelacionado';
 
-type Props = { editais: EditalRelacionado[]; origem: string; agora: Date };
+type Props = { editais: EditalRelacionado[]; origem: string; agora: Date; maisNoBasic?: boolean };
 
 /** "Editais parecidos abertos": cards no estilo do CardCompacto, cada um levando à página do edital. Sem nenhum, o bloco não aparece. */
-export function Relacionados({ editais, origem, agora }: Props) {
+export function Relacionados({ editais, origem, agora, maisNoBasic = false }: Props) {
   if (editais.length === 0) return null;
   return (
     <section aria-labelledby="parecidos-titulo" className="rounded-lg border border-line bg-raised p-5">
@@ -46,6 +47,15 @@ export function Relacionados({ editais, origem, agora }: Props) {
           );
         })}
       </ul>
+      {maisNoBasic ? (
+        <p className="mt-3 text-[13px] text-ink-muted">
+          Veja todos os parecidos no{' '}
+          <Link href="/planos#basic" prefetch={false} className="font-semibold text-pin-strong hover:underline">
+            plano Basic
+          </Link>
+          .
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -88,7 +88,8 @@ export function decidirEdital(ctx: Contexto | null, slug: string): Promise<Decis
 /** Uso de hoje para a faixa do plano grátis. Interno: sem consulta. Sem visitante ou banco fora: null (a faixa não aparece). */
 export async function usoDoDia(ctx: Contexto | null): Promise<UsoHoje | null> {
   if (!ctx) return null;
-  if (semLimite(ctx)) return { interno: true, plano: ctx.dono ? 'pro' : 'gratis', buscas: 0, editais: 0 };
+  const pagamento = pagamentoLigado();
+  if (semLimite(ctx)) return { interno: true, plano: ctx.dono ? 'pro' : 'gratis', pagamento, buscas: 0, editais: 0 };
   const [{ data, error }, plano] = await Promise.all([
     supabaseServidor().rpc('uso_do_dia', { p_visitante: ctx.visitante }).single(),
     planoAtual(ctx),
@@ -98,5 +99,12 @@ export async function usoDoDia(ctx: Contexto | null): Promise<UsoHoje | null> {
     return null;
   }
   const linha = (data ?? {}) as { buscas?: unknown; editais?: unknown };
-  return { interno: false, plano, buscas: Number(linha.buscas ?? 0), editais: Number(linha.editais ?? 0) };
+  return { interno: false, plano, pagamento, buscas: Number(linha.buscas ?? 0), editais: Number(linha.editais ?? 0) };
+}
+
+/** Recurso Pro barrado para este navegador: pagamento ligado, fora do dono e plano diferente de Pro. */
+export async function semRecursoPro(ctx: Contexto | null): Promise<boolean> {
+  if (!pagamentoLigado()) return false;
+  if (ctx && semLimite(ctx)) return false;
+  return (await planoAtual(ctx)) !== 'pro';
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type RefObject } from 'react';
-import { CartaoLimite } from '@/components/CartaoLimite';
+import { CartaoLimite, CartaoPro } from '@/components/CartaoLimite';
 import { FONTE_COBERTURA } from '@/lib/cobertura';
 import { moedaCurta, numero } from '@/lib/formato';
 import { planoDoLimite, type Limite } from '@/lib/limites';
@@ -30,6 +30,9 @@ type Props = {
   erro: string | null;
   /** Busca nova além das 3 do dia: no lugar da lista, o cartão dos planos. */
   limite: Limite | null;
+  /** A busca usa raio ou órgão sem o plano Pro (402 recurso_pro): o cartão do Pro no lugar da lista. */
+  proBloqueado: boolean;
+  aoTirarFiltrosPro: () => void;
   pagina: number;
   /** Ordem que vale agora (ordemEfetiva). */
   ordem: Ordem;
@@ -87,6 +90,14 @@ export function ColunaLista(p: Props) {
   useEffect(() => {
     if (p.carregandoLista) p.listaRef.current?.scrollTo({ top: 0 });
   }, [p.carregandoLista, p.listaRef]);
+
+  if (p.proBloqueado) {
+    return (
+      <div className="flex flex-col p-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+        <CartaoPro aoTirarFiltros={p.aoTirarFiltrosPro} />
+      </div>
+    );
+  }
 
   if (p.limite) {
     return (

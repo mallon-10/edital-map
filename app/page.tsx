@@ -4,11 +4,12 @@ import { AtalhoRadar } from '@/components/AtalhoRadar';
 import { Cabecalho } from '@/components/Cabecalho';
 import { Explorador } from '@/components/Explorador';
 import { lerFiltros, paraParametros } from '@/lib/filtros';
+import { precisaPro } from '@/lib/limites';
 import { temBusca } from '@/lib/seo/textos';
 import { atualizadoEm, buscarEditais } from '@/lib/servidor/consultas';
 import { municipioPorIbge, orgaoPorCnpj } from '@/lib/servidor/nomes';
 import { contextoDaPagina } from '@/lib/servidor/registro';
-import { decidirBusca, usoDoDia } from '@/lib/servidor/uso';
+import { decidirBusca, semRecursoPro, usoDoDia } from '@/lib/servidor/uso';
 import { lerBuscaDaUrl, montarTela, paraUrlSearchParams, urlDaBusca } from '@/lib/urlBusca';
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -38,9 +39,11 @@ export default async function Inicio({ searchParams }: Props) {
   // Página e ordem vêm do endereço e não mudam a chave do limite (a mesma busca em outra página não conta de novo).
   const daLista = lerFiltros(paraParametros(filtros, { pagina: estado.pagina, ordem: estado.ordem }));
   const ctx = await contextoDaPagina();
-  const decisao = await decidirBusca(ctx, daLista, { avisar: true });
+  // Raio ou órgão sem o Pro: não busca nem conta; a lista mostra o cartão do Pro.
+  const proBloqueado = precisaPro(daLista) && (await semRecursoPro(ctx));
+  const decisao = proBloqueado ? ({ permitido: true, usados: null } as const) : await decidirBusca(ctx, daLista, { avisar: true });
   const [inicial, atualizado, uso] = await Promise.all([
-    decisao.permitido ? buscarEditais(daLista) : Promise.resolve(null),
+    decisao.permitido && !proBloqueado ? buscarEditais(daLista) : Promise.resolve(null),
     atualizadoEm(),
     usoDoDia(ctx),
   ]);
@@ -59,6 +62,7 @@ export default async function Inicio({ searchParams }: Props) {
         estadoInicial={estado}
         inicial={inicial}
         limiteInicial={decisao.permitido ? null : decisao.limite}
+        proInicial={proBloqueado}
         agoraInicial={agora}
         atualizadoEm={atualizado}
       />

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useUso } from '@/lib/cliente/uso';
 import type { UsoHoje } from '@/lib/limites';
 import { Logo } from './Logo';
 import { FaixaPlano } from './FaixaPlano';
@@ -20,6 +21,9 @@ type Props = {
  */
 export function Cabecalho({ uso }: Props) {
   const caminho = usePathname() ?? '/';
+  // Plano pago (não o dono): "Minha assinatura" no lugar de "Assinar Pro". A loja do uso tem o mais novo.
+  const u = useUso() ?? uso ?? null;
+  const pago = !u?.interno && (u?.plano === 'basic' || u?.plano === 'pro');
   const ativa = (href: string) => (href === '/' ? caminho === '/' : caminho === href || caminho.startsWith(href + '/'));
   const estilo = (href: string) => `${ABA} ${ativa(href) ? 'bg-pin-soft text-pin-strong' : 'text-ink hover:bg-sunken'}`;
   return (
@@ -47,13 +51,23 @@ export function Cabecalho({ uso }: Props) {
             Sobre
           </Link>
           <MenuConta />
-          <Link
-            href="/planos"
-            className="inline-flex h-9 shrink-0 items-center rounded-sm bg-pin px-2.5 text-[13px] font-semibold text-on-pin lg:h-10 lg:px-4 lg:text-sm"
-          >
-            <span className="lg:hidden">Assinar</span>
-            <span className="hidden lg:inline">Assinar Pro</span>
-          </Link>
+          {pago ? (
+            <Link
+              href="/assinatura"
+              className="inline-flex h-9 shrink-0 items-center rounded-sm border border-line-strong bg-raised px-2.5 text-[13px] font-semibold text-ink hover:bg-sunken lg:h-10 lg:px-4 lg:text-sm"
+            >
+              <span className="lg:hidden">Assinatura</span>
+              <span className="hidden lg:inline">Minha assinatura</span>
+            </Link>
+          ) : (
+            <Link
+              href="/planos"
+              className="inline-flex h-9 shrink-0 items-center rounded-sm bg-pin px-2.5 text-[13px] font-semibold text-on-pin lg:h-10 lg:px-4 lg:text-sm"
+            >
+              <span className="lg:hidden">Assinar</span>
+              <span className="hidden lg:inline">Assinar Pro</span>
+            </Link>
+          )}
         </div>
       </header>
       <FaixaPlano inicial={uso} />

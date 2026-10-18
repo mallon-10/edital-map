@@ -49,7 +49,7 @@ vi.mock('./plano', () => ({
   pagamentoLigado: () => m.ligado,
 }));
 
-const { avisarLimite, chaveDaBusca, decidirBusca, decidirEdital, inicioDoDiaDeBrasilia, usoDoDia } = await import('./uso');
+const { avisarLimite, chaveDaBusca, decidirBusca, decidirEdital, inicioDoDiaDeBrasilia, semRecursoPro, usoDoDia } = await import('./uso');
 
 const CTX = { visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, dono: false, ipHash: null };
 const SLUG = '00394452000103-2026-21982';
@@ -160,16 +160,16 @@ describe('decidirEdital', () => {
 describe('usoDoDia', () => {
   it('lê buscas e editais de hoje', async () => {
     m.resposta = { data: { buscas: 2, editais: 1 }, error: null };
-    expect(await usoDoDia(CTX)).toEqual({ interno: false, plano: 'gratis', buscas: 2, editais: 1 });
+    expect(await usoDoDia(CTX)).toEqual({ interno: false, plano: 'gratis', pagamento: true, buscas: 2, editais: 1 });
     expect(m.rpcs).toEqual([{ nome: 'uso_do_dia', args: { p_visitante: CTX.visitante } }]);
   });
   it('Basic: o plano vem junto', async () => {
     m.plano = 'basic';
     m.resposta = { data: { buscas: 4, editais: 0 }, error: null };
-    expect(await usoDoDia(CTX)).toEqual({ interno: false, plano: 'basic', buscas: 4, editais: 0 });
+    expect(await usoDoDia(CTX)).toEqual({ interno: false, plano: 'basic', pagamento: true, buscas: 4, editais: 0 });
   });
   it('dono: sem consulta; sem visitante: null; banco fora: null', async () => {
-    expect(await usoDoDia({ ...CTX, interno: true, dono: true })).toEqual({ interno: true, plano: 'pro', buscas: 0, editais: 0 });
+    expect(await usoDoDia({ ...CTX, interno: true, dono: true })).toEqual({ interno: true, plano: 'pro', pagamento: true, buscas: 0, editais: 0 });
     expect(await usoDoDia(null)).toBeNull();
     expect(m.rpcs).toEqual([]);
     const erro = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -187,5 +187,21 @@ describe('virada do dia em Brasília', () => {
   it('avisarLimite procura o evento desde o começo do dia de Brasília', async () => {
     await avisarLimite(CTX, 'busca', new Date('2026-10-18T02:00:00Z'));
     expect(m.filtrosEventos).toContainEqual(['eventos.criado_em >=', '2026-10-17T03:00:00.000Z']);
+  });
+});
+
+describe('semRecursoPro', () => {
+  it('pagamento desligado: nada é barrado', async () => {
+    m.ligado = false;
+    expect(await semRecursoPro(CTX)).toBe(false);
+  });
+  it('grátis e Basic barrados; Pro e dono liberados', async () => {
+    expect(await semRecursoPro(CTX)).toBe(true);
+    m.plano = 'basic';
+    expect(await semRecursoPro(CTX)).toBe(true);
+    m.plano = 'pro';
+    expect(await semRecursoPro(CTX)).toBe(false);
+    m.plano = 'gratis';
+    expect(await semRecursoPro({ ...CTX, interno: true, dono: true })).toBe(false);
   });
 });

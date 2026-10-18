@@ -1,4 +1,5 @@
-import { BotaoQueroPlano } from '@/components/planos/BotaoQueroPlano';
+import { AcaoDoPlano } from '@/components/planos/AcaoDoPlano';
+import type { Plano } from '@/lib/limites';
 import { LINHAS_PLANOS, PLANOS, type Celula, type Periodo } from '@/lib/planos';
 import { PrecoDoPlano } from './PrecoDoPlano';
 
@@ -26,7 +27,7 @@ function Valor({ c }: { c: Celula }) {
 }
 
 /** Os planos em cartões empilhados (celular); a tabela fica para telas largas. */
-export function CartoesPlanos({ periodo = 'mensal' }: { periodo?: Periodo }) {
+export function CartoesPlanos({ periodo = 'mensal', pagamento = false, atual = 'gratis' }: { periodo?: Periodo; pagamento?: boolean; atual?: Plano }) {
   return (
     <ul className="flex list-none flex-col gap-4 p-0 md:hidden" data-testid="cartoes-planos">
       {PLANOS.map((p) => (
@@ -37,11 +38,7 @@ export function CartoesPlanos({ periodo = 'mensal' }: { periodo?: Periodo }) {
           <h2 className="text-[17px] font-bold">{p.nome}</h2>
           <p className="mt-1"><PrecoDoPlano centavosMes={p.centavosMes} periodo={periodo} /></p>
           <div className="mt-3">
-            {p.id === 'gratis' ? (
-              <span className="text-[12px] text-ink-muted">Seu plano hoje</span>
-            ) : (
-              <BotaoQueroPlano plano={p.id} periodo={periodo} destaque={p.id === 'pro'} />
-            )}
+            <AcaoDoPlano plano={p.id} periodo={periodo} pagamento={pagamento} atual={atual} />
           </div>
           <dl className="mt-3 flex flex-col text-[14px]">
             {LINHAS_PLANOS.map((l) => (

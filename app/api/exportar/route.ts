@@ -2,16 +2,17 @@ import { gerarCsv, nomeArquivo } from '@/lib/csv';
 import { LIMITES } from '@/lib/eventos';
 import { lerFiltros } from '@/lib/filtros';
 import { SEM_CACHE } from '@/lib/http';
-import { corpoLimite, STATUS_LIMITE } from '@/lib/limites';
+import { corpoLimite, corpoRecursoPro, STATUS_LIMITE } from '@/lib/limites';
 import { exportarEditais } from '@/lib/servidor/consultas';
 import { contexto, exportacaoDentroDoLimite, gravarEvento } from '@/lib/servidor/registro';
-import { decidirBusca } from '@/lib/servidor/uso';
+import { decidirBusca, semRecursoPro } from '@/lib/servidor/uso';
 
 /** Planilha (CSV) com os editais da busca atual: os mesmos parâmetros de /api/busca, desde o começo, até 2.000 (e 4 MB). */
 export async function GET(request: Request) {
   const filtros = lerFiltros(new URL(request.url).searchParams);
   try {
     const ctx = await contexto();
+    if (await semRecursoPro(ctx)) return Response.json(corpoRecursoPro(), { status: STATUS_LIMITE, headers: SEM_CACHE });
     // A exportação usa a busca da tela (já contada); combinação nova além do limite do dia não exporta.
     const decisao = await decidirBusca(ctx, filtros, { avisar: false });
     if (!decisao.permitido) {

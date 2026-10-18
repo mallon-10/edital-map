@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { registrar } from '@/lib/cliente/registrar';
 
 const VARIANTE = {
@@ -9,9 +10,26 @@ const VARIANTE = {
   barra: 'flex w-full justify-center',
 } as const;
 
-type Props = { href: string; slug: string; variante?: keyof typeof VARIANTE };
+type Props = { href: string; slug: string; variante?: keyof typeof VARIANTE; bloqueado?: boolean };
 
-export function BotaoEditalOficial({ href, slug, variante = 'cabecalho' }: Props) {
+/** Link para o edital no portal de origem. No grátis, com o pagamento ligado, vira o cadeado do Basic (leva aos planos). */
+export function BotaoEditalOficial({ href, slug, variante = 'cabecalho', bloqueado = false }: Props) {
+  if (bloqueado) {
+    return (
+      <Link
+        href="/planos#basic"
+        prefetch={false}
+        onClick={() => registrar('quer_recurso', { recurso: 'plano_basic' })}
+        className={`${VARIANTE[variante]} h-11 items-center gap-2 rounded-sm bg-ink px-4 text-sm font-semibold text-surface hover:bg-[#1b3a63]`}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+          <rect x="5" y="11" width="14" height="10" rx="2" />
+          <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+        </svg>
+        Abrir edital oficial · Basic
+      </Link>
+    );
+  }
   return (
     <a
       href={href}

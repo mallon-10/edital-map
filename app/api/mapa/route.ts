@@ -1,9 +1,9 @@
 import { lerFiltros } from '@/lib/filtros';
 import { SEM_CACHE } from '@/lib/http';
-import { corpoLimite, STATUS_LIMITE } from '@/lib/limites';
+import { corpoLimite, corpoRecursoPro, precisaPro, STATUS_LIMITE } from '@/lib/limites';
 import { pontosDoMapa } from '@/lib/servidor/consultas';
 import { contexto } from '@/lib/servidor/registro';
-import { decidirBusca } from '@/lib/servidor/uso';
+import { decidirBusca, semRecursoPro } from '@/lib/servidor/uso';
 
 /**
  * Pontos do mapa. Recebe os mesmos parâmetros da lista (mesma chave no limite do dia: lista + mapa contam uma vez);
@@ -12,7 +12,12 @@ import { decidirBusca } from '@/lib/servidor/uso';
 export async function GET(request: Request) {
   const filtros = lerFiltros(new URL(request.url).searchParams);
   try {
-    const decisao = await decidirBusca(await contexto(), filtros, { avisar: false });
+    const ctx = await contexto();
+    // Raio e órgão são do Pro: barrados antes de contar a busca.
+    if (precisaPro(filtros) && (await semRecursoPro(ctx))) {
+      return Response.json(corpoRecursoPro(), { status: STATUS_LIMITE, headers: SEM_CACHE });
+    }
+    const decisao = await decidirBusca(ctx, filtros, { avisar: false });
     if (!decisao.permitido) {
       return Response.json(corpoLimite('busca', decisao.limite.usados, decisao.plano), { status: STATUS_LIMITE, headers: SEM_CACHE });
     }

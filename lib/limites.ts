@@ -18,9 +18,9 @@ const NOME_PLANO: Record<Plano, string> = { gratis: 'Grátis', basic: 'Basic', p
 
 /**
  * Uso do dia que a faixa mostra. `interno`: navegador do dono, sem limite e sem faixa. `plano` ausente = grátis
- * (o servidor sempre manda; o ausente é para usos antigos e testes).
+ * (o servidor sempre manda; o ausente é para usos antigos e testes). `pagamento`: a cobrança está ligada (cadeados valem).
  */
-export type UsoHoje = { interno: boolean; plano?: Plano; buscas: number; editais: number };
+export type UsoHoje = { interno: boolean; plano?: Plano; pagamento?: boolean; buscas: number; editais: number };
 /** Quantidades já usadas hoje. */
 type Usados = Pick<UsoHoje, 'buscas' | 'editais'>;
 
@@ -134,4 +134,34 @@ export class LimiteAtingido extends Error {
     this.name = 'LimiteAtingido';
     this.limite = limite;
   }
+}
+
+/** Filtros Pro (raio e órgão comprador): só no plano Pro, com o pagamento ligado (spec do pagamento, §6). */
+export function precisaPro(f: Pick<FiltrosBusca, 'raio' | 'orgao'>): boolean {
+  return Boolean(f.raio || f.orgao);
+}
+
+export const CODIGO_RECURSO_PRO = 'recurso_pro';
+export type CorpoRecursoPro = { erro: string; codigo: typeof CODIGO_RECURSO_PRO };
+
+export function corpoRecursoPro(): CorpoRecursoPro {
+  return { erro: 'Raio em km, órgão comprador e exportação são do plano Pro.', codigo: CODIGO_RECURSO_PRO };
+}
+
+/** 402 de recurso Pro (o limite do dia tem outro código). */
+export function lerRecursoPro(status: number, corpo: unknown): boolean {
+  return status === STATUS_LIMITE && typeof corpo === 'object' && corpo !== null && (corpo as { codigo?: unknown }).codigo === CODIGO_RECURSO_PRO;
+}
+
+/** Erro lançado no navegador quando a rota responde 402 de recurso Pro: a tela mostra o cartão do Pro. */
+export class RecursoProBloqueado extends Error {
+  constructor() {
+    super(corpoRecursoPro().erro);
+    this.name = 'RecursoProBloqueado';
+  }
+}
+
+/** Mostrar o cadeado dos recursos Pro: pagamento ligado, fora do Pro e fora do dono (o servidor confere de novo). */
+export function cadeadoPro(uso: UsoHoje | null): boolean {
+  return Boolean(uso?.pagamento) && !uso?.interno && uso?.plano !== 'pro';
 }

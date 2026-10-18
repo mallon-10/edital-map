@@ -26,7 +26,8 @@ import { modalidadeCurta } from '@/lib/participacao';
 import { resumoOportunidade } from '@/lib/resumoEdital';
 import { arquivosDoEdital, atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
 import { contextoDaPagina } from '@/lib/servidor/registro';
-import { decidirEdital, usoDoDia } from '@/lib/servidor/uso';
+import { pagamentoLigado, planoAtual } from '@/lib/servidor/plano';
+import { decidirEdital, semLimite, usoDoDia } from '@/lib/servidor/uso';
 import { avisoSituacao, rotuloSituacao } from '@/lib/situacao';
 import { assunto, lotesDaInfo, nomeProprio, paragrafos } from '@/lib/texto';
 import type { Edital, EditalRelacionado, ResumoItens } from '@/lib/tipos';
@@ -50,6 +51,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     robots: editalAberto(e, new Date()) ? undefined : { index: false, follow: true },
   };
 }
+
+/** Parecidos que o grátis vê (tabela de /planos: "3 primeiros"). */
+const PARECIDOS_GRATIS = 3;
 
 const ETIQUETA = 'rounded-xs bg-sunken px-2 py-0.5 text-xs font-semibold text-ink-muted';
 
@@ -83,6 +87,8 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   // Cada edital diferente aberto no dia conta no grátis (reabrir não conta). Interno e visitante sem cookie: liberado.
   const ctx = await contextoDaPagina();
   const decisao = await decidirEdital(ctx, e.slug);
+  // Grátis com o pagamento ligado: sem o link oficial e só 3 parecidos (tabela de /planos).
+  const gratisComCadeado = pagamentoLigado() && !(ctx && semLimite(ctx)) && (await planoAtual(ctx)) === 'gratis';
   const todos = modoItens === 'todos';
   // A faixa do plano grátis lê o uso depois de contar este edital.
   const [atualizado, detalhes, uso] = await Promise.all([
@@ -159,7 +165,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
           {/* "Abrir edital oficial" e "Compartilhar" ficam sempre à mão, inclusive com os editais grátis do dia esgotados:
               o cartão dos planos esconde o detalhe, não a fonte oficial. */}
           <div className="flex flex-wrap gap-2">
-            <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} />
+            <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} bloqueado={gratisComCadeado} />
             <BotaoCompartilhar titulo={titulo.titulo} slug={e.slug} />
             <Link
               href={`/alertas?uf=${e.uf}`}
@@ -172,7 +178,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
 
         {/* Celular: "Abrir edital oficial" fixo acima da barra de navegação (sempre, como no cabeçalho do computador). */}
         <div className="fixed inset-x-0 bottom-[var(--altura-barra)] z-30 border-t border-line bg-raised py-3 pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))] lg:hidden">
-          <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" />
+          <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" bloqueado={gratisComCadeado} />
         </div>
 
         {/* Tudo abaixo do cabeçalho fica atrás do cartão quando os editais grátis do dia acabaram.
@@ -194,7 +200,12 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
                   <h2 className="mb-3 text-[17px] font-bold">Itens da licitação</h2>
                   <ListaItens itens={detalhes.itens} total={detalhes.totalItens} slug={e.slug} todos={todos} />
                 </section>
-                <Relacionados editais={detalhes.parecidos} origem={e.slug} agora={agora} />
+                <Relacionados
+                  editais={gratisComCadeado ? detalhes.parecidos.slice(0, PARECIDOS_GRATIS) : detalhes.parecidos}
+                  origem={e.slug}
+                  agora={agora}
+                  maisNoBasic={gratisComCadeado && detalhes.parecidos.length > PARECIDOS_GRATIS}
+                />
                 <section className="rounded-lg border border-line bg-raised p-5">
                   <h2 className="mb-2 text-[17px] font-bold">Informações complementares</h2>
                   {lotes ? (

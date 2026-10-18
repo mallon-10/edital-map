@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { lerLimite } from '@/lib/limites';
+import { lerLimite, lerRecursoPro } from '@/lib/limites';
 
 const m = vi.hoisted(() => ({
   decidirBusca: vi.fn(),
@@ -7,14 +7,15 @@ const m = vi.hoisted(() => ({
   buscarEditais: vi.fn(),
   pontosDoMapa: vi.fn(),
   exportarEditais: vi.fn(),
+  semRecursoPro: vi.fn(),
 }));
 
 vi.mock('@/lib/servidor/registro', () => ({
-  contexto: async () => ({ visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, ipHash: null }),
+  contexto: async () => ({ visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, dono: false, ipHash: null }),
   exportacaoDentroDoLimite: async () => true,
   gravarEvento: async () => undefined,
 }));
-vi.mock('@/lib/servidor/uso', () => ({ decidirBusca: m.decidirBusca, usoDoDia: m.usoDoDia }));
+vi.mock('@/lib/servidor/uso', () => ({ decidirBusca: m.decidirBusca, usoDoDia: m.usoDoDia, semRecursoPro: m.semRecursoPro }));
 vi.mock('@/lib/servidor/consultas', () => ({
   buscarEditais: m.buscarEditais,
   pontosDoMapa: m.pontosDoMapa,
@@ -36,6 +37,7 @@ beforeEach(() => {
   m.buscarEditais.mockResolvedValue({ total: 1, editais: [] });
   m.pontosDoMapa.mockResolvedValue([]);
   m.exportarEditais.mockResolvedValue({ editais: [], total: 0 });
+  m.semRecursoPro.mockResolvedValue(false);
 });
 
 describe('/api/busca', () => {
@@ -115,5 +117,31 @@ describe('/api/contagem', () => {
     expect(r.headers.get('cache-control')).toContain('s-maxage=300');
     expect(m.buscarEditais).toHaveBeenCalledWith(expect.objectContaining({ q: 'luva', pagina: 1, ordem: 'prazo' }));
     expect(m.decidirBusca).not.toHaveBeenCalled();
+  });
+});
+
+describe('recursos Pro (pagamento ligado, fora do Pro)', () => {
+  it('busca com raio: 402 recurso_pro antes de contar a busca', async () => {
+    m.semRecursoPro.mockResolvedValue(true);
+    const r = await busca.GET(pedido('/api/busca?q=luva&ibge=4209102&raio=50'));
+    expect(r.status).toBe(402);
+    expect(lerRecursoPro(r.status, await r.json())).toBe(true);
+    expect(m.decidirBusca).not.toHaveBeenCalled();
+  });
+  it('busca sem raio nem órgão nem pergunta o plano', async () => {
+    m.semRecursoPro.mockResolvedValue(true);
+    expect((await busca.GET(pedido('/api/busca?q=luva'))).status).toBe(200);
+    expect(m.semRecursoPro).not.toHaveBeenCalled();
+  });
+  it('mapa com órgão: 402 recurso_pro', async () => {
+    m.semRecursoPro.mockResolvedValue(true);
+    const r = await mapa.GET(pedido('/api/mapa?q=luva&orgao=00394452000103'));
+    expect(lerRecursoPro(r.status, await r.json())).toBe(true);
+  });
+  it('exportar fora do Pro: 402 recurso_pro, sem exportar', async () => {
+    m.semRecursoPro.mockResolvedValue(true);
+    const r = await exportar.GET(pedido('/api/exportar?q=luva'));
+    expect(lerRecursoPro(r.status, await r.json())).toBe(true);
+    expect(m.exportarEditais).not.toHaveBeenCalled();
   });
 });
