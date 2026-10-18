@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { ehRobo } from '@/lib/robos';
 import { COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie } from '@/lib/visitante';
 
 /**
@@ -7,6 +8,8 @@ import { COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie } from '@/lib/visita
  * cada uma criaria um visitante). O cookie novo vai na resposta e na própria requisição (o cookies() da página já o lê).
  */
 export function proxy(request: NextRequest) {
+  // Robô de busca não devolve cookie: cada visita viraria um visitante novo gravando uso_diario. Sem cookie, nada conta.
+  if (ehRobo(request.headers.get('user-agent'))) return NextResponse.next();
   const { visitante, novo } = visitanteDoCookie(request.cookies.get(COOKIE_VISITANTE)?.value, () => crypto.randomUUID());
   if (!novo) return NextResponse.next();
   request.cookies.set(COOKIE_VISITANTE, visitante);
@@ -16,5 +19,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/edital/:path*', '/planos', '/alertas', '/sobre', '/api/:path*'],
+  matcher: ['/', '/edital/:path*', '/licitacoes/:path*', '/planos', '/alertas', '/sobre', '/api/:path*'],
 };
