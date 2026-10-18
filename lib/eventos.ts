@@ -30,16 +30,10 @@ export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
 ];
 export const UFS_BRASIL: readonly string[] = REGIOES.flatMap(([, ufs]) => ufs);
 
-/** Estados já marcados no formulário de alerta: só o `?uf=` válido da URL; sem ele, nenhum (o usuário escolhe). */
-export function ufsIniciaisAlerta(uf: string | undefined): string[] {
-  return uf && UFS_BRASIL.includes(uf) ? [uf] : [];
-}
-
-export const LIMITES = { eventosPorHora: 120, alertasPorHora: 5, exportacoesPorHora: 20, listaEsperaPorHora: 5, assinaturasPorHora: 10, cnpjPorHora: 20 } as const;
+export const LIMITES = { eventosPorHora: 120, exportacoesPorHora: 20, listaEsperaPorHora: 5, assinaturasPorHora: 10, cnpjPorHora: 20 } as const;
 export const SLUG_EDITAL = /^[0-9A-Z]{12}\d{2}-\d{4}-\d{1,7}$/;
 
 export type Detalhe = Record<string, string | number | null>;
-export type PedidoAlerta = { email: string; termos: string[]; ufs: string[] };
 export type Resultado<T> = { ok: true; valor: T } | { ok: false; erro: string; silencioso?: boolean };
 
 export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -76,34 +70,6 @@ export function validarEvento(corpo: unknown): Resultado<{ tipo: TipoEvento; det
   }
   if (!edital) return { ok: false, erro: 'edital inválido' };
   return { ok: true, valor: { tipo: tipo as TipoEvento, detalhe: { edital } } };
-}
-
-export function validarPedidoAlerta(corpo: unknown): Resultado<PedidoAlerta> {
-  if (!objeto(corpo)) return { ok: false, erro: 'Formulário inválido.' };
-  if (typeof corpo.site === 'string' && corpo.site.trim() !== '') return { ok: false, erro: 'robô', silencioso: true };
-
-  const email = typeof corpo.email === 'string' ? corpo.email.trim().toLowerCase() : '';
-  if (email.length > 254 || !EMAIL.test(email)) return { ok: false, erro: 'Confira o e-mail.' };
-
-  const termos: string[] = [];
-  for (const t of Array.isArray(corpo.termos) ? corpo.termos : []) {
-    if (typeof t !== 'string') continue;
-    const limpo = t.trim().replace(/\s+/g, ' ');
-    if (limpo.length < 2 || limpo.length > 60) continue;
-    if (!termos.some((x) => x.toLowerCase() === limpo.toLowerCase())) {
-      termos.push(limpo);
-      if (termos.length > 10) return { ok: false, erro: 'Use até 10 termos.' };
-    }
-  }
-  if (termos.length === 0) return { ok: false, erro: 'Diga pelo menos uma coisa que sua empresa vende.' };
-
-  const ufs = [
-    ...new Set((Array.isArray(corpo.ufs) ? corpo.ufs : []).filter((u): u is string => typeof u === 'string' && UFS_BRASIL.includes(u))),
-  ];
-  if (ufs.length === 0) return { ok: false, erro: 'Escolha pelo menos um estado.' };
-  if (corpo.aceite !== true) return { ok: false, erro: 'Confirme o uso do e-mail para o aviso.' };
-
-  return { ok: true, valor: { email, termos, ufs } };
 }
 
 /** Planos pagos da lista de espera de /planos. */

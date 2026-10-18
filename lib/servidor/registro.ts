@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
 import { ehDono, segredoDoEndereco, valorCookieDono } from '../dono';
 import type {
-  Detalhe, PedidoAlerta, PedidoListaEspera, TipoEvento, TipoEventoConta, TipoEventoOportunidades, TipoEventoServidor,
+  Detalhe, PedidoListaEspera, TipoEvento, TipoEventoConta, TipoEventoOportunidades, TipoEventoServidor,
 } from '../eventos';
 import { COOKIE_DONO, COOKIE_INTERNO, COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie, visitanteValido } from '../visitante';
 import { supabaseServidor } from './supabase';
@@ -116,16 +116,6 @@ export async function gravarEventoUmaVez(ctx: Contexto, tipo: TipoEventoConta, d
   if (data && data.length > 0) return false;
   await gravarEvento(ctx, tipo, detalhe);
   return true;
-}
-
-export async function gravarPedido(ctx: Contexto, pedido: PedidoAlerta): Promise<string> {
-  const { data, error } = await supabaseServidor()
-    .from('pedidos_alerta')
-    .insert({ email: pedido.email, termos: pedido.termos, ufs: pedido.ufs, visitante: ctx.visitante, interno: ctx.interno, ip_hash: ctx.ipHash })
-    .select('id')
-    .single();
-  if (error) throw new Error(`gravar pedido: ${error.message}`);
-  return String(data.id);
 }
 
 export async function gravarListaEspera(ctx: Contexto, pedido: PedidoListaEspera): Promise<void> {

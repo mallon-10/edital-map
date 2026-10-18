@@ -55,7 +55,7 @@ export default async function PaginaSobre({ searchParams }: Props) {
         <section className="flex flex-col gap-2">
           <h2 className="text-lg font-bold">Seu e-mail</h2>
           <p>
-            Se você criar um alerta, guardamos o e-mail, o que você vende e os estados escolhidos só para avisar quando os alertas estiverem prontos.
+            Se você criar um alerta, guardamos na sua conta o nome, os produtos e a área escolhida, e mandamos para o e-mail da conta os editais novos às 7h (e, no Pro, o resumo de segunda). Cada e-mail tem um link para parar de receber.
             Para apagar seus dados, escreva para o contato abaixo pedindo a exclusão.
           </p>
         </section>

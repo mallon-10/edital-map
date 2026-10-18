@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIMITES, RECURSOS_USADOS, TIPOS_EVENTO, UFS_BRASIL, ufsIniciaisAlerta, validarEvento, validarListaEspera, validarPedidoAlerta } from './eventos';
+import { LIMITES, RECURSOS_USADOS, TIPOS_EVENTO, UFS_BRASIL, validarEvento, validarListaEspera } from './eventos';
 
 const SLUG = '00394452000103-2026-21982';
 
@@ -82,60 +82,9 @@ describe('validarEvento', () => {
   });
 });
 
-describe('validarPedidoAlerta', () => {
-  const valido = { email: ' Ana@Empresa.com.br ', termos: ['EPI', ' botina  de segurança ', 'epi'], ufs: ['SC', 'PR', 'XX'], aceite: true, site: '' };
-
-  it('normaliza e-mail, termos (sem repetir) e UFs', () => {
-    expect(validarPedidoAlerta(valido)).toEqual({
-      ok: true, valor: { email: 'ana@empresa.com.br', termos: ['EPI', 'botina de segurança'], ufs: ['SC', 'PR'] },
-    });
-  });
-  it('campo-isca preenchido é recusado em silêncio', () => {
-    expect(validarPedidoAlerta({ ...valido, site: 'http://spam' })).toEqual({ ok: false, erro: 'robô', silencioso: true });
-  });
-  it('recusa e-mail inválido', () => {
-    expect(validarPedidoAlerta({ ...valido, email: 'ana@' })).toEqual({ ok: false, erro: 'Confira o e-mail.' });
-  });
-  it('exige ao menos um termo e no máximo 10', () => {
-    expect(validarPedidoAlerta({ ...valido, termos: ['a'] }).ok).toBe(false);
-    const onze = Array.from({ length: 11 }, (_, i) => `termo ${i}`);
-    expect(validarPedidoAlerta({ ...valido, termos: onze })).toEqual({ ok: false, erro: 'Use até 10 termos.' });
-  });
-  it('recusa 10.000 termos distintos', () => {
-    const muitos = Array.from({ length: 10_000 }, (_, i) => `termo ${i}`);
-    expect(validarPedidoAlerta({ ...valido, termos: muitos })).toEqual({ ok: false, erro: 'Use até 10 termos.' });
-  });
-  it('para de ler os termos ao passar do teto', () => {
-    let lidos = 0;
-    const muitos = new Proxy(Array.from({ length: 10_000 }, (_, i) => `termo ${i}`), {
-      get(alvo, chave, receptor) {
-        if (typeof chave === 'string' && /^\d+$/.test(chave)) lidos++;
-        return Reflect.get(alvo, chave, receptor);
-      },
-    });
-    validarPedidoAlerta({ ...valido, termos: muitos });
-    expect(lidos).toBeLessThanOrEqual(11);
-  });
-  it('exige UF e aceite', () => {
-    expect(validarPedidoAlerta({ ...valido, ufs: [] }).ok).toBe(false);
-    expect(validarPedidoAlerta({ ...valido, aceite: false })).toEqual({ ok: false, erro: 'Confirme o uso do e-mail para o aviso.' });
-  });
+describe('UFS_BRASIL', () => {
   it('lista as 27 UFs', () => {
     expect(UFS_BRASIL).toHaveLength(27);
-  });
-});
-
-describe('ufsIniciaisAlerta', () => {
-  it('sem ?uf= nao pre-seleciona nenhum estado', () => {
-    expect(ufsIniciaisAlerta(undefined)).toEqual([]);
-    expect(ufsIniciaisAlerta('')).toEqual([]);
-  });
-  it('uf valida na URL vira a unica pre-selecao', () => {
-    expect(ufsIniciaisAlerta('SP')).toEqual(['SP']);
-  });
-  it('uf fora da lista ou em outro formato e ignorada', () => {
-    expect(ufsIniciaisAlerta('XX')).toEqual([]);
-    expect(ufsIniciaisAlerta('sc')).toEqual([]);
   });
 });
 

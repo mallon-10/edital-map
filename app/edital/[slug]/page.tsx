@@ -172,7 +172,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             <BotaoSalvar id={e.id} variante="botao" />
             <BotaoDescartar id={e.id} />
             <Link
-              href={`/alertas?uf=${e.uf}`}
+              href="/alertas"
               className="inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
             >
               Criar alerta para editais parecidos
