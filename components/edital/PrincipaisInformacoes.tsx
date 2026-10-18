@@ -40,6 +40,7 @@ export function PrincipaisInformacoes({ edital: e, resumo, agora }: { edital: Ed
         <Cartao rotulo="Como participar">
           {forma ? <span className="text-[15px] font-semibold">{forma}</span> : null}
           <span className="text-[13px] text-ink-muted">Onde: {sistemaDaDisputa(e.link_origem)}</span>
+          {criterioTexto(resumo.criterios) ? null : <span className="text-[13px] text-ink-muted">Critério de julgamento: não informado pelo órgão</span>}
         </Cartao>
         <Cartao rotulo="Quem compra">
           <span className="text-[15px] font-semibold">{nomeProprio(e.orgao_nome)}</span>
@@ -50,7 +51,11 @@ export function PrincipaisInformacoes({ edital: e, resumo, agora }: { edital: Ed
           <Cartao rotulo="ME/EPP" destaque={resumo.exclusivos > 0 || resumo.cota > 0}>
             <span className="text-[15px] font-semibold">{meEpp}</span>
           </Cartao>
-        ) : null}
+        ) : (
+          <Cartao rotulo="ME/EPP">
+            <span className="text-[15px] text-ink-muted">Não informado pelo órgão</span>
+          </Cartao>
+        )}
       </div>
     </section>
   );
