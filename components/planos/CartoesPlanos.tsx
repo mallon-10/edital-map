@@ -36,7 +36,7 @@ export function CartoesPlanos({ periodo = 'mensal', pagamento = false, atual = '
           className={`min-w-0 rounded-lg border bg-raised p-4 ${p.id === 'pro' ? 'border-pin bg-pin-soft/40' : 'border-line'}`}
         >
           <h2 className="text-[17px] font-bold">{p.nome}</h2>
-          <p className="mt-1"><PrecoDoPlano centavosMes={p.centavosMes} periodo={periodo} /></p>
+          <p className="mt-1"><PrecoDoPlano plano={p} periodo={periodo} /></p>
           <div className="mt-3">
             <AcaoDoPlano plano={p.id} periodo={periodo} pagamento={pagamento} atual={atual} />
           </div>

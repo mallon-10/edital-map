@@ -1,18 +1,19 @@
 import type { PlanoPago } from './eventos';
 import { LIMITE_GRATIS } from './limites';
 
-/** Planos da spec de Planos (docs/superpowers/specs/2026-10-16-fase-3-planos-design.md §2). Mensal e anual (anual = 10 mensalidades, 2 meses grátis). */
+/**
+ * Planos (spec do pagamento, revisão 2, §2): só Grátis e Pro. O Basic saiu de linha; `'basic'` continua no tipo só como
+ * valor antigo aceito pelo banco (perfis.plano, assinaturas), nada novo o cria.
+ */
 export type IdPlano = 'gratis' | PlanoPago;
 export type Periodo = 'mensal' | 'anual';
 export const PERIODOS: readonly Periodo[] = ['mensal', 'anual'];
-export const PLANOS: ReadonlyArray<{ id: IdPlano; nome: string; centavosMes: number }> = [
-  { id: 'gratis', nome: 'Grátis', centavosMes: 0 },
-  { id: 'basic', nome: 'Basic', centavosMes: 4990 },
-  { id: 'pro', nome: 'Pro', centavosMes: 8990 },
-];
 
-/** Meses cobrados no plano anual (12 meses pagando 10). */
-export const MESES_COBRADOS_ANUAL = 10;
+export type PlanoVendido = { id: 'gratis' | 'pro'; nome: string; centavosMes: number; centavosAno: number };
+export const PLANOS: readonly PlanoVendido[] = [
+  { id: 'gratis', nome: 'Grátis', centavosMes: 0, centavosAno: 0 },
+  { id: 'pro', nome: 'Pro', centavosMes: 3790, centavosAno: 34990 },
+];
 
 /** Centavos -> "R$ 1.499,00" (pt-BR, sem depender do Intl). */
 export function formatarReais(centavos: number): string {
@@ -22,45 +23,33 @@ export function formatarReais(centavos: number): string {
 
 export type PrecoPlano = { principal: string; equivalente: string | null };
 
-/** Preço de um plano no período: principal ("R$ 499,00/ano") e, no anual, o equivalente por mês. */
-export function precoDoPlano(centavosMes: number, periodo: Periodo): PrecoPlano {
-  if (centavosMes === 0) return { principal: 'R$ 0', equivalente: null };
-  if (periodo === 'mensal') return { principal: `${formatarReais(centavosMes)}/mês`, equivalente: null };
-  const anual = centavosMes * MESES_COBRADOS_ANUAL;
-  return { principal: `${formatarReais(anual)}/ano`, equivalente: `${formatarReais(Math.round(anual / 12))}/mês · 2 meses grátis` };
+/** Preço do plano no período: principal ("R$ 349,90/ano") e, no anual, o equivalente por mês e a economia. */
+export function precoDoPlano(p: Pick<PlanoVendido, 'centavosMes' | 'centavosAno'>, periodo: Periodo): PrecoPlano {
+  if (p.centavosMes === 0) return { principal: 'R$ 0', equivalente: null };
+  if (periodo === 'mensal') return { principal: `${formatarReais(p.centavosMes)}/mês`, equivalente: null };
+  const economia = Math.round((1 - p.centavosAno / (p.centavosMes * 12)) * 100);
+  return {
+    principal: `${formatarReais(p.centavosAno)}/ano`,
+    equivalente: `${formatarReais(Math.round(p.centavosAno / 12))}/mês · economize ${economia}%`,
+  };
 }
 
 /** Célula da tabela: texto, ✓ (true) ou — (false); `emBreve` marca o que ainda não existe. */
 export type Celula = { valor: string | boolean; emBreve?: boolean };
-export type LinhaPlanos = { recurso: string; gratis: Celula; basic: Celula; pro: Celula };
+export type LinhaPlanos = { recurso: string; gratis: Celula; pro: Celula };
 
 export const LINHAS_PLANOS: readonly LinhaPlanos[] = [
-  { recurso: 'Buscas por dia', gratis: { valor: String(LIMITE_GRATIS.busca) }, basic: { valor: '15' }, pro: { valor: 'Ilimitadas' } },
-  { recurso: 'Editais abertos por dia', gratis: { valor: String(LIMITE_GRATIS.edital) }, basic: { valor: '15' }, pro: { valor: 'Ilimitados' } },
-  { recurso: 'Botão "Abrir edital oficial"', gratis: { valor: false }, basic: { valor: true }, pro: { valor: true } },
-  { recurso: 'Filtros (UF, município, valor, modalidade, prazo)', gratis: { valor: true }, basic: { valor: true }, pro: { valor: true } },
-  { recurso: 'Editais salvos', gratis: { valor: false }, basic: { valor: 'Até 10', emBreve: true }, pro: { valor: 'Ilimitados', emBreve: true } },
-  {
-    recurso: 'Alertas por e-mail às 7h (busca salva)',
-    gratis: { valor: false },
-    basic: { valor: '1 busca', emBreve: true },
-    pro: { valor: 'Ilimitados', emBreve: true },
-  },
-  {
-    recurso: 'Vencimentos por e-mail (3 dias e 1 dia antes do prazo de um salvo)',
-    gratis: { valor: false },
-    basic: { valor: true, emBreve: true },
-    pro: { valor: true, emBreve: true },
-  },
-  { recurso: 'Editais parecidos abertos', gratis: { valor: '3 primeiros' }, basic: { valor: true }, pro: { valor: true } },
-  { recurso: 'Filtros Pro (raio em km e órgão comprador)', gratis: { valor: false }, basic: { valor: false }, pro: { valor: true } },
-  { recurso: 'Exportar a lista para planilha', gratis: { valor: false }, basic: { valor: false }, pro: { valor: true } },
-  {
-    recurso: 'Preço de referência, quem venceu e resumo com IA',
-    gratis: { valor: false },
-    basic: { valor: false },
-    pro: { valor: true, emBreve: true },
-  },
+  { recurso: 'Buscas por dia', gratis: { valor: String(LIMITE_GRATIS.busca) }, pro: { valor: 'Ilimitadas' } },
+  { recurso: 'Editais abertos por dia', gratis: { valor: String(LIMITE_GRATIS.edital) }, pro: { valor: 'Ilimitados' } },
+  { recurso: 'Botão "Abrir edital oficial"', gratis: { valor: false }, pro: { valor: true } },
+  { recurso: 'Filtros (UF, município, valor, modalidade, prazo)', gratis: { valor: true }, pro: { valor: true } },
+  { recurso: 'Filtros Pro (raio em km e órgão comprador)', gratis: { valor: false }, pro: { valor: true } },
+  { recurso: 'Exportar a lista para planilha', gratis: { valor: false }, pro: { valor: true } },
+  { recurso: 'Editais parecidos abertos', gratis: { valor: '3 primeiros' }, pro: { valor: true } },
+  { recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true, emBreve: true } },
+  { recurso: 'Alertas por e-mail às 7h (busca salva)', gratis: { valor: false }, pro: { valor: true, emBreve: true } },
+  { recurso: 'Editais salvos', gratis: { valor: false }, pro: { valor: 'Ilimitados', emBreve: true } },
+  { recurso: 'Preço de referência, quem venceu e resumo com IA', gratis: { valor: false }, pro: { valor: true, emBreve: true } },
 ];
 
 /** A tabela descreve os planos de quando o pagamento abrir; até lá, o que já existe está aberto a todos. */

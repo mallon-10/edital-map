@@ -7,19 +7,18 @@ const linha = (recurso: string) => {
   if (!l) throw new Error(`linha ausente: ${recurso}`);
   return l;
 };
+const pro = PLANOS.find((p) => p.id === 'pro')!;
 
 describe('tabela de planos', () => {
-  it('preços mensais da spec de Planos', () => {
-    expect(PLANOS.map((p) => [p.id, p.nome, precoDoPlano(p.centavosMes, 'mensal').principal])).toEqual([
+  it('só Grátis e Pro; Pro a R$ 37,90/mês', () => {
+    expect(PLANOS.map((p) => [p.id, p.nome, precoDoPlano(p, 'mensal').principal])).toEqual([
       ['gratis', 'Grátis', 'R$ 0'],
-      ['basic', 'Basic', 'R$ 49,90/mês'],
-      ['pro', 'Pro', 'R$ 89,90/mês'],
+      ['pro', 'Pro', 'R$ 37,90/mês'],
     ]);
   });
-  it('anual = 10 mensalidades, com o equivalente por mês arredondado', () => {
-    expect(precoDoPlano(4990, 'anual')).toEqual({ principal: 'R$ 499,00/ano', equivalente: 'R$ 41,58/mês · 2 meses grátis' });
-    expect(precoDoPlano(8990, 'anual')).toEqual({ principal: 'R$ 899,00/ano', equivalente: 'R$ 74,92/mês · 2 meses grátis' });
-    expect(precoDoPlano(0, 'anual')).toEqual({ principal: 'R$ 0', equivalente: null });
+  it('anual R$ 349,90, com o equivalente por mês e a economia', () => {
+    expect(precoDoPlano(pro, 'anual')).toEqual({ principal: 'R$ 349,90/ano', equivalente: 'R$ 29,16/mês · economize 23%' });
+    expect(precoDoPlano(PLANOS[0], 'anual')).toEqual({ principal: 'R$ 0', equivalente: null });
   });
   it('formata reais em pt-BR', () => {
     expect(formatarReais(5)).toBe('R$ 0,05');
@@ -30,18 +29,19 @@ describe('tabela de planos', () => {
       const v = l.pro.valor;
       if (typeof v === 'string') expect(v).toMatch(/^Ilimitad/);
     }
-    expect(linha('Alertas por e-mail às 7h (busca salva)').pro).toEqual({ valor: 'Ilimitados', emBreve: true });
   });
-  it('limites do Grátis iguais aos que bloqueiam; Basic 15; Pro ilimitado', () => {
+  it('limites do Grátis iguais aos que bloqueiam; Pro ilimitado; link oficial só no Pro', () => {
     expect(linha('Buscas por dia').gratis.valor).toBe(String(LIMITE_GRATIS.busca));
     expect(linha('Editais abertos por dia').gratis.valor).toBe(String(LIMITE_GRATIS.edital));
-    expect(linha('Buscas por dia').basic.valor).toBe('15');
     expect(linha('Editais abertos por dia').pro.valor).toBe('Ilimitados');
+    expect(linha('Botão "Abrir edital oficial"')).toMatchObject({ gratis: { valor: false }, pro: { valor: true } });
   });
-  it('o que ainda não existe está marcado "em breve"', () => {
-    for (const r of ['Editais salvos', 'Alertas por e-mail às 7h (busca salva)', 'Vencimentos por e-mail (3 dias e 1 dia antes do prazo de um salvo)']) {
-      expect(linha(r).basic.emBreve && linha(r).pro.emBreve).toBe(true);
-    }
-    expect(linha('Preço de referência, quem venceu e resumo com IA').pro.emBreve).toBe(true);
+  it('o resumo semanal é do Pro e ainda está "em breve"', () => {
+    expect(linha('Resumo semanal por e-mail (segunda, 7h)')).toEqual({
+      recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true, emBreve: true },
+    });
+  });
+  it('nenhuma linha fala do Basic', () => {
+    for (const l of LINHAS_PLANOS) expect(Object.keys(l).sort()).toEqual(['gratis', 'pro', 'recurso']);
   });
 });

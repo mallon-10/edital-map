@@ -77,10 +77,7 @@ describe('ativarChave', () => {
 });
 
 describe('aplicarPedido (webhook)', () => {
-  const CFG = {
-    segredoWebhook: 's',
-    ofertas: { basic: { mensal: 't8o4sst', anual: 'm2nvms3' }, pro: { mensal: 'irpv92e', anual: 'iuy9gzb' } },
-  };
+  const CFG = { segredoWebhook: 's', clienteId: 'id', clienteSegredo: 'sec', ofertas: { mensal: 'irpv92e', anual: 'iuy9gzb' } };
   const AGORA = new Date('2026-10-18T12:00:00Z');
   const pedido = (extra: Record<string, unknown> = {}) => ({
     evento: 'purchase_approved', pedido: 'ped-1', status: 'paid', ofertaId: 'irpv92e', assinaturaCakto: 'sub_1',

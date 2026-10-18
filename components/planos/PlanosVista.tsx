@@ -41,17 +41,17 @@ export function PlanosVista({ pagamento = false, atual = 'gratis' }: { pagamento
       <CartoesPlanos periodo={periodo} pagamento={pagamento} atual={atual} />
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[640px] border-separate border-spacing-0 overflow-hidden rounded-lg border border-line bg-raised text-[14px]">
-          <caption className="sr-only">Comparação dos planos Grátis, Basic e Pro</caption>
+          <caption className="sr-only">Comparação dos planos Grátis e Pro</caption>
           <thead>
             <tr>
-              <th scope="col" className="w-[38%] border-b border-line p-4 text-left align-bottom text-[13px] font-semibold text-ink-muted">
+              <th scope="col" className="w-[50%] border-b border-line p-4 text-left align-bottom text-[13px] font-semibold text-ink-muted">
                 Recurso
               </th>
               {PLANOS.map((p) => (
                 <th key={p.id} scope="col" className={`border-b border-line p-4 text-center align-bottom ${p.id === 'pro' ? 'bg-pin-soft' : ''}`}>
                   <span className="block text-[17px] font-bold">{p.nome}</span>
                   <span className="mt-1 block">
-                    <PrecoDoPlano centavosMes={p.centavosMes} periodo={periodo} />
+                    <PrecoDoPlano plano={p} periodo={periodo} />
                   </span>
                   <span className="mt-3 block">
                     <AcaoDoPlano plano={p.id} periodo={periodo} pagamento={pagamento} atual={atual} />
@@ -65,7 +65,6 @@ export function PlanosVista({ pagamento = false, atual = 'gratis' }: { pagamento
               <tr key={l.recurso}>
                 <th scope="row" className="border-b border-line p-4 text-left font-semibold">{l.recurso}</th>
                 <td className={CELULA}><Valor c={l.gratis} /></td>
-                <td className={CELULA}><Valor c={l.basic} /></td>
                 <td className={`${CELULA} bg-pin-soft/40`}><Valor c={l.pro} /></td>
               </tr>
             ))}
