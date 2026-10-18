@@ -101,7 +101,7 @@ grant select, insert, update, delete on table public.envios_alerta to service_ro
 -- 3. Plano da conta (gratis | pro): perfis.plano (marcação manual) ou uma assinatura válida (0015: não estornada e
 -- valido_ate no futuro; cancelada vale até valido_ate) cujo e-mail do comprador é o e-mail da conta. 'basic' (plano
 -- descontinuado; linhas antigas) vale como Pro até o fim da validade. O plano do navegador (plano_do_visitante) o site
--- soma por fora. security definer: lê auth.users.
+-- soma por fora. E-mails comparados com lower(trim(...)) dos dois lados. security definer: lê auth.users.
 create function public.plano_da_conta(p_user uuid)
 returns text language sql stable security definer set search_path = '' as $$
   with planos as (
@@ -109,7 +109,7 @@ returns text language sql stable security definer set search_path = '' as $$
     union all
     select a.plano
     from auth.users u
-    join public.assinaturas a on a.email = lower(u.email)
+    join public.assinaturas a on lower(trim(a.email)) = lower(trim(u.email))
     where u.id = p_user and a.status <> 'estornada' and a.valido_ate > now()
   )
   select case when bool_or(plano in ('pro', 'basic')) then 'pro' else 'gratis' end
@@ -176,8 +176,9 @@ language sql stable security definer set search_path = '' as $$
 $$;
 
 -- Editais de um alerta: a mesma busca do radar (abertas_unicas + acertos_busca, ordem por relevância), só os que
--- entraram no espelho (sincronizada_em) ou mudaram no PNCP (atualizada_pncp_em) depois de p_desde, sem os já enviados
--- para este alerta e sem os que a conta descartou. total = quantos casam (antes do limite).
+-- entraram no espelho (sincronizada_em) ou mudaram no PNCP (atualizada_pncp_em) depois de p_desde (com 15 min de folga:
+-- itens que chegam logo depois de uma rodada não perdem o edital; a chave de alertas_enviados evita repetir), sem os já
+-- enviados para este alerta e sem os que a conta descartou. total = quantos casam (antes do limite).
 create function public.editais_do_alerta(
   p_alerta uuid, p_desde timestamptz,
   p_termos text[], p_relacionados text[] default null, p_excluir text[] default null,
@@ -211,7 +212,7 @@ begin
            u.situacao_id, a.pontuacao, count(*) over ()
     from public.abertas_unicas(v_tq, v_tq_excluir, p_ufs, p_valor_min, p_modalidades, null, null, null, null, p_ibges, p_valor_max, p_so_me_epp) u
     cross join lateral public.acertos_busca(u.busca, u.itens_palavras, v_termos, v_tqs, v_frases, v_digitados, v_relacionados) a
-    where greatest(u.sincronizada_em, u.atualizada_pncp_em) > p_desde
+    where greatest(u.sincronizada_em, u.atualizada_pncp_em) > p_desde - interval '15 minutes'
       and not exists (select 1 from public.alertas_enviados e where e.alerta_id = p_alerta and e.contratacao_id = u.id)
       and not exists (select 1 from public.salvos s where s.user_id = v_user and s.contratacao_id = u.id and s.status = 'descartado')
     order by a.pontuacao desc, u.encerramento_em, u.id
@@ -445,8 +446,8 @@ language sql stable as $$
   where p_sem_ids is null or u.id <> all(p_sem_ids)
 $$;
 
--- 5. Retenção (0006/0009/0015): contratação salva fica (descartada sai junto com ela); alertas_enviados de
--- contratações que já saíram e históricos de envio com mais de 180 dias também saem. Devolve quantas contratações apagou.
+-- 5. Retenção (0006/0009/0015): contratação salva fica (descartada sai junto com ela); alertas_enviados e descartados
+-- de contratações que já saíram e históricos de envio com mais de 180 dias também saem. Devolve quantas contratações apagou.
 create or replace function public.aplicar_retencao()
 returns bigint language sql as $$
   delete from public.uso_diario where dia < (now() at time zone 'America/Sao_Paulo')::date;
@@ -455,6 +456,7 @@ returns bigint language sql as $$
   delete from public.envios_alerta where iniciado_em < now() - interval '180 days';
   delete from public.envios_resumo where iniciado_em < now() - interval '180 days';
   delete from public.alertas_enviados e where not exists (select 1 from public.contratacoes c where c.id = e.contratacao_id);
+  delete from public.salvos s where s.status = 'descartado' and not exists (select 1 from public.contratacoes c where c.id = s.contratacao_id);
   delete from public.salvos s using public.contratacoes c
    where s.contratacao_id = c.id and s.status = 'descartado'
      and (c.encerramento_em is null or c.encerramento_em < now() - interval '7 days');

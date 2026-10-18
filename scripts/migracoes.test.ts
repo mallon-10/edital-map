@@ -484,7 +484,7 @@ describe('migração 0016 (Minhas Oportunidades e alertas)', () => {
     const c = corpo('create function public.plano_da_conta(');
     expect(c).toContain("security definer set search_path = ''");
     expect(c).toContain('select p.plano from public.perfis p where p.id = p_user');
-    expect(c).toContain('join public.assinaturas a on a.email = lower(u.email)');
+    expect(c).toContain('join public.assinaturas a on lower(trim(a.email)) = lower(trim(u.email))');
     expect(c).toContain("a.status <> 'estornada' and a.valido_ate > now()");
     expect(c).toContain("select case when bool_or(plano in ('pro', 'basic')) then 'pro' else 'gratis' end");
   });
@@ -529,7 +529,8 @@ describe('migração 0016 (Minhas Oportunidades e alertas)', () => {
     expect(c).toContain(lateral);
     expect(lista).toContain(lateral);
     expect(c).toContain('from public.abertas_unicas(v_tq, v_tq_excluir, p_ufs, p_valor_min, p_modalidades, null, null, null, null, p_ibges, p_valor_max, p_so_me_epp) u');
-    expect(c).toContain('where greatest(u.sincronizada_em, u.atualizada_pncp_em) > p_desde');
+    // Folga de 15 min: itens que chegam logo depois de uma rodada não perdem o edital (a chave dupla evita repetir).
+    expect(c).toContain("where greatest(u.sincronizada_em, u.atualizada_pncp_em) > p_desde - interval '15 minutes'");
     expect(c).toContain('not exists (select 1 from public.alertas_enviados e where e.alerta_id = p_alerta and e.contratacao_id = u.id)');
     expect(c).toContain("s.status = 'descartado')");
     expect(c).toContain('order by a.pontuacao desc, u.encerramento_em, u.id');
@@ -552,6 +553,7 @@ describe('migração 0016 (Minhas Oportunidades e alertas)', () => {
       "delete from public.envios_alerta where iniciado_em < now() - interval '180 days';",
       "delete from public.envios_resumo where iniciado_em < now() - interval '180 days';",
       "where s.contratacao_id = c.id and s.status = 'descartado'",
+      "delete from public.salvos s where s.status = 'descartado' and not exists (select 1 from public.contratacoes c where c.id = s.contratacao_id);",
       'and not exists (select 1 from public.salvos s where s.contratacao_id = c.id)',
     ]) {
       expect(c).toContain(l);

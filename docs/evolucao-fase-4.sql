@@ -71,7 +71,7 @@ rollback;
 -- assinaturas com o e-mail de alguma conta (pode ser 0 linhas).
 select public.plano_da_conta((select id from auth.users where email = '<e-mail do dono>')) as dono,
        public.plano_da_conta('00000000-0000-0000-0000-000000000000') as ninguem;
-select a.plano, a.status, a.valido_ate > now() as valida from public.assinaturas a join auth.users u on a.email = lower(u.email);
+select a.plano, a.status, a.valido_ate > now() as valida from public.assinaturas a join auth.users u on lower(trim(a.email)) = lower(trim(u.email));
 
 -- ── [D6] Alerta de ponta a ponta no banco (transação desfeita). Esperado: N1 > 0 na maioria dos dias (anotar);
 -- depois de marcar 3 como enviados, N2 = min(N1_total - 3, 20) e nenhum dos 3 volta; alertas_para_envio com 1 linha
