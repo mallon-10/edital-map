@@ -50,7 +50,7 @@ export function FormAlerta({ modo, id, nomeInicial, inicial, origem }: Props) {
     setSalvando(false);
     if (r.codigo === 'entrar') return irParaEntrar();
     setErro(r.erro);
-    setPlanos(r.codigo === 'plano' || r.codigo === 'limite');
+    setPlanos(r.codigo === 'plano');
   }
 
   return (

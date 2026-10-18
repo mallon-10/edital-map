@@ -173,9 +173,10 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             <BotaoDescartar id={e.id} />
             <Link
               href="/alertas"
+              prefetch={false}
               className="inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
             >
-              Criar alerta para editais parecidos
+              Criar alerta
             </Link>
           </div>
         </section>

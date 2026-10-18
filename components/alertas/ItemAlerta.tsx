@@ -17,21 +17,26 @@ export function ItemAlerta({ alerta, resumo, ultimo }: Props) {
   const router = useRouter();
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [anuncio, setAnuncio] = useState('');
 
-  async function pedir(metodo: 'PATCH' | 'DELETE', corpo: unknown) {
+  async function pedir(metodo: 'PATCH' | 'DELETE', corpo: unknown, depois?: () => void) {
     if (ocupado) return;
     setOcupado(true);
     setErro(null);
     const r = await pedirJson(`/api/alertas/${alerta.id}`, metodo, corpo);
     setOcupado(false);
-    if (r.ok) return router.refresh();
+    if (r.ok) {
+      depois?.();
+      return router.refresh();
+    }
     if (r.codigo === 'entrar') return irParaEntrar();
     setErro(r.erro);
   }
 
   function excluir() {
     if (!window.confirm(`Excluir o alerta "${alerta.nome}"? Para só parar os e-mails, use Pausar.`)) return;
-    void pedir('DELETE', {});
+    // O item some da lista: o foco vai para o título da página antes, para não cair no corpo da página.
+    void pedir('DELETE', {}, () => document.getElementById('titulo-alertas')?.focus());
   }
 
   return (
@@ -51,6 +56,9 @@ export function ItemAlerta({ alerta, resumo, ultimo }: Props) {
       </ul>
       <p className="text-[13px] text-ink-muted">{[resumo.local, ...resumo.extras].join(' · ')}</p>
       <p className="text-[13px]">{ultimo}</p>
+      <p aria-live="polite" className="sr-only">
+        {anuncio}
+      </p>
       {erro ? (
         <p role="alert" className="text-sm font-semibold text-pin-strong">
           {erro}
@@ -60,7 +68,7 @@ export function ItemAlerta({ alerta, resumo, ultimo }: Props) {
         <Link href={`/alertas/${alerta.id}/editar`} prefetch={false} className={BOTAO}>
           Editar
         </Link>
-        <button type="button" aria-busy={ocupado || undefined} onClick={() => void pedir('PATCH', { ativo: !alerta.ativo })} className={BOTAO}>
+        <button type="button" aria-busy={ocupado || undefined} onClick={() => void pedir('PATCH', { ativo: !alerta.ativo }, () => setAnuncio(alerta.ativo ? 'Alerta pausado' : 'Alerta retomado'))} className={BOTAO}>
           {alerta.ativo ? 'Pausar' : 'Retomar'}
         </button>
         <button type="button" onClick={excluir} className={BOTAO}>

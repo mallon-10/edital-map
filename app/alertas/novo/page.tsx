@@ -5,7 +5,7 @@ import { connection } from 'next/server';
 import { Cabecalho } from '@/components/Cabecalho';
 import { FormAlerta } from '@/components/alertas/FormAlerta';
 import { CartaoRecursoPlano } from '@/components/conta/CartaoRecursoPlano';
-import { bloqueioAlerta, MENSAGENS_LIMITE_CONTA } from '@/lib/limitesConta';
+import { bloqueioAlerta, MENSAGENS_LIMITE_CONTA, planoIncerto } from '@/lib/limitesConta';
 import { rascunhoDoRadar } from '@/lib/radar';
 import { contarAlertas } from '@/lib/servidor/alertas';
 import { lerRadar, planoDaConta } from '@/lib/servidor/conta';
@@ -31,7 +31,16 @@ export default async function NovoAlerta({ searchParams }: Props) {
     <>
       <Cabecalho />
       <main className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-4 py-8">
-        {bloqueio?.codigo === 'plano' ? (
+        {planoIncerto(plano) ? (
+          <section className="flex flex-col gap-3">
+            <p role="status" className="text-[15px]">
+              {MENSAGENS_LIMITE_CONTA.planoIndisponivel}
+            </p>
+            <Link href="/alertas" prefetch={false} className="w-fit text-sm font-semibold text-pin-strong underline-offset-2 hover:underline">
+              Voltar aos alertas
+            </Link>
+          </section>
+        ) : bloqueio?.codigo === 'plano' ? (
           <CartaoRecursoPlano titulo={MENSAGENS_LIMITE_CONTA.alertasPlano} texto={MENSAGENS_LIMITE_CONTA.alertasConvite} />
         ) : bloqueio ? (
           <section className="flex flex-col gap-3">

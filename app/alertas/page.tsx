@@ -6,7 +6,7 @@ import { ItemAlerta } from '@/components/alertas/ItemAlerta';
 import { ResumoSemanal } from '@/components/alertas/ResumoSemanal';
 import { CartaoRecursoPlano } from '@/components/conta/CartaoRecursoPlano';
 import { AVISO_ENVIO_INDISPONIVEL, envioIndisponivel, textoUltimoEnvio } from '@/lib/alertas/regras';
-import { avisoPlanoNavegador, bloqueioAlerta, MENSAGENS_LIMITE_CONTA } from '@/lib/limitesConta';
+import { avisoPlanoNavegador, bloqueioAlerta, MENSAGENS_LIMITE_CONTA, planoIncerto } from '@/lib/limitesConta';
 import { resumoDoRadar } from '@/lib/radar';
 import { alertasDaConta } from '@/lib/servidor/alertas';
 import { lerRadar, planoDaConta, resumoSemanalLigado } from '@/lib/servidor/conta';
@@ -64,15 +64,23 @@ export default async function PaginaAlertas() {
   const cidades = await municipiosPorIbge([...new Set(alertas.flatMap((a) => a.municipios))]);
   const bloqueio = bloqueioAlerta(plano.plano, alertas.length);
   const aviso = avisoPlanoNavegador(plano);
-  const indisponivel = envioIndisponivel(alertas.map((a) => a.ultimoEnvio));
+  const incerto = planoIncerto(plano);
+  // Alerta pausado não envia: uma falha antiga dele não vira aviso de "envio indisponível".
+  const indisponivel = envioIndisponivel(alertas.filter((a) => a.ativo).map((a) => a.ultimoEnvio));
+  // Grátis sem alertas (ou plano não confirmado) não tem e-mail a receber: a frase sobre o e-mail só aparece quando faz sentido.
+  const podeTerAlertas = alertas.length > 0 || (!incerto && bloqueio?.codigo !== 'plano');
 
   return (
     <>
       <Cabecalho />
       <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5 px-4 py-6 lg:px-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-[28px] font-bold leading-tight tracking-[-0.015em]">Alertas por e-mail</h1>
-          <p className="text-sm text-ink-muted">Todo dia às 7h, os editais novos de cada alerta chegam em {usuario.email}, só quando houver novidade.</p>
+          <h1 id="titulo-alertas" tabIndex={-1} className="text-[28px] font-bold leading-tight tracking-[-0.015em] focus:outline-none">
+            Alertas por e-mail
+          </h1>
+          {podeTerAlertas ? (
+            <p className="text-sm text-ink-muted">Todo dia às 7h, os editais novos de cada alerta chegam em {usuario.email}, só quando houver novidade.</p>
+          ) : null}
         </div>
         {aviso ? (
           <p role="note" className="rounded-sm bg-pin-soft px-3 py-2 text-[14px] text-pin-strong">
@@ -84,7 +92,11 @@ export default async function PaginaAlertas() {
             {AVISO_ENVIO_INDISPONIVEL}
           </p>
         ) : null}
-        {bloqueio?.codigo === 'plano' ? (
+        {incerto ? (
+          <p role="status" className="text-[14px] font-semibold text-ink-muted">
+            {MENSAGENS_LIMITE_CONTA.planoIndisponivel}
+          </p>
+        ) : bloqueio?.codigo === 'plano' ? (
           <CartaoRecursoPlano titulo={MENSAGENS_LIMITE_CONTA.alertasPlano} texto={MENSAGENS_LIMITE_CONTA.alertasConvite} />
         ) : bloqueio ? (
           <p className="text-[14px] text-ink-muted">{bloqueio.mensagem}</p>
@@ -114,7 +126,7 @@ export default async function PaginaAlertas() {
             ))}
           </section>
         )}
-        <ResumoSemanal ligado={resumoLigado} pro={plano.plano === 'pro'} temRadar={radar !== null} />
+        <ResumoSemanal ligado={resumoLigado} pro={plano.daConta === 'pro'} incerto={plano.falhou} aviso={aviso} temRadar={radar !== null} />
       </main>
     </>
   );

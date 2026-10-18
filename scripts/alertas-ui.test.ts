@@ -37,4 +37,43 @@ describe('/alertas com conta', () => {
     }
     expect(ler('app/edital/[slug]/page.tsx')).toContain('href="/alertas"');
   });
+
+  describe('rodada de correções 1', () => {
+    it('plano incerto: mensagem de plano indisponível em vez do convite ao Pro (lista, novo e resumo)', () => {
+      for (const f of ['app/alertas/page.tsx', 'app/alertas/novo/page.tsx']) {
+        const fonte = ler(f);
+        expect(fonte, f).toContain('planoIncerto(plano)');
+        expect(fonte, f).toContain('MENSAGENS_LIMITE_CONTA.planoIndisponivel');
+        expect(fonte, f).toContain('role="status"');
+      }
+      expect(ler('components/alertas/ResumoSemanal.tsx')).toContain('MENSAGENS_LIMITE_CONTA.planoIndisponivel');
+    });
+    it('resumo semanal: Pro só pela conta; navegador Pro sem conta Pro mostra o aviso, não a chave', () => {
+      expect(pagina).toContain("pro={plano.daConta === 'pro'}");
+      expect(pagina).not.toContain("pro={plano.plano === 'pro'}");
+      expect(pagina).toContain('aviso={aviso}');
+      const resumo = ler('components/alertas/ResumoSemanal.tsx');
+      expect(resumo).toContain('aviso');
+      expect(resumo).toContain('aria-labelledby="resumo-semanal"');
+    });
+    it('formulário: o convite ao Pro só aparece para plano, não no teto de 5', () => {
+      const form = ler('components/alertas/FormAlerta.tsx');
+      expect(form).toContain("setPlanos(r.codigo === 'plano')");
+      expect(form).not.toContain("r.codigo === 'limite'");
+    });
+    it('item: avisa pausa/retomada por aria-live e leva o foco ao título depois de excluir', () => {
+      const item = ler('components/alertas/ItemAlerta.tsx');
+      for (const t of ['aria-live="polite"', 'Alerta pausado', 'Alerta retomado', 'titulo-alertas', '.focus()']) expect(item, t).toContain(t);
+      expect(pagina).toContain('id="titulo-alertas"');
+    });
+    it('envio indisponível só dos alertas ativos; frase do e-mail só quando a conta pode ter alertas', () => {
+      expect(pagina).toContain('alertas.filter((a) => a.ativo)');
+      expect(pagina).toContain('podeTerAlertas');
+    });
+    it('edital: link "Criar alerta" sem prefetch', () => {
+      const edital = ler('app/edital/[slug]/page.tsx');
+      expect(edital).not.toContain('Criar alerta para editais parecidos');
+      expect(edital).toMatch(/href="\/alertas"\s+prefetch=\{false\}/);
+    });
+  });
 });
