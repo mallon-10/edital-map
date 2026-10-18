@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  argumentosRadar, buscaDoRadar, desdeDaVisita, filtrosDoRadar, lerBuscaMunicipio, lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR,
+  argumentosRadar, buscaDoRadar, desdeDaVisita, ENTRADA_RADAR, filtrosDoRadar, lerBuscaMunicipio, lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR,
   MENSAGENS_RADAR, palavraValida, radarDaLinha, validarRadar, VISIVEIS_GRATIS, vistaDoRadar, type Radar,
 } from './radar';
 import { interpretarBusca, MAX_RELACIONADOS } from './relevancia/termos';
@@ -41,6 +41,29 @@ describe('validarRadar', () => {
     expect(palavraValida('ar')).toBe(false);
     expect(palavraValida('para com')).toBe(false);
     expect(erro({ termos: ['ti'] })).toBe(MENSAGENS_RADAR.termoCurto);
+  });
+  it('só número não vale (nem nos produtos nem nos excluídos); letra com número vale', () => {
+    expect(erro({ termos: ['12'] })).toBe(MENSAGENS_RADAR.termoCurto);
+    expect(erro({ termos: ['2026'] })).toBe(MENSAGENS_RADAR.termoCurto);
+    expect(erro({ termos: ['32 50'] })).toBe(MENSAGENS_RADAR.termoCurto);
+    expect(palavraValida('A4')).toBe(true);
+    expect(palavraValida('ARLA 32')).toBe(true);
+    expect(palavraValida('12')).toBe(false);
+    expect(erro({ termos: ['luva'], termosExcluir: ['123'] })).toBe(MENSAGENS_RADAR.excluirCurto);
+    expect(ok({ termos: ['luva'], termosExcluir: ['a4'] }).termosExcluir).toEqual(['a4']);
+  });
+  it('entrada grande é cortada antes de validar (formulário) e o excesso para no 11º', () => {
+    const t0 = Date.now();
+    expect(erro({ termos: Array.from({ length: 100_000 }, (_, i) => `produto${i}`) })).toBe(MENSAGENS_RADAR.formulario);
+    expect(erro({ termos: ['luva'], termosExcluir: Array.from({ length: 100_000 }, () => 'latex') })).toBe(MENSAGENS_RADAR.formulario);
+    expect(erro({ termos: ['luva'], ufs: Array.from({ length: 100_000 }, () => 'SC') })).toBe(MENSAGENS_RADAR.formulario);
+    expect(erro({ termos: ['luva'], municipios: Array.from({ length: 100_000 }, () => '4209102') })).toBe(MENSAGENS_RADAR.formulario);
+    expect(erro({ termos: ['luva'], modalidades: Array.from({ length: 100_000 }, () => 6) })).toBe(MENSAGENS_RADAR.formulario);
+    expect(erro({ termos: ['luva, '.repeat(200_000)] })).toBe(MENSAGENS_RADAR.formulario);
+    const cheio = Array.from({ length: ENTRADA_RADAR.itens }, (_, i) => Array.from({ length: 60 }, (_, j) => `i${i}x${j}`).join(',').slice(0, ENTRADA_RADAR.caracteres));
+    expect(erro({ termos: cheio })).toBe(MENSAGENS_RADAR.muitosTermos);
+    expect(erro({ termos: ['luva'], termosExcluir: Array.from({ length: ENTRADA_RADAR.itens }, (_, i) => `palavra${i}`) })).toBe(MENSAGENS_RADAR.muitosExcluir);
+    expect(Date.now() - t0).toBeLessThan(1000);
   });
   it('excluídos: sem hífen, sem repetidos, até 10, até 40 caracteres, 3+ letras', () => {
     expect(ok({ termos: ['uniforme'], termosExcluir: ['-escolar', 'Escolar', ' militar '] }).termosExcluir).toEqual(['escolar', 'militar']);
@@ -140,6 +163,11 @@ describe('busca do radar', () => {
     expect(argumentosRadar(r, { ordem: null, pagina: 1, limite: 20 })).toMatchObject({ p_ordem: 'relevancia', p_limite: 20, p_deslocamento: 0 });
     expect(argumentosRadar(r, { ordem: 'maior_valor', pagina: 3, limite: 20 })).toMatchObject({ p_ordem: 'maior_valor', p_deslocamento: 40 });
     expect(Object.keys(argumentosRadar(r, { ordem: null, pagina: 1, limite: 5 }))).not.toContain('user_id');
+  });
+  it('página fora da faixa: entre 1 e MAX_PAGINA (1000)', () => {
+    expect(argumentosRadar(r, { ordem: null, pagina: 5000, limite: 20 })).toMatchObject({ p_deslocamento: 999 * 20 });
+    expect(argumentosRadar(r, { ordem: null, pagina: 0, limite: 20 })).toMatchObject({ p_deslocamento: 0 });
+    expect(argumentosRadar(r, { ordem: null, pagina: Number.NaN, limite: 20 })).toMatchObject({ p_deslocamento: 0 });
   });
 });
 

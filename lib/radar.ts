@@ -1,5 +1,5 @@
 import { UFS_BRASIL, type Resultado } from './eventos';
-import { limiteDeValor, MODALIDADES, ordemEfetiva, POR_PAGINA } from './filtros';
+import { limiteDeValor, MAX_PAGINA, MODALIDADES, ordemEfetiva, POR_PAGINA } from './filtros';
 import type { IdPlano } from './planos';
 import { chave, expandir, gruposDigitados, LIGACOES, normalizar, SIGLAS_TERMOS, type Busca } from './relevancia/termos';
 import type { Ordem } from './tipos';
@@ -28,6 +28,11 @@ export type Radar = {
 export type ContagensRadar = { total: number; novas: number; prazoProximo: number };
 
 export const LIMITES_RADAR = { termos: 10, excluir: 10, municipios: 50, tamanhoTermo: 60, tamanhoExcluir: 40, valorMaximo: 1e12 } as const;
+/**
+ * Teto do corpo cru, antes de qualquer trabalho (separar alternativas e tirar repetidos é quadrático): até 50 itens por
+ * lista (municípios: 200, para o excesso ainda ganhar a mensagem "até 50") e 600 caracteres por item. Acima: formulário.
+ */
+export const ENTRADA_RADAR = { itens: 50, municipios: 200, caracteres: 600 } as const;
 export const VISIVEIS_GRATIS = 5;
 /**
  * Teto de relacionados do radar, somando todos os produtos (a busca avulsa usa 20). Cada relacionado é uma checagem
@@ -40,10 +45,10 @@ export const MENSAGENS_RADAR = {
   semTermo: 'Informe pelo menos um produto ou serviço.',
   muitosTermos: 'Use até 10 produtos ou serviços.',
   termoLongo: 'Use até 60 caracteres em cada produto ou serviço.',
-  termoCurto: 'Cada produto ou serviço precisa de uma palavra com 3 letras ou mais.',
+  termoCurto: 'Use uma palavra com 3 letras ou mais, ou uma sigla como EPI ou A4.',
   muitosExcluir: 'Use até 10 palavras para excluir.',
   excluirLongo: 'Use até 40 caracteres em cada palavra para excluir.',
-  excluirCurto: 'Cada palavra para excluir precisa ter 3 letras ou mais.',
+  excluirCurto: 'Para excluir, use uma palavra com 3 letras ou mais, ou uma sigla como EPI ou A4.',
   uf: 'Estado inválido.',
   municipio: 'Município inválido.',
   muitosMunicipios: 'Escolha até 50 municípios.',
@@ -60,18 +65,22 @@ const IBGE = /^\d{7}$/;
 const falha = (erro: string): Resultado<never> => ({ ok: false, erro });
 
 /**
- * Tem uma palavra que vale como busca: 3+ letras (sem ser de ligação), com número ("A4", "ARLA 32") ou sigla conhecida
- * (SIGLAS_TERMOS: "EPI", "GLP"). O banco busca por prefixo: "ti" sozinho acharia de tudo.
+ * Tem uma palavra que vale como busca: 3+ letras (sem ser de ligação), letra com número ("A4", "papel A4") ou sigla
+ * conhecida (SIGLAS_TERMOS: "EPI", "GLP"). Só número não vale ("12", "32"): o banco busca por prefixo e acharia de
+ * tudo, como "ti" sozinho. "ARLA 32" vale pela palavra "arla".
  */
 export function palavraValida(t: string): boolean {
   return normalizar(t)
     .split(' ')
-    .some((p) => (p.length >= 3 && !LIGACOES.has(p)) || (p.length >= 2 && /\d/.test(p)) || SIGLAS_TERMOS.has(p));
+    // Sempre com letra: "123" também não vale.
+    .some((p) => /[a-z]/.test(p) && ((p.length >= 3 && !LIGACOES.has(p)) || (p.length >= 2 && /\d/.test(p)) || SIGLAS_TERMOS.has(p)));
 }
 
-function textos(v: unknown): string[] | null {
+/** Lista de textos do corpo, ou null se não for (ou passar do teto de ENTRADA_RADAR). Ausente = vazia. */
+function textos(v: unknown, maxItens: number = ENTRADA_RADAR.itens): string[] | null {
   if (v === undefined || v === null) return [];
-  return Array.isArray(v) && v.every((x) => typeof x === 'string') ? (v as string[]) : null;
+  if (!Array.isArray(v) || v.length > maxItens) return null;
+  return v.every((x) => typeof x === 'string' && x.length <= ENTRADA_RADAR.caracteres) ? (v as string[]) : null;
 }
 
 /** Número em reais (inteiro); ausente ou 0 = sem limite (null). */
@@ -94,10 +103,10 @@ export function validarRadar(corpo: unknown): Resultado<Radar> {
       if (g.length > LIMITES_RADAR.tamanhoTermo) return falha(MENSAGENS_RADAR.termoLongo);
       if (!palavraValida(g)) return falha(MENSAGENS_RADAR.termoCurto);
       if (!termos.some((t) => chave(t) === chave(g))) termos.push(g);
+      if (termos.length > LIMITES_RADAR.termos) return falha(MENSAGENS_RADAR.muitosTermos);
     }
   }
   if (termos.length === 0) return falha(MENSAGENS_RADAR.semTermo);
-  if (termos.length > LIMITES_RADAR.termos) return falha(MENSAGENS_RADAR.muitosTermos);
 
   const excluirBrutos = textos(c.termosExcluir);
   if (!excluirBrutos) return falha(MENSAGENS_RADAR.formulario);
@@ -108,8 +117,8 @@ export function validarRadar(corpo: unknown): Resultado<Radar> {
     if (e.length > LIMITES_RADAR.tamanhoExcluir) return falha(MENSAGENS_RADAR.excluirLongo);
     if (!palavraValida(e)) return falha(MENSAGENS_RADAR.excluirCurto);
     if (!termosExcluir.some((t) => chave(t) === chave(e))) termosExcluir.push(e);
+    if (termosExcluir.length > LIMITES_RADAR.excluir) return falha(MENSAGENS_RADAR.muitosExcluir);
   }
-  if (termosExcluir.length > LIMITES_RADAR.excluir) return falha(MENSAGENS_RADAR.muitosExcluir);
 
   const ufsBrutas = textos(c.ufs);
   if (!ufsBrutas) return falha(MENSAGENS_RADAR.formulario);
@@ -117,7 +126,7 @@ export function validarRadar(corpo: unknown): Resultado<Radar> {
   if (ufs.some((u) => !UFS_BRASIL.includes(u))) return falha(MENSAGENS_RADAR.uf);
   ufs.sort();
 
-  const municipiosBrutos = textos(c.municipios);
+  const municipiosBrutos = textos(c.municipios, ENTRADA_RADAR.municipios);
   if (!municipiosBrutos) return falha(MENSAGENS_RADAR.formulario);
   const municipios = [...new Set(municipiosBrutos.map((m) => m.trim()))];
   if (municipios.some((m) => !IBGE.test(m))) return falha(MENSAGENS_RADAR.municipio);
@@ -130,7 +139,7 @@ export function validarRadar(corpo: unknown): Resultado<Radar> {
   if (valorMin !== null && valorMax !== null && valorMin > valorMax) return falha(MENSAGENS_RADAR.faixa);
 
   const modalidadesBrutas = c.modalidades ?? [];
-  if (!Array.isArray(modalidadesBrutas)) return falha(MENSAGENS_RADAR.formulario);
+  if (!Array.isArray(modalidadesBrutas) || modalidadesBrutas.length > ENTRADA_RADAR.itens) return falha(MENSAGENS_RADAR.formulario);
   const modalidades = [...new Set(modalidadesBrutas as unknown[])];
   if (modalidades.some((m) => typeof m !== 'number' || !IDS_MODALIDADE.includes(m))) return falha(MENSAGENS_RADAR.modalidade);
 
@@ -195,13 +204,14 @@ export function filtrosDoRadar(r: Radar) {
   };
 }
 
-/** Argumentos de buscar_editais para uma página do radar. */
+/** Argumentos de buscar_editais para uma página do radar (página entre 1 e MAX_PAGINA). */
 export function argumentosRadar(r: Radar, o: { ordem: Ordem | null; pagina: number; limite: number }) {
+  const pagina = Number.isInteger(o.pagina) ? Math.min(Math.max(o.pagina, 1), MAX_PAGINA) : 1;
   return {
     ...filtrosDoRadar(r),
     p_ordem: ordemEfetiva(o.ordem, true),
     p_limite: o.limite,
-    p_deslocamento: (o.pagina - 1) * POR_PAGINA,
+    p_deslocamento: (pagina - 1) * POR_PAGINA,
   };
 }
 
