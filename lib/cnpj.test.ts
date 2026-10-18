@@ -29,6 +29,10 @@ describe('assuntosDosCnaes', () => {
     expect(slugs([4761003])).toEqual(['escritorio']);
     expect(slugs([4530703])).toEqual(['veiculos']);
   });
+  it('publicidade, promoção de vendas, eventos e gráfica', () => {
+    expect(slugs([7319002])).toEqual(['publicidade']);
+    expect(slugs([7311400, 8230001, 1813001])).toEqual(['publicidade']);
+  });
   it('atividade sem assunto: vazio', () => {
     expect(slugs([6920601])).toEqual([]);
     expect(slugs([])).toEqual([]);

@@ -3,19 +3,19 @@ import type { Cidade, FiltrosBusca, FiltrosTela, Ordem, Orgao } from './tipos';
 
 /**
  * Na vista Mapa, a parte da página inicial em que o celular (abaixo de lg) está: o mapa, em cima, ou a lista, embaixo.
- * No endereço, `tela=lista` (só na vista Mapa) faz a página abrir rolada até a lista.
+ * No endereço, `tela=lista` (só com `vista=mapa`) faz a página abrir rolada até a lista.
  */
 export type Tela = 'mapa' | 'lista';
-/** Resultado em Mapa (a tela de três colunas; padrão) ou em Lista (cards largos). Trocar não conta como busca. */
+/** Resultado em Lista (cards largos; padrão) ou em Mapa (a tela de três colunas). Trocar não conta como busca. */
 export type Vista = 'lista' | 'mapa';
 /** O que, além dos filtros, a página inicial guarda no endereço. Nada disso entra na busca contada do dia. */
 export type EstadoTela = { vista: Vista; tela: Tela; pagina: number; ordem: Ordem | null };
-export const ESTADO_PADRAO: EstadoTela = { vista: 'mapa', tela: 'mapa', pagina: 1, ordem: null };
+export const ESTADO_PADRAO: EstadoTela = { vista: 'lista', tela: 'mapa', pagina: 1, ordem: null };
 
 /**
  * Endereço da página inicial com a busca, para voltar do edital e compartilhar:
- * /?q=luva&uf=SC&municipio=4209102&valor=50000&modalidades=6,8&orgao=…&raio=100&dias=7[&ordem=…][&pagina=N][&vista=lista | &tela=lista].
- * `municipio` é o código IBGE (na API o mesmo valor se chama `ibge`). Os padrões ficam fora: vista Mapa, página 1, ordem padrão.
+ * /?q=luva&uf=SC&municipio=4209102&valor=50000&modalidades=6,8&orgao=…&raio=100&dias=7[&ordem=…][&pagina=N][&vista=mapa[&tela=lista]].
+ * `municipio` é o código IBGE (na API o mesmo valor se chama `ibge`). Os padrões ficam fora: vista Lista, página 1, ordem padrão.
  */
 export function urlDaBusca(f: FiltrosTela, estado: Partial<EstadoTela> = {}): string {
   const e = { ...ESTADO_PADRAO, ...estado };
@@ -31,8 +31,10 @@ export function urlDaBusca(f: FiltrosTela, estado: Partial<EstadoTela> = {}): st
   if (f.seteDias) p.set('dias', '7');
   if (e.ordem) p.set('ordem', e.ordem);
   if (e.pagina > 1) p.set('pagina', String(e.pagina));
-  if (e.vista === 'lista') p.set('vista', 'lista');
-  else if (e.tela === 'lista') p.set('tela', 'lista');
+  if (e.vista === 'mapa') {
+    p.set('vista', 'mapa');
+    if (e.tela === 'lista') p.set('tela', 'lista');
+  }
   const texto = p.toString();
   return texto ? `/?${texto}` : '/';
 }
@@ -45,7 +47,7 @@ export function lerBuscaDaUrl(p: URLSearchParams): { busca: FiltrosBusca; estado
   const municipio = p.get('municipio');
   if (municipio) api.set('ibge', municipio);
   const busca = lerFiltros(api);
-  const vista: Vista = p.get('vista') === 'lista' ? 'lista' : 'mapa';
+  const vista: Vista = p.get('vista') === 'mapa' ? 'mapa' : 'lista';
   const tela: Tela = vista === 'mapa' && p.get('tela') === 'lista' ? 'lista' : 'mapa';
   return { busca, estado: { vista, tela, pagina: busca.pagina, ordem: busca.ordem } };
 }
@@ -81,7 +83,7 @@ export function paraUrlSearchParams(sp: Record<string, string | string[] | undef
 export function comTela(endereco: string, tela: Tela): string {
   const p = new URLSearchParams(endereco.split('?')[1] ?? '');
   p.delete('tela');
-  if (tela === 'lista') p.set('vista', 'lista');
+  if (tela === 'mapa') p.set('vista', 'mapa');
   else p.delete('vista');
   const texto = p.toString();
   return texto ? `/?${texto}` : '/';

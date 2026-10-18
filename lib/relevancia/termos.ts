@@ -99,6 +99,13 @@ export const GRUPOS: readonly Grupo[] = [
       'fisioterapia', 'hemodiálise',
     ],
   },
+  {
+    assunto: 'publicidade e eventos',
+    termos: [
+      'publicidade', 'propaganda', 'marketing', 'comunicação visual', 'material gráfico', 'serviço gráfico', 'impressão gráfica',
+      'organização de eventos', 'evento', 'brindes', 'promoção de vendas', 'banner', 'placa de sinalização',
+    ],
+  },
 ];
 
 /** Teto de relacionados por busca (cada um vira uma checagem por edital no banco). */

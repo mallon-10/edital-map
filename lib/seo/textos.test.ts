@@ -112,15 +112,15 @@ describe('vizinhos', () => {
     expect(v).toHaveLength(27);
     expect(v[0].total).toBeNull();
   });
-  it('UF: os 14 assuntos naquela UF', () => {
+  it('UF: os 15 assuntos naquela UF', () => {
     const v = vizinhos(SP, null);
-    expect(v).toHaveLength(14);
+    expect(v).toHaveLength(15);
     expect(v[0].caminho).toBe('/licitacoes/epi/sp');
   });
   it('assunto na UF: o assunto no Brasil e a UF com tudo', () => {
     expect(vizinhos(EPI_BA, null).map((x) => x.caminho)).toEqual(['/licitacoes/epi', '/licitacoes/ba']);
   });
-  it('Brasil: os 14 assuntos e as 27 UFs', () => {
-    expect(vizinhos(BR, null)).toHaveLength(41);
+  it('Brasil: os 15 assuntos e as 27 UFs', () => {
+    expect(vizinhos(BR, null)).toHaveLength(42);
   });
 });

@@ -14,21 +14,16 @@ const CHEIO: FiltrosTela = {
 const ler = (url: string) => lerBuscaDaUrl(new URLSearchParams(url.split('?')[1] ?? ''));
 
 describe('busca no endereço', () => {
-  it('sem nada preenchido: só "/" (vista Mapa, página 1 e ordem padrão ficam fora; tela só no Mapa)', () => {
-    expect(ESTADO_PADRAO.vista).toBe('mapa');
+  it('sem nada preenchido: só "/" (vista Lista, página 1 e ordem padrão ficam fora; tela só no Mapa)', () => {
     expect(urlDaBusca(VAZIO)).toBe('/');
     expect(urlDaBusca(VAZIO, ESTADO_PADRAO)).toBe('/');
-    expect(urlDaBusca(VAZIO, { vista: 'mapa' })).toBe('/');
-    expect(urlDaBusca(VAZIO, { tela: 'lista' })).toBe('/?tela=lista');
-    expect(urlDaBusca(VAZIO, { vista: 'lista' })).toBe('/?vista=lista');
-    expect(urlDaBusca(VAZIO, { vista: 'lista', tela: 'lista' })).toBe('/?vista=lista');
+    expect(urlDaBusca(VAZIO, { tela: 'lista' })).toBe('/');
+    expect(urlDaBusca(VAZIO, { vista: 'mapa' })).toBe('/?vista=mapa');
+    expect(urlDaBusca(VAZIO, { vista: 'mapa', tela: 'lista' })).toBe('/?vista=mapa&tela=lista');
   });
   it('escreve os filtros com os nomes da spec, modalidades em ordem, depois ordem, página e vista', () => {
     expect(urlDaBusca(CHEIO, { vista: 'mapa', tela: 'lista', pagina: 3, ordem: 'maior_valor' })).toBe(
-      '/?q=luva+nitr%C3%ADlica&uf=SC&municipio=4209102&valor=50000&modalidades=6%2C8&orgao=83102285000107&raio=100&dias=7&ordem=maior_valor&pagina=3&tela=lista',
-    );
-    expect(urlDaBusca(CHEIO, { vista: 'lista', pagina: 3 })).toBe(
-      '/?q=luva+nitr%C3%ADlica&uf=SC&municipio=4209102&valor=50000&modalidades=6%2C8&orgao=83102285000107&raio=100&dias=7&pagina=3&vista=lista',
+      '/?q=luva+nitr%C3%ADlica&uf=SC&municipio=4209102&valor=50000&modalidades=6%2C8&orgao=83102285000107&raio=100&dias=7&ordem=maior_valor&pagina=3&vista=mapa&tela=lista',
     );
   });
   it('ida e volta: os mesmos filtros (com os nomes vindos do banco) e o mesmo estado', () => {
@@ -60,9 +55,7 @@ describe('busca no endereço', () => {
     });
     expect(ler('/?ibge=4209102').busca.ibge).toBeNull();
     expect(ler('/?vista=x').estado).toEqual(ESTADO_PADRAO);
-    expect(ler('/?tela=lista').estado).toEqual({ ...ESTADO_PADRAO, tela: 'lista' });
-    expect(ler('/?vista=lista&tela=lista').estado.tela).toBe('mapa');
-    expect(ler('/?vista=mapa').estado).toEqual(ESTADO_PADRAO);
+    expect(ler('/?tela=lista').estado.tela).toBe('mapa');
     expect(ler('/?pagina=0&ordem=x').estado).toEqual(ESTADO_PADRAO);
   });
   it('município que não existe no banco sai, e o raio com ele', () => {
@@ -76,14 +69,13 @@ describe('busca no endereço', () => {
   it('searchParams da página: o primeiro de cada nome', () => {
     expect(paraUrlSearchParams({ q: ['luva', 'botina'], uf: 'SC', vazio: undefined }).toString()).toBe('q=luva&uf=SC');
   });
-  it('comTela: Mapa leva à vista Mapa (padrão); Lista, à vista Lista (a tela do celular sai)', () => {
-    expect(comTela('/?q=luva', 'lista')).toBe('/?q=luva&vista=lista');
-    expect(comTela('/?q=luva', 'mapa')).toBe('/?q=luva');
-    expect(comTela('/?q=luva&tela=lista', 'lista')).toBe('/?q=luva&vista=lista');
-    expect(comTela('/?q=luva&tela=lista', 'mapa')).toBe('/?q=luva');
-    expect(comTela('/?q=luva&vista=lista', 'mapa')).toBe('/?q=luva');
-    expect(comTela('/', 'mapa')).toBe('/');
-    expect(comTela('/', 'lista')).toBe('/?vista=lista');
+  it('comTela: Mapa leva à vista Mapa; Lista, à vista Lista (a tela do celular sai)', () => {
+    expect(comTela('/?q=luva', 'lista')).toBe('/?q=luva');
+    expect(comTela('/?q=luva', 'mapa')).toBe('/?q=luva&vista=mapa');
+    expect(comTela('/?q=luva&vista=mapa&tela=lista', 'lista')).toBe('/?q=luva');
+    expect(comTela('/?q=luva&vista=mapa&tela=lista', 'mapa')).toBe('/?q=luva&vista=mapa');
+    expect(comTela('/', 'mapa')).toBe('/?vista=mapa');
+    expect(comTela('/', 'lista')).toBe('/');
   });
 });
 

@@ -37,6 +37,8 @@ export function BuscaCnpj({ compacto = false }: { compacto?: boolean }) {
     }
   }
 
+  // Atividade fora dos segmentos: todos aparecem para a pessoa marcar o que vende (nada marcado de início).
+  const opcoes = r ? (r.assuntos.length ? r.assuntos : ASSUNTOS.map((a) => ({ slug: a.slug, nome: a.nome, principal: false }))) : [];
   const busca = r ? buscaDoCnpj(ASSUNTOS.filter((a) => marcados.has(a.slug)), r.empresa.uf) : '/';
   const local = r?.empresa.municipio && r.empresa.uf ? `${r.empresa.municipio}/${r.empresa.uf}` : r?.empresa.uf;
   return (
@@ -70,11 +72,14 @@ export function BuscaCnpj({ compacto = false }: { compacto?: boolean }) {
           <span className="text-[13px] text-ink-muted">
             {[r.empresa.atividade, local, r.empresa.ativa ? null : 'situação diferente de ativa'].filter(Boolean).join(' · ')}
           </span>
-          {r.assuntos.length ? (
-            <>
+          <>
               <fieldset className="flex flex-col gap-1.5">
-                <legend className="mb-1 text-[14px]">Segmentos encontrados (marque os que sua empresa vende):</legend>
-                {r.assuntos.map((a) => (
+                <legend className="mb-1 text-[14px]">
+                  {r.assuntos.length
+                    ? 'Segmentos encontrados (marque os que sua empresa vende):'
+                    : 'A atividade registrada não é um dos segmentos que acompanhamos. Marque o que sua empresa vende:'}
+                </legend>
+                {opcoes.map((a) => (
                   <label key={a.slug} className="flex items-center gap-2 text-[14px]">
                     <input
                       type="checkbox"
@@ -102,16 +107,7 @@ export function BuscaCnpj({ compacto = false }: { compacto?: boolean }) {
               >
                 Ver editais {r.empresa.uf ? `em ${r.empresa.uf}` : ''}
               </Link>
-            </>
-          ) : (
-            <span className="text-[14px]">
-              Não reconhecemos o segmento dessa atividade. Busque pelo que sua empresa vende na{' '}
-              <Link href={busca} prefetch={false} className="font-semibold text-pin-strong hover:underline">
-                página inicial
-              </Link>
-              .
-            </span>
-          )}
+          </>
         </section>
       ) : null}
     </div>

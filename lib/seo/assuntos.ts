@@ -21,6 +21,7 @@ export const ASSUNTOS: readonly Assunto[] = [
   { slug: 'obras', nome: 'obras e reformas', termo: 'reforma', grupo: 'obras e reformas' },
   { slug: 'manutencao-predial', nome: 'manutenção predial', termo: 'manutenção predial', grupo: 'manutenção predial' },
   { slug: 'servicos-de-saude', nome: 'serviços de saúde', termo: 'serviço de saúde', grupo: 'serviços de saúde' },
+  { slug: 'publicidade', nome: 'publicidade e eventos', termo: 'publicidade', grupo: 'publicidade e eventos' },
 ];
 
 const POR_SLUG = new Map(ASSUNTOS.map((a) => [a.slug, a]));

@@ -35,6 +35,8 @@ const MAPA: ReadonlyArray<readonly [string, string]> = [
   ['4321', 'manutencao-predial'], ['4322', 'manutencao-predial'], ['4329', 'manutencao-predial'], ['4330', 'manutencao-predial'], ['8111', 'manutencao-predial'],
   // Serviços de saúde
   ['86', 'servicos-de-saude'],
+  // Publicidade, promoção de vendas, pesquisa de mercado, eventos e gráfica
+  ['731', 'publicidade'], ['7320', 'publicidade'], ['8230', 'publicidade'], ['1813', 'publicidade'], ['1812', 'publicidade'],
 ];
 
 export function normalizarCnpj(t: string): string | null {
