@@ -2,6 +2,7 @@ import { ASSUNTOS } from '@/lib/seo/assuntos';
 import { url } from '@/lib/seo/site';
 import { loteDoArquivo, paginasFixas, POR_ARQUIVO, xmlUrls } from '@/lib/seo/sitemap';
 import { abertosPorUf, editaisAbertosSitemap } from '@/lib/servidor/consultas';
+import { cidadesComPagina } from '@/lib/servidor/licitacoes';
 
 type Contexto = { params: Promise<{ arquivo: string }> };
 
@@ -12,7 +13,8 @@ async function paginas(): Promise<Array<{ url: string }>> {
   const contagens = await Promise.all(
     [null, ...ASSUNTOS].map(async (assunto) => ({ assunto, porUf: await abertosPorUf(assunto?.termo ?? null).catch(() => ({})) })),
   );
-  return ['/', '/planos', '/sobre', '/alertas', '/cnpj', ...paginasFixas(contagens)].map((c) => ({ url: url(c) }));
+  const cidades = (await cidadesComPagina()).map((c) => `/licitacoes/${c.uf.toLowerCase()}/${c.slug}`);
+  return ['/', '/planos', '/sobre', '/alertas', '/cnpj', ...paginasFixas(contagens), ...cidades].map((c) => ({ url: url(c) }));
 }
 
 export async function GET(_: Request, { params }: Contexto): Promise<Response> {

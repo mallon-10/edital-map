@@ -3,28 +3,35 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { RotaLicitacoes } from '@/components/licitacoes/PaginaLicitacoes';
 import { assuntoPorSlug, ufPorSlug } from '@/lib/seo/assuntos';
+import { cidadePorSlug } from '@/lib/seo/municipios';
 import type { Pagina } from '@/lib/seo/textos';
-import { metadadosDaPagina } from '@/lib/servidor/licitacoes';
+import { cidadesComPagina, metadadosDaPagina } from '@/lib/servidor/licitacoes';
 
 type Props = { params: Promise<{ x: string; uf: string }> };
 
-/** /licitacoes/epi/sp: assunto na UF (aqui o primeiro segmento só vale como assunto). */
-function pagina(x: string, ufSlug: string): Pagina | null {
+/** /licitacoes/epi/sp (assunto na UF) ou /licitacoes/sc/sao-bento-do-sul (cidade com página, lib/seo/municipios.ts). */
+async function pagina(x: string, segundo: string): Promise<Pagina | null> {
   const assunto = assuntoPorSlug(x);
-  const uf = ufPorSlug(ufSlug);
-  return assunto && uf ? { assunto, uf } : null;
+  if (assunto) {
+    const uf = ufPorSlug(segundo);
+    return uf ? { assunto, uf } : null;
+  }
+  const uf = ufPorSlug(x);
+  if (!uf) return null;
+  const cidade = cidadePorSlug(await cidadesComPagina(), uf, segundo);
+  return cidade ? { assunto: null, uf, cidade: { ibge: cidade.ibge, nome: cidade.nome, slug: cidade.slug } } : null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { x, uf } = await params;
-  const p = pagina(x, uf);
+  const p = await pagina(x, uf);
   return p ? metadadosDaPagina(p) : { title: 'Página não encontrada' };
 }
 
-export default async function LicitacoesAssuntoUf({ params }: Props) {
+export default async function LicitacoesSegundoNivel({ params }: Props) {
   await connection();
   const { x, uf } = await params;
-  const p = pagina(x, uf);
+  const p = await pagina(x, uf);
   if (!p) notFound();
   return <RotaLicitacoes pagina={p} />;
 }

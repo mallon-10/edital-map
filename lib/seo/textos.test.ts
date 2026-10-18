@@ -124,3 +124,28 @@ describe('vizinhos', () => {
     expect(vizinhos(BR, null)).toHaveLength(42);
   });
 });
+
+describe('página de cidade', () => {
+  const SBS = { assunto: null, uf: 'SC', cidade: { ibge: '4215802', nome: 'São Bento do Sul', slug: 'sao-bento-do-sul' } };
+  it('caminho, título e descrição', () => {
+    expect(caminhoDaPagina(SBS)).toBe('/licitacoes/sc/sao-bento-do-sul');
+    expect(tituloDaPagina(SBS)).toBe('Licitações abertas em São Bento do Sul (SC)');
+    expect(descricaoDaPagina(SBS, 25)).toMatch(/^25 editais abertos em São Bento do Sul \(SC\),/);
+  });
+  it('busca no mapa pelo município', () => {
+    expect(buscaDaPagina(SBS)).toBe('/?uf=SC&municipio=4215802');
+  });
+  it('migalhas passam pela UF', () => {
+    expect(migalhas(SBS)).toEqual([
+      { nome: 'Início', caminho: '/' },
+      { nome: 'Licitações', caminho: '/licitacoes' },
+      { nome: 'Santa Catarina', caminho: '/licitacoes/sc' },
+      { nome: 'São Bento do Sul', caminho: '/licitacoes/sc/sao-bento-do-sul' },
+    ]);
+  });
+  it('vizinhos: tudo na UF e os assuntos na UF', () => {
+    const v = vizinhos(SBS, null);
+    expect(v[0]).toMatchObject({ caminho: '/licitacoes/sc' });
+    expect(v).toHaveLength(16);
+  });
+});

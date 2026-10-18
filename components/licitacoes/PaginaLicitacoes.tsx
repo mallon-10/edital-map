@@ -12,7 +12,7 @@ import { usoDoDia } from '@/lib/servidor/uso';
 type Props = DadosDaPagina & { pagina: Pagina; atualizadoEm: string | null; uso: UsoHoje | null };
 
 /** Página fixa de /licitacoes (assunto, UF ou os dois): lista dos que encerram antes, link para o mapa e páginas vizinhas. */
-export function PaginaLicitacoes({ pagina, total, editais, porUf, atualizadoEm: atualizado, uso }: Props) {
+export function PaginaLicitacoes({ pagina, total, editais, porUf, cidades, atualizadoEm: atualizado, uso }: Props) {
   const agora = new Date();
   const caminho = migalhas(pagina);
   const links = vizinhos(pagina, porUf);
@@ -55,6 +55,25 @@ export function PaginaLicitacoes({ pagina, total, editais, porUf, atualizadoEm: 
         {editais.length > 0 ? (
           <section aria-label="Editais abertos" className="flex flex-col gap-3">
             {editais.map((e) => <CardLista key={e.id} edital={e} agora={agora} />)}
+          </section>
+        ) : null}
+        {cidades.length > 0 ? (
+          <section aria-labelledby="cidades" className="flex flex-col gap-3">
+            <h2 id="cidades" className="text-lg font-bold text-ink">Cidades com mais licitações</h2>
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {cidades.map((c) => (
+                <li key={c.ibge}>
+                  <Link
+                    href={`/licitacoes/${c.uf.toLowerCase()}/${c.slug}`}
+                    prefetch={false}
+                    className="flex justify-between gap-3 rounded-sm border border-line bg-surface px-3 py-2 text-sm text-ink hover:bg-sunken"
+                  >
+                    <span>{c.nome}</span>
+                    <span className="text-ink-muted">{c.total}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         ) : null}
         {links.length > 0 ? (

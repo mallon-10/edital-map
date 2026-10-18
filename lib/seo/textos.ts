@@ -7,17 +7,18 @@ import { UFS_BRASIL } from '../eventos';
 import { ASSUNTOS, type Assunto, naUf } from './assuntos';
 import { url } from './site';
 
-/** Uma página de /licitacoes: Brasil (nada), só UF, só assunto ou assunto na UF. */
-export type Pagina = { assunto: Assunto | null; uf: string | null };
+/** Uma página de /licitacoes: Brasil (nada), só UF, só assunto, assunto na UF ou cidade (com a UF, sem assunto). */
+export type Pagina = { assunto: Assunto | null; uf: string | null; cidade?: { ibge: string; nome: string; slug: string } | null };
 
 export function caminhoDaPagina(p: Pagina): string {
+  if (p.cidade && p.uf) return `/licitacoes/${p.uf.toLowerCase()}/${p.cidade.slug}`;
   const partes = ['/licitacoes'];
   if (p.assunto) partes.push(p.assunto.slug);
   if (p.uf) partes.push(p.uf.toLowerCase());
   return partes.join('/');
 }
 
-const onde = (p: Pagina) => (p.uf ? naUf(p.uf) : 'no Brasil');
+const onde = (p: Pagina) => (p.cidade && p.uf ? `em ${p.cidade.nome} (${p.uf})` : p.uf ? naUf(p.uf) : 'no Brasil');
 const de = (p: Pagina) => (p.assunto ? ` de ${p.assunto.nome}` : '');
 const maiuscula = (s: string) => s.replace(/^./, (c) => c.toUpperCase());
 
@@ -48,6 +49,7 @@ export function buscaDaPagina(p: Pagina): string {
   const q = new URLSearchParams();
   if (p.assunto) q.set('q', p.assunto.termo);
   if (p.uf) q.set('uf', p.uf);
+  if (p.cidade) q.set('municipio', p.cidade.ibge);
   const t = q.toString();
   return t ? `/?${t}` : '/';
 }
@@ -55,7 +57,8 @@ export function buscaDaPagina(p: Pagina): string {
 export function migalhas(p: Pagina): Array<{ nome: string; caminho: string }> {
   const itens = [{ nome: 'Início', caminho: '/' }, { nome: 'Licitações', caminho: '/licitacoes' }];
   if (p.assunto) itens.push({ nome: maiuscula(p.assunto.nome), caminho: caminhoDaPagina({ assunto: p.assunto, uf: null }) });
-  if (p.uf) itens.push({ nome: NOMES_UF[p.uf], caminho: caminhoDaPagina(p) });
+  if (p.uf) itens.push({ nome: NOMES_UF[p.uf], caminho: caminhoDaPagina({ assunto: p.assunto, uf: p.uf }) });
+  if (p.cidade && p.uf) itens.push({ nome: p.cidade.nome, caminho: caminhoDaPagina(p) });
   return itens;
 }
 
@@ -77,6 +80,7 @@ export function vizinhos(p: Pagina, porUf: Record<string, number> | null): Array
     ufsPorNome()
       .filter((uf) => !porUf || (porUf[uf] ?? 0) > 0)
       .map((uf) => ({ nome: NOMES_UF[uf], caminho: caminhoDaPagina({ assunto, uf }), total: porUf ? (porUf[uf] ?? 0) : null }));
+  if (p.cidade && p.uf) return [{ nome: `Tudo ${naUf(p.uf)}`, caminho: caminhoDaPagina({ assunto: null, uf: p.uf }), total: null }, ...assuntos(p.uf)];
   if (p.assunto && p.uf) {
     return [
       { nome: `${maiuscula(p.assunto.nome)} no Brasil`, caminho: caminhoDaPagina({ assunto: p.assunto, uf: null }), total: null },

@@ -302,3 +302,19 @@ export function editaisAbertosSitemap(limite: number, deslocamento: number): Pro
     return editais;
   });
 }
+
+const cacheHora = criarCache(60 * 60 * 1000);
+
+/** Editais abertos por município (0019), para escolher as páginas /licitacoes/{uf}/{cidade}. Cache de 1 h. */
+export function municipiosAbertos(): Promise<Array<{ codigo_ibge: string; nome: string; uf: string; total: number }>> {
+  return cacheHora('municipios-abertos', async () => {
+    const lista: Array<{ codigo_ibge: string; nome: string; uf: string; total: number }> = [];
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await supabaseServidor().rpc('municipios_abertos', {}).range(de, de + 999);
+      if (error) throw new Error(`municipios_abertos: ${error.message}`);
+      const linhas = (data ?? []) as Linha[];
+      for (const l of linhas) lista.push({ codigo_ibge: String(l.codigo_ibge), nome: String(l.nome), uf: String(l.uf), total: Number(l.total) });
+      if (linhas.length < 1000) return lista;
+    }
+  });
+}
