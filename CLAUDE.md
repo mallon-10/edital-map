@@ -2,7 +2,7 @@
 
 Mapa de licitações públicas abertas no Brasil (dados do PNCP) para PMEs que vendem ao governo. Nicho de largada: EPI e uniformes.
 
-Fase atual: **3 · Brasil todo + limites do grátis** (etapa da Fase 3 antes de pagamento e Alertas). Site Next.js na Vercel em https://edital-map.vercel.app (domínio próprio pendente) sobre o espelho do PNCP (27 UFs) atualizado a cada 3 h.
+Fase atual: **3 · Brasil todo + limites do grátis** (etapa da Fase 3 antes de pagamento e Alertas). Site Next.js na Vercel em https://www.editalmap.com.br (DNS no Registro.br; editalmap.com.br redireciona para o www; edital-map.vercel.app continua respondendo) sobre o espelho do PNCP (27 UFs) atualizado a cada 3 h.
 - Spec: docs/superpowers/specs/2026-10-15-fase-2-mapa-design.md
 - Plano: docs/superpowers/plans/2026-10-15-fase-2-mapa.md
 - Portão: docs/fase-2-portao.sql
