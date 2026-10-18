@@ -28,7 +28,7 @@ O Resend (plano grátis: 100 e-mails por dia) é o mesmo dos códigos de login. 
 - `alertas_enviados` (existente, ligada a `radares`): passa a referir `alertas(id)`: (alerta_id, contratacao_id, enviado_em) com chave dupla → **nunca o mesmo edital duas vezes para o mesmo alerta**.
 - `envios_alerta` (histórico): id, alerta_id, user_id, iniciado_em, status (`enviado` | `sem_novidades` | `falhou` | `pulado_plano`), qtd_editais, tentativas, erro (texto curto), id_mensagem do Resend.
 - Página **/alertas** (existe; hoje só pede e-mail): com conta, lista os alertas (nome, resumo dos filtros, ativo/pausado, último envio e quantos editais), criar, editar, **pausar/retomar**, excluir (confirmação). Sem conta: convite para entrar (o formulário antigo de pedido por e-mail sai; os pedidos antigos em `pedidos_alerta` ficam guardados para um convite futuro).
-- **Envio diário às 7h (Brasília)**, num job agendado do GitHub Actions (`npm run worker:alertas`, cron `0 10 * * *` UTC), com os mesmos segredos do sync + `RESEND_API_KEY` e `ALERTAS_SEGREDO`:
+- **Envio diário às 7h (Brasília)**, num job agendado do GitHub Actions (`npm run worker:alertas`, cron `7 10 * * *` UTC; o GitHub atrasa ou pula horas cheias), com os mesmos segredos do sync + `RESEND_API_KEY` e `ALERTAS_SEGREDO`:
   1. Para cada alerta ativo de conta com plano que permite alertas (§1), busca editais **abertos** que casam com o alerta (mesma função do radar, ordem por relevância, até 20), **publicados ou atualizados** desde o último envio (primeiro envio: últimas 24 h), excluindo os já enviados para aquele alerta.
   2. Um e-mail por conta (junta os alertas dela), pelo Resend (remetente `Edital Map <alertas@editalmap.com.br>`), com, por edital: título, órgão, município/UF, valor estimado, prazo final, link para `/edital/{slug}` no site. Sem novidade → não manda e-mail (registra `sem_novidades`).
   3. Grava `alertas_enviados` só depois do aceite do Resend; erro → até 3 tentativas com espera (2/4/8 s); falha final registrada (`falhou`) e o próximo dia tenta de novo (os editais não enviados continuam elegíveis).
@@ -38,7 +38,7 @@ O Resend (plano grátis: 100 e-mails por dia) é o mesmo dos códigos de login. 
 
 ## 3b. Resumo semanal do Pro (decisão do dono de 18/10)
 
-- Toda segunda às 7h (Brasília; cron `0 10 * * 1` UTC), para cada conta Pro com radar e com o resumo ligado (`perfis.resumo_semanal`, padrão sim): editais novos da semana que casam com o radar (publicados nos últimos 7 dias), os que vencem nos próximos 7 dias, o valor total aberto do radar e os órgãos e cidades que mais compraram (entre os do radar). Sem novidade, não manda. No máximo um resumo a cada 6 dias por conta; histórico em `envios_resumo`; evento `resumo_enviado`.
+- Toda segunda às 7h (Brasília; mesmo job dos alertas, logo depois deles, para o teto do Resend sair certo), para cada conta Pro com radar e com o resumo ligado (`perfis.resumo_semanal`, padrão sim): editais novos da semana que casam com o radar (publicados nos últimos 7 dias), os que vencem nos próximos 7 dias, o valor total aberto do radar e os órgãos e cidades que mais compraram (entre os do radar). Sem novidade, não manda. No máximo um resumo a cada 6 dias por conta; histórico em `envios_resumo`; evento `resumo_enviado`.
 - Link "Parar o resumo semanal" (token assinado) e `List-Unsubscribe`, como nos alertas; religar em /alertas.
 
 ## 4. Medição (§12)
@@ -59,4 +59,7 @@ Eventos (tipos novos em `eventos_tipo_check`, mantendo os existentes): `edital_s
 - [ ] Salvar, status pessoais, observação, descartar e Minhas Oportunidades funcionando, sem duplicar, com limites por plano.
 - [ ] Alertas: criar/editar/pausar/excluir; envio diário real pelo Resend, sem repetir, com histórico e nova tentativa; descadastro pelo link.
 - [ ] Plano da conta (manual, e-mail da compra, navegador) aplicado em salvos e alertas.
-- [ ] Testes e typecheck passando; publicado e conferido (e-mail recebido pelo dono).
+- [ ] Testes e typecheck passando; publicado e conferido (e-mail recebido pelo dono). — 1406 testes, typecheck e build; na main e publicado em 18/10 (rotas sem sessão conferidas em produção). Falta o ponta a ponta com o dono (conta dele + perfis.plano = pro).
+- Decisão do dono depois da spec: o Basic acabou (só Grátis e Pro); salvos e alertas são do Pro (5 alertas, salvos com uso justo).
+- Escopo acrescentado: resumo semanal do Pro às segundas (mesmo remetente, descadastro próprio, histórico em envios_resumo).
+- Revisões: teto de 5 alertas também no banco (0018); orçamento diário de 60 e-mails somando alertas e resumo; tag do Google fora de /alertas/sair.
