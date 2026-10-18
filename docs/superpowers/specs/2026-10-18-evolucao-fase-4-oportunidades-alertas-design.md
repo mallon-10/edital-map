@@ -6,7 +6,11 @@ Origem: prompt "Evolução do SaaS Edital Map" (17/10/2026) §5 (ações salvar/
 
 - `planoDaConta(usuario, ctx?)` (servidor): o maior entre (a) `perfis.plano` (marcação manual, ex.: a conta do dono = `pro`), (b) assinatura ativa (tabela da 0015: `valido_ate > now()`, não estornada) cujo **e-mail do comprador = e-mail da conta**, (c) quando houver navegador, `planoAtual(ctx)` da 0015 (dono pelo cookie assinado = `pro`).
 - O envio de alertas (sem navegador) usa (a) + (b). Assinou com outro e-mail: a página da conta mostra "Plano no navegador, não na conta: use o mesmo e-mail da compra" (sem ligação automática por navegador nesta fase).
-- Limites (spec de planos + decisões do dono): Grátis — nenhum salvo, nenhum alerta (botões mostram o cartão dos planos); **Basic — até 10 salvos e 1 alerta**; **Pro — salvos e alertas com uso justo: até 5 alertas, salvos sem teto visível (500 por trás)**.
+- Limites (decisão do dono de 18/10, repassada pela sessão do pagamento: o Basic sai de linha, só Grátis e Pro): Grátis — nenhum salvo, nenhum descarte, nenhum alerta (botões mostram o cartão dos planos); **Pro — uso justo: até 5 alertas, salvos sem teto visível (500 por trás)**. Linhas antigas com `basic` contam como Pro até vencer. O pagamento já está na main (`planoAtual(ctx)` em lib/servidor/plano.ts, que também olha a conta logada).
+
+## 1b. Cota do Resend
+
+O Resend (plano grátis: 100 e-mails por dia) é o mesmo dos códigos de login. Cada rodada de alertas/resumo manda no máximo **60 e-mails**; o que passar fica para o dia seguinte (a janela não avança). Erro de cota (429) encerra a rodada sem novas tentativas. Quando o Pro crescer, o dono troca o plano do Resend.
 
 ## 2. Minhas Oportunidades (§6)
 
@@ -32,9 +36,14 @@ Origem: prompt "Evolução do SaaS Edital Map" (17/10/2026) §5 (ações salvar/
 - **Cancelar recebimento**: todo e-mail tem link "Parar de receber este alerta" e "Parar todos os alertas" (`/alertas/sair?t=…`, token HMAC com `ALERTAS_SEGREDO`, sem login, confirma em uma tela) e o cabeçalho `List-Unsubscribe` (+ `List-Unsubscribe-Post` one-click). Pausar não apaga o alerta.
 - Nada é simulado: se o envio estiver sem chave/segredo, o job registra `falhou` com o motivo e a página mostra "Envio indisponível agora".
 
+## 3b. Resumo semanal do Pro (decisão do dono de 18/10)
+
+- Toda segunda às 7h (Brasília; cron `0 10 * * 1` UTC), para cada conta Pro com radar e com o resumo ligado (`perfis.resumo_semanal`, padrão sim): editais novos da semana que casam com o radar (publicados nos últimos 7 dias), os que vencem nos próximos 7 dias, o valor total aberto do radar e os órgãos e cidades que mais compraram (entre os do radar). Sem novidade, não manda. No máximo um resumo a cada 6 dias por conta; histórico em `envios_resumo`; evento `resumo_enviado`.
+- Link "Parar o resumo semanal" (token assinado) e `List-Unsubscribe`, como nos alertas; religar em /alertas.
+
 ## 4. Medição (§12)
 
-Eventos (tipos novos em `eventos_tipo_check`, mantendo os existentes): `edital_salvo`, `edital_descartado`, `alerta_criado`, `alerta_enviado` (servidor, por envio, com qtd). Sem e-mail em eventos.
+Eventos (tipos novos em `eventos_tipo_check`, mantendo os existentes): `edital_salvo`, `edital_descartado`, `alerta_criado`, `alerta_enviado` (servidor, por envio, com qtd), `resumo_enviado`. Logs do job (repositório público): sem e-mail e sem ids completos. Sem e-mail em eventos.
 
 ## 5. Dados e segurança
 
