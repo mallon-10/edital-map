@@ -56,3 +56,39 @@ describe('salvar e descartar na interface', () => {
     expect(menu).toContain('esquecerSalvos();');
   });
 });
+
+describe('Minhas Oportunidades', () => {
+  const pagina = ler('app/oportunidades/page.tsx');
+  const linha = ler('components/oportunidades/LinhaOportunidade.tsx');
+  it('exige conta, fora do Google, texto fixo dos status', () => {
+    expect(pagina).toContain('usuarioAtual()');
+    expect(pagina).toContain("redirect('/entrar?voltar=/oportunidades')");
+    expect(pagina).toContain('robots: { index: false, follow: false }');
+    expect(pagina).toContain('{TEXTO_STATUS_PESSOAL}');
+  });
+  it('abas com contagem, ordem por prazo e por data de salvamento', () => {
+    expect(pagina).toContain('FILTROS_STATUS.map(');
+    expect(pagina).toContain('contagem[f]');
+    expect(pagina).toContain('Prazo');
+    expect(pagina).toContain('Data em que salvei');
+  });
+  it('grátis sem salvos vê o convite ao Pro no lugar da lista; plano incerto pede para tentar de novo', () => {
+    expect(pagina).toContain('<CartaoRecursoPlano titulo={MENSAGENS_LIMITE_CONTA.salvosPlano} texto={MENSAGENS_LIMITE_CONTA.salvosConvite} />');
+    expect(pagina).toContain('planoIncerto(plano)');
+    expect(pagina).toContain('{gratis && lista.length === 0 ? null : (');
+    expect(pagina).toContain('MENSAGENS_LIMITE_CONTA.planoIndisponivel');
+  });
+  it('linha: status, observação que salva ao sair do campo, abrir e remover com confirmação', () => {
+    expect(linha).toContain('onBlur={() => void salvarObservacao()}');
+    expect(linha).toContain('Salvo ✓');
+    expect(linha).toContain('maxLength={MAX_OBSERVACAO}');
+    expect(linha).toContain('prefetch={false}');
+    expect(linha).toContain('Abrir edital');
+    expect(linha).toContain('window.confirm(CONFIRMAR_REMOVER)');
+    expect(linha).toContain('situacaoOficial(');
+  });
+  it('observação só como texto (nada de HTML vindo da conta)', () => {
+    expect(linha).not.toContain('dangerouslySetInnerHTML');
+    expect(pagina).not.toContain('dangerouslySetInnerHTML');
+  });
+});
