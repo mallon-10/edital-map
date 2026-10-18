@@ -50,6 +50,12 @@ describe('chaves e bibliotecas só no servidor', () => {
     const com = codigo.filter((f) => ler(f).includes('@supabase/ssr'));
     expect(com.sort()).toEqual(['lib/servidor/sessao.ts', 'lib/sessaoProxy.ts']);
   });
+  it('ALERTAS_SEGREDO só no servidor, nunca NEXT_PUBLIC_', () => {
+    const com = codigo.filter((f) => ler(f).includes('ALERTAS_SEGREDO'));
+    expect(com.length).toBeGreaterThan(0);
+    expect(com.filter((f) => f.startsWith('components/') || f.startsWith('lib/cliente/') || ler(f).startsWith("'use client'"))).toEqual([]);
+    expect(codigo.filter((f) => ler(f).includes('NEXT_PUBLIC_ALERTAS'))).toEqual([]);
+  });
   it('nenhum componente ou código do navegador lê variável SUPABASE_', () => {
     const navegador = [...listar('components'), ...listar('lib/cliente')].filter((f) => ler(f).includes('process.env.SUPABASE_'));
     expect(navegador).toEqual([]);
