@@ -73,7 +73,7 @@ export async function dentroDoLimite(tabela: 'eventos' | 'pedidos_alerta' | 'lis
 }
 
 /** Usos de um recurso gravados pela rota (evento usou_recurso) por este IP na última hora, abaixo do limite. */
-export async function recursoDentroDoLimite(ipHash: string | null, recurso: 'exportou' | 'ativou_chave', limite: number): Promise<boolean> {
+export async function recursoDentroDoLimite(ipHash: string | null, recurso: 'exportou' | 'tentou_assinar', limite: number): Promise<boolean> {
   if (!ipHash) return true;
   const desde = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count, error } = await supabaseServidor()
