@@ -47,8 +47,10 @@ Conta, onboarding, Meu Radar, salvos, status pessoais, alertas, mudanças de pla
 - Banco (controlador): revogadas/anuladas fora de abertas em todas as funções (contagens antes/depois); `buscar_editais` com relacionados e negativos; tempos (meta: lista < 500 ms com termo amplo, como hoje).
 - Navegador 1440 e 390 px: alternador, lista com ordenação e paginação, destaque, relevância e explicação, estado vazio, edital com resumo, compartilhar, link oficial com limite atingido.
 
-- [ ] Revogadas e anuladas fora de abertas (lista, mapa, painel, exportação); suspensas com etiqueta.
-- [ ] Busca com termos relacionados e negativos; pontuação 0–100 com explicação e aviso.
-- [ ] Alternador Lista | Mapa no endereço, sem contar busca; lista com ordenações, paginação, destaque e estado vazio.
-- [ ] Edital com resumo simples, datas separadas, identificador, situação, compartilhar; link oficial sempre acessível.
-- [ ] Testes e typecheck passando; publicado e conferido.
+- [x] Revogadas e anuladas fora de abertas (lista, mapa, painel, exportação); suspensas com etiqueta. — 0011 em 18/10: revogadas/anuladas na lista 0, suspensas 344, lista = mapa = 33.578.
+- [x] Busca com termos relacionados e negativos; pontuação 0–100 com explicação e aviso. — produção: "uniforme" 2.135, "uniforme -escolar" 1.802; conferir-relevancia todas ok (banco = site), 145–236 ms.
+- [x] Alternador Lista | Mapa no endereço, sem contar busca; lista com ordenações, paginação, destaque e estado vazio. — capturas 1440/390 em produção.
+- [x] Edital com resumo simples, datas separadas, identificador, situação, compartilhar; link oficial sempre acessível. — produção 18/10.
+- [x] Testes e typecheck passando; publicado e conferido. — 726 testes; publicado em 18/10.
+
+Desvios decididos na execução: ordenações conferidas por guarda de SQL e checagem no banco (não por vitest); estado vazio sugere "termos parecidos" do catálogo (os do grupo já entram na busca) e faz no máximo 4 contagens; termos negativos excluem pelo objeto; "+5 por termo distinto" conta além do primeiro (máximo real 90); "aberta num lugar só" vale para o SQL do site (o worker mantém a sua regra).

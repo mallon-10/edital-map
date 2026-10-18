@@ -12,6 +12,7 @@ Fase atual: **3 · Brasil todo + limites do grátis** (etapa da Fase 3 antes de 
 - Planos (desenhado, implementação adiada até o domínio): docs/superpowers/specs/2026-10-16-fase-3-planos-design.md.
 - Recursos Pro (abertos por enquanto, cadeado quando os Planos ligarem): spec docs/superpowers/specs/2026-10-17-fase-3-recursos-pro-design.md, plano docs/superpowers/plans/2026-10-17-fase-3-recursos-pro.md, conferências docs/fase-3-recursos-pro.sql. Relacionados (`relacionados`, 0008), filtro por órgão (`/api/orgaos`, `orgaos_abertos`), raio em km (`municipios_no_raio`; com raio a UF não vale), exportar CSV (`/api/exportar`, até 2.000, 20/hora por IP, teto de 4 MB).
 - Limites do grátis, página Planos e celular: spec docs/superpowers/specs/2026-10-17-fase-3-limites-planos-celular-design.md, plano docs/superpowers/plans/2026-10-17-fase-3-limites-planos-celular.md, conferências docs/fase-3-limites.sql e `npx tsx scripts/conferir-limites.ts` (0009: `uso_diario`, `registrar_uso`, `uso_do_dia`, `lista_espera`, `limite_atingido`).
+- Evolução · Fase 2 (busca, relevância, lista e edital): spec docs/superpowers/specs/2026-10-18-evolucao-fase-2-busca-relevancia-design.md, plano docs/superpowers/plans/2026-10-18-evolucao-fase-2-busca-relevancia.md, conferências docs/evolucao-fase-2.sql e `npx tsx scripts/conferir-relevancia.ts` (0011). Fases 3–5 (conta por e-mail com código, Meu Radar, salvos, alertas reais, paywall) dependem do domínio + Resend.
 
 Referências:
 - Estrutura do MVP (doc, nome antigo BidAtlas): https://claude.ai/code/artifact/33a5e4e7-9f62-4f3f-8312-9da344fe5c7c
@@ -27,7 +28,7 @@ Referências:
 
 ## Regras
 - O worker grava pelo supabase-js com SUPABASE_SERVICE_ROLE_KEY. Essa chave nunca vai para o navegador nem para o git. O mesmo vale para SUPABASE_DB_URL (só no .env local).
-- "Aberta" = encerramento_em > now(). Não confiar no endpoint /proposta para isso; ele só serve para encontrar contratações na carga.
+- "Aberta" = encerramento_em > now() e situação diferente de Revogada (2) e Anulada (3); nas consultas do site isso fica só em `public.em_aberto` (0011); suspensa (4) continua aberta, com etiqueta. Não confiar no endpoint /proposta para isso; ele só serve para encontrar contratações na carga.
 - Datas do PNCP vêm sem fuso: converter com deBrasilia() (America/Sao_Paulo) antes de gravar.
 - Link do edital: link_origem; se vazio, https://pncp.gov.br/app/editais/{cnpj}/{ano}/{sequencial}.
 - valor_estimado nulo ou 0 = "Valor não informado".
@@ -43,6 +44,7 @@ Referências:
 - Vercel: projeto edital-map no time JPM Company, região gru1, publicado pela CLI (`vercel deploy --prod`), sem Git ligado; `.vercelignore` impede o envio do `.env`.
 - maplibre-gl 6 (só ESM): o worker vem do pacote via `setWorkerUrl` em components/Mapa.tsx (o Turbopack zera o import.meta.url).
 - Site: dados só pelo servidor (lib/servidor/*, `server-only`); cache de 5 min; `noindex` até a etapa de SEO; eventos e pedidos de alerta só pelas rotas /api.
+- Busca: termos relacionados em lib/relevancia/termos.ts (código versionado, grupos por assunto, até 20 relacionados intercalados), `-palavra` exclui pelo objeto; relevância 0–100 determinística: o banco ordena (`pontuacao_busca`, pesos iguais a `PESOS` de lib/relevancia/pontuacao.ts, guardados em teste) e o site mostra nota e explicação só com termos que bateram. Vista (lista|mapa, padrão lista), ordem e página vão no endereço e nunca contam busca.
 - Textos do PNCP só passam pela limpeza de lib/texto.ts (sem IA); siglas novas entram na lista SIGLAS. Título do edital = assunto() (sem a abertura burocrática).
 - Página inicial em três colunas a partir de lg (1024 px). Abaixo: uma página só que rola, com o mapa em cima (58svh) e a lista embaixo; barra fixa embaixo (Mapa · Lista · Alertas · Planos, components/BarraCelular.tsx, `--altura-barra`; a rolagem só acende o item, nunca escreve o endereço); busca compacta com "Filtros (n)" e folha de filtros (rascunho; "Ver N editais" por /api/contagem, que não conta). Tocar no card abre o edital. Escolher um município leva o mapa até ele (com raio, enquadra o círculo; sem filtro, volta ao Brasil): decisão em `focoDoMapa` (lib/geo.ts). `ALTURA_GAVETA_RECOLHIDA` (0) continua exportada para o Mapa.
 - Limite do grátis: 3 buscas e 3 editais diferentes por dia (Brasília) por navegador (`em_visitante`, garantido pelo proxy.ts); interno sem limite e sem faixa. Faixa do plano grátis abaixo do cabeçalho em todas as páginas (components/FaixaPlano.tsx, bolinhas = restantes; amarela com 1, laranja com 0). Busca = termo (sem acento/maiúsculas/espaços) + UF + município + valor + modalidades + órgão + raio (prazo e página não contam; com raio a UF não entra; vazia não conta); chave = sha256 (lib/limites.ts, lib/servidor/uso.ts). Lista e mapa mandam os mesmos parâmetros (contam uma vez). Banco fora na contagem: libera.
