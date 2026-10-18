@@ -28,3 +28,16 @@ describe('destacar (termos buscados e relacionados no título)', () => {
     expect(juntar(destacar(texto, ['fardamento', 'jaleco', 'camiseta']))).toBe(texto);
   });
 });
+
+describe('destacar (correções)', () => {
+  it('raiz de até 3 letras exige a palavra inteira (com s final opcional)', () => {
+    expect(destacar('Epidemia e epiderme', ['EPI']).some((x) => x.marcado)).toBe(false);
+    expect(destacar('Compra de EPI e EPIs', ['EPI']).filter((x) => x.marcado).map((x) => x.texto)).toEqual(['EPI', 'EPIs']);
+  });
+  it('texto em NFD marca e devolve o original intacto', () => {
+    const texto = 'Luvas nitrílicas'.normalize('NFD');
+    const t = destacar(texto, ['luva nitrílica']);
+    expect(t.filter((x) => x.marcado).map((x) => x.texto)).toEqual(['Luvas', 'nitrílicas'.normalize('NFD')]);
+    expect(t.map((x) => x.texto).join('')).toBe(texto);
+  });
+});

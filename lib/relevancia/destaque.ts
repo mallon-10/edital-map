@@ -23,9 +23,10 @@ export function destacar(texto: string, termos: readonly string[]): Trecho[] {
   if (rs.length === 0) return [{ texto, marcado: false }];
   const saida: Trecho[] = [];
   let fim = 0;
-  for (const m of texto.matchAll(/[\p{L}\p{N}]+/gu)) {
+  for (const m of texto.matchAll(/[\p{L}\p{N}\p{M}]+/gu)) {
     const base = semAcento(m[0]);
-    if (!rs.some((r) => base.startsWith(r))) continue;
+    // Raiz curta (até 3 letras, ex.: EPI) exige a palavra inteira, com "s" final opcional.
+    if (!rs.some((r) => (r.length <= 3 ? base === r || base === `${r}s` : base.startsWith(r)))) continue;
     const inicio = m.index ?? 0;
     if (inicio > fim) saida.push({ texto: texto.slice(fim, inicio), marcado: false });
     saida.push({ texto: m[0], marcado: true });
