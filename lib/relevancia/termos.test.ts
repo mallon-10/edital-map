@@ -14,6 +14,15 @@ describe('normalizar e chave', () => {
     expect(chave('EPIs')).toBe('epi');
     expect(chave('gás')).toBe('gas');
   });
+  it("EPI's, EPIs e epi’s (apóstrofo tipográfico) chegam em 'epi'", () => {
+    expect(chave("EPI's")).toBe('epi');
+    expect(chave('EPIs')).toBe('epi');
+    expect(chave('epi’s')).toBe('epi');
+    expect(expandir(["EPI's"]).map((r) => r.termo)).toContain('luva');
+  });
+  it('nenhuma palavra "ar" solta nos termos (prefixo acharia arroz, areia, armário)', () => {
+    expect(GRUPOS.flatMap((g) => g.termos).filter((t) => normalizar(t).split(' ').includes('ar'))).toEqual([]);
+  });
 });
 
 describe('grupos de termos', () => {
@@ -61,6 +70,12 @@ describe('expandir', () => {
     expect(r).not.toContain('jaleco');
     expect(r).not.toContain('uniforme');
     expect(new Set(r).size).toBe(r.length);
+  });
+  it('vários digitados com grupo: o corte intercala, o primeiro grupo não toma todas as vagas', () => {
+    const r = expandir(['EPI', 'uniforme', 'merenda']);
+    const de = new Set(r.map((x) => x.de));
+    expect(de).toEqual(new Set(['EPI', 'uniforme', 'merenda']));
+    expect(r.slice(0, 3).map((x) => x.de)).toEqual(['EPI', 'uniforme', 'merenda']);
   });
   it('no máximo MAX_RELACIONADOS', () => {
     expect(expandir(['EPI', 'uniforme', 'merenda'])).toHaveLength(MAX_RELACIONADOS);

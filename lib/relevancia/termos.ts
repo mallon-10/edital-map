@@ -89,7 +89,7 @@ export const GRUPOS: readonly Grupo[] = [
     assunto: 'manutenção predial',
     termos: [
       'manutenção predial', 'manutenção preventiva', 'manutenção corretiva', 'conservação predial', 'pintura predial',
-      'instalação elétrica', 'instalação hidráulica', 'ar-condicionado',
+      'instalação elétrica', 'instalação hidráulica', 'climatização', 'refrigeração',
     ],
   },
   {
@@ -103,14 +103,14 @@ export const GRUPOS: readonly Grupo[] = [
 
 /** Teto de relacionados por busca (cada um vira uma checagem por edital no banco). */
 export const MAX_RELACIONADOS = 20;
-/** Palavras curtas aceitas nos termos: siglas (e "ar", de ar-condicionado). */
-export const SIGLAS_TERMOS: ReadonlySet<string> = new Set(['epi', 'pff2', 'glp', 'a4', 'ar']);
+/** Palavras curtas aceitas nos termos: só siglas (a busca é por prefixo: "ar" acharia arroz, areia, armário). */
+export const SIGLAS_TERMOS: ReadonlySet<string> = new Set(['epi', 'pff2', 'glp', 'a4']);
 /** Palavras de ligação (o banco ignora como palavra vazia do português). */
 export const LIGACOES: ReadonlySet<string> = new Set(['de', 'da', 'do', 'das', 'dos', 'para', 'com', 'em']);
 
 /** Sem acento, minúsculo, o que não é letra ou número vira espaço, espaços colapsados. */
 export function normalizar(t: string): string {
-  return t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/['’]s(?![a-z0-9])/g, 's').replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
 /** Chave de comparação: normalizado e sem o "s" final das palavras de 4+ letras ("uniformes" = "uniforme"). */
@@ -159,21 +159,27 @@ export function gruposDigitados(texto: string): string[] {
 
 export type TermoRelacionado = { termo: string; assunto: string; de: string };
 
-/** Para cada digitado que é termo de um grupo, os outros termos do grupo (sem repetir nem devolver um digitado). */
+/**
+ * Para cada digitado que é termo de um grupo, os outros termos do grupo (sem repetir nem devolver um digitado).
+ * Com vários digitados, intercala os relacionados de cada um antes de cortar em MAX_RELACIONADOS.
+ */
 export function expandir(digitados: readonly string[]): TermoRelacionado[] {
+  const listas = digitados.map((d) => {
+    const k = chave(d);
+    return GRUPOS.filter((g) => g.termos.some((t) => chave(t) === k)).flatMap((g) =>
+      g.termos.map((termo) => ({ termo, assunto: g.assunto, de: d })),
+    );
+  });
   const vistos = new Set(digitados.map(chave));
   const saida: TermoRelacionado[] = [];
-  for (const d of digitados) {
-    const k = chave(d);
-    for (const g of GRUPOS) {
-      if (!g.termos.some((t) => chave(t) === k)) continue;
-      for (const t of g.termos) {
-        const kt = chave(t);
-        if (vistos.has(kt)) continue;
-        vistos.add(kt);
-        saida.push({ termo: t, assunto: g.assunto, de: d });
-        if (saida.length === MAX_RELACIONADOS) return saida;
-      }
+  const maior = Math.max(0, ...listas.map((l) => l.length));
+  for (let i = 0; i < maior; i++) {
+    for (const lista of listas) {
+      const r = lista[i];
+      if (!r || vistos.has(chave(r.termo))) continue;
+      vistos.add(chave(r.termo));
+      saida.push(r);
+      if (saida.length === MAX_RELACIONADOS) return saida;
     }
   }
   return saida;
