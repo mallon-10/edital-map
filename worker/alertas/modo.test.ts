@@ -6,13 +6,19 @@ describe('modo do job', () => {
     expect(lerModo([])).toBe('alertas');
     expect(lerModo(['--modo', 'alertas'])).toBe('alertas');
     expect(lerModo(['--modo', 'resumo'])).toBe('resumo');
-    expect(lerModo(['--modo='])).toBe('alertas');
     expect(() => lerModo(['--modo', 'tudo'])).toThrow('Modo inválido: tudo (use alertas ou resumo)');
   });
   it('--modo=resumo também vale (não cai em alertas sem avisar)', () => {
     expect(lerModo(['--modo=resumo'])).toBe('resumo');
     expect(lerModo(['--modo=alertas'])).toBe('alertas');
-    expect(lerModo(['--modo'])).toBe('alertas');
     expect(() => lerModo(['--modo=tudo'])).toThrow('Modo inválido: tudo (use alertas ou resumo)');
+  });
+  it('--modo sem valor é erro (não vira alertas em silêncio)', () => {
+    const msg = '--modo sem valor (use alertas ou resumo)';
+    expect(() => lerModo(['--modo'])).toThrow(msg);
+    expect(() => lerModo(['--modo', '--outra'])).toThrow(msg);
+    expect(() => lerModo(['--modo', '--modo=resumo'])).toThrow(msg);
+    expect(() => lerModo(['--modo='])).toThrow(msg);
+    expect(() => lerModo(['--modo', '  '])).toThrow(msg);
   });
 });
