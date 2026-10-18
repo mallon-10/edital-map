@@ -53,7 +53,7 @@ Origem: prompt "Evolução do SaaS Edital Map" (17/10/2026) §2, §3 (uso no per
 - Navegador 1440 e 390 px: /entrar, onboarding, radar, menu da conta.
 
 - [ ] Login por código funcionando no domínio (e-mail chega pelo Resend, código entra, sair funciona).
-- [ ] Onboarding em 3 etapas salvando o perfil; edição posterior.
-- [ ] Meu Radar com cards reais, lista personalizada, ordenação, paginação e explicação pelo perfil; prévia de 5 no grátis.
-- [ ] Isolamento entre usuários (só servidor, user_id da sessão); eventos novos gravados.
-- [ ] Testes e typecheck passando; publicado e conferido.
+- [x] Onboarding em 3 etapas salvando o perfil; edição posterior. — publicado 18/10.
+- [x] Meu Radar com cards reais, lista personalizada, ordenação, paginação e explicação pelo perfil; prévia de 5 no grátis. — publicado 18/10; contagens = lista no banco ([C6]); radar com 5 produtos ≤ 520 ms (12 relacionados).
+- [x] Isolamento entre usuários (só servidor, user_id da sessão); eventos novos gravados. — guardas em teste; CSRF 403 conferido em produção.
+- [x] Testes e typecheck passando; publicado e conferido. — 978 testes; publicado 18/10. Pendente: teste ponta a ponta do login com o e-mail do dono (depende do modelo do e-mail no Supabase).
