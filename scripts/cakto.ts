@@ -179,6 +179,12 @@ async function pedidos(access: string) {
   }
 }
 
+/** Pede à Cakto um evento de exemplo para o webhook (confere endereço e assinatura; o pedido do exemplo é fictício). */
+async function testarWebhook(access: string, id: string, evento: string) {
+  const r = await fetch(`${BASE}/webhook/event_test/${id}/?event_id=${evento}`, { method: 'POST', headers: { Authorization: `Bearer ${access}` } });
+  console.log(`HTTP ${r.status} ${(await r.text()).slice(0, 300)}`);
+}
+
 const comando = process.argv[2];
 const { access, escopos } = await token();
 console.log(`escopos: ${escopos}`);
@@ -189,6 +195,7 @@ else if (comando === 'preco-oferta') await precoOferta(access, process.argv[3], 
 else if (comando === 'desativar-produto') await desativarProduto(access, process.argv[3]);
 else if (comando === 'sondar-pagamento') await sondarPagamento(access, process.argv[3]);
 else if (comando === 'pedidos') await pedidos(access);
+else if (comando === 'testar-webhook') await testarWebhook(access, process.argv[3], process.argv[4] ?? 'purchase_approved');
 else if (comando === 'criar-webhook') await criarWebhook(access, process.argv[3], process.argv.slice(4));
 else if (comando === 'gravar-ofertas') {
   const [bm, ba, pm, pa] = process.argv.slice(3);
