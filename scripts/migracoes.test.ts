@@ -270,8 +270,8 @@ describe('migração 0010 (período da lista de espera)', () => {
 });
 
 /** Do `inicio` (ex.: "create function public.x(") até o `$$;` que fecha o corpo, com fim de linha \n. */
-describe('migração 0012 (conta e Meu Radar)', () => {
-  const sql = ler('supabase/migrations/0012_conta_radar.sql').replace(/\r\n/g, '\n');
+describe('migração 0014 (conta e Meu Radar)', () => {
+  const sql = ler('supabase/migrations/0014_conta_radar.sql').replace(/\r\n/g, '\n');
   const corpo = (inicio: string) => {
     const c = corpoDe(sql, inicio);
     expect(c, inicio).not.toBe('');

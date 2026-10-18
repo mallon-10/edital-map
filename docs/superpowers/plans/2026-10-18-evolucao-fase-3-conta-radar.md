@@ -4,7 +4,7 @@
 
 **Goal:** Login por e-mail com código de 6 dígitos (Supabase Auth + `@supabase/ssr`, sessão em cookie httpOnly validada no servidor), onboarding em 3 etapas que grava um radar por conta, página Meu Radar com cartões de contagem reais, lista personalizada (mesmos cards, ordenação e paginação da Fase 2, explicação pelo perfil), prévia de 5 no grátis, edição do radar, menu da conta e eventos novos.
 
-**Architecture:** Toda a autenticação passa por `lib/servidor/sessao.ts` (único lugar que cria o tipo `Usuario`, a partir de `auth.getUser()`, com a chave publicável `SUPABASE_ANON_KEY` só no servidor); `proxy.ts` renova a sessão quando há cookie `sb-…-auth-token`. Os dados da conta (perfil e radar) passam só por `lib/servidor/conta.ts`, cujas funções recebem `usuario: Usuario` e filtram pelo `usuario.id`, com a service role (nenhuma política RLS para anon/authenticated). A migração `0012_conta_radar.sql` amplia `perfis`/`radares`, tira as políticas antigas, acrescenta `p_ibges`, `p_valor_max` e `p_so_me_epp` a `abertas_unicas` e `buscar_editais` (superconjunto: chamadas atuais seguem valendo) e cria `radar_contagens` (os três cartões numa passada), `exclusivo_me_epp` (mesma regra da etiqueta "Exclusivo ME/EPP" do edital) e `buscar_municipios` (onboarding). Tudo o que decide é puro e testado: `lib/conta.ts` (e-mail, código, destino, mensagens de erro, reenvio, cookie de sessão) e `lib/radar.ts` (validação, montagem da busca do radar, prévia, navegação, rascunho do formulário, resumo). O radar reaproveita `expandir` (termos relacionados), `relevancia` (com explicação "um dos produtos que você monitora") e os componentes da lista da Fase 2.
+**Architecture:** Toda a autenticação passa por `lib/servidor/sessao.ts` (único lugar que cria o tipo `Usuario`, a partir de `auth.getUser()`, com a chave publicável `SUPABASE_ANON_KEY` só no servidor); `proxy.ts` renova a sessão quando há cookie `sb-…-auth-token`. Os dados da conta (perfil e radar) passam só por `lib/servidor/conta.ts`, cujas funções recebem `usuario: Usuario` e filtram pelo `usuario.id`, com a service role (nenhuma política RLS para anon/authenticated). A migração `0014_conta_radar.sql` amplia `perfis`/`radares`, tira as políticas antigas, acrescenta `p_ibges`, `p_valor_max` e `p_so_me_epp` a `abertas_unicas` e `buscar_editais` (superconjunto: chamadas atuais seguem valendo) e cria `radar_contagens` (os três cartões numa passada), `exclusivo_me_epp` (mesma regra da etiqueta "Exclusivo ME/EPP" do edital) e `buscar_municipios` (onboarding). Tudo o que decide é puro e testado: `lib/conta.ts` (e-mail, código, destino, mensagens de erro, reenvio, cookie de sessão) e `lib/radar.ts` (validação, montagem da busca do radar, prévia, navegação, rascunho do formulário, resumo). O radar reaproveita `expandir` (termos relacionados), `relevancia` (com explicação "um dos produtos que você monitora") e os componentes da lista da Fase 2.
 
 **Tech Stack:** Next.js 16 (App Router, `proxy.ts`, `after`, `connection`) + React 19 + Tailwind 4, @supabase/supabase-js 2, **@supabase/ssr 0.12** (única dependência nova), Postgres 15 do Supabase (PostgREST, plpgsql), vitest 3, TypeScript 5, Vercel CLI.
 
@@ -15,7 +15,7 @@
 - Trabalho no worktree `C:\Users\jotap\worktrees\evolucao-f3` (Git Bash: `/c/Users/jotap/worktrees/evolucao-f3`), branch `evolucao-fase-3` (já existe e está ativo; dependências instaladas). Todos os comandos rodam na raiz do worktree. **Não ler nem mexer no checkout principal** (pasta do OneDrive). Não ler nem imprimir o `.env`.
 - TDD com vitest: teste primeiro. `npm test` e `npm run typecheck` passam antes de cada commit; tasks que mexem em `app/`, `components/` ou `proxy.ts` também rodam `npm run build`.
 - Única dependência nova: `@supabase/ssr` (Task 1). Nenhuma outra.
-- Schema só muda com migração nova: esta fase cria só `supabase/migrations/0012_conta_radar.sql`; não editar 0001–0011. **Implementadores não aplicam migração, não rodam SQL, não tocam no banco, não chamam o Supabase Auth nem o PNCP**: escrevem o SQL e as guardas de texto em vitest. Quem aplica e confere é o controlador (Task 4): `npm run db:aplicar -- supabase/migrations/0012_conta_radar.sql` (uma transação, `set local lock_timeout = '10s'`).
+- Schema só muda com migração nova: esta fase cria só `supabase/migrations/0014_conta_radar.sql`; não editar 0001–0013 (0012 e 0013 são do SEO). **Implementadores não aplicam migração, não rodam SQL, não tocam no banco, não chamam o Supabase Auth nem o PNCP**: escrevem o SQL e as guardas de texto em vitest. Quem aplica e confere é o controlador (Task 4): `npm run db:aplicar -- supabase/migrations/0014_conta_radar.sql` (uma transação, `set local lock_timeout = '10s'`).
 - Funções novas ou trocadas com `revoke execute on function ... from public, anon, authenticated;` e `grant execute on function ... to service_role;` explícitos **por assinatura**. Tabelas da conta (`perfis`, `radares`, `salvos`, `alertas_enviados`): RLS ligado, **nenhuma** política, `revoke all ... from public, anon, authenticated`, acesso só `service_role`.
 - **`user_id` só de `auth.getUser()`**: o tipo `Usuario` só é criado em `lib/servidor/sessao.ts`; toda leitura/gravação de `perfis`/`radares` passa por `lib/servidor/conta.ts` com `usuario: Usuario`; nenhum arquivo de `app/` fala em `user_id`/`userId`; nenhuma rota lê dono de radar do corpo, da query ou de cookie próprio. Guardas em `scripts/conta.test.ts` (Task 9).
 - Chaves: `SUPABASE_SERVICE_ROLE_KEY` (dados) e `SUPABASE_ANON_KEY` (Auth, publicável) só no servidor; nenhum arquivo de `components/` ou `lib/cliente/` lê `process.env.SUPABASE_*`; `@supabase/ssr` só em `lib/servidor/sessao.ts` e `lib/sessaoProxy.ts`. Sem cliente Supabase no navegador.
@@ -34,8 +34,8 @@
 |---|---|---|---|---|
 | 1 · Sessão: `@supabase/ssr`, helpers do servidor e proxy | implementador | standard | 40 min | 0h40 |
 | 2 · /entrar (código por e-mail) e menu da conta | implementador | capable | 60 min | 1h40 |
-| 3 · Migração 0012, guardas e conferências | implementador | capable | 50 min | 2h30 |
-| 4 · Aplicar a 0012, chave publicável e modelo do e-mail | controlador (+ dono 5 min) | — | 30 min | 3h00 |
+| 3 · Migração 0014, guardas e conferências | implementador | capable | 50 min | 2h30 |
+| 4 · Aplicar a 0014, chave publicável e modelo do e-mail | controlador (+ dono 5 min) | — | 30 min | 3h00 |
 | 5 · Dados do radar (validação, busca, conta.ts, radar.ts) | implementador | capable | 60 min | 4h00 |
 | 6 · Onboarding em 3 etapas (/radar/comecar, /api/radar, /api/municipios) | implementador | capable | 75 min | 5h15 |
 | 7 · Página Meu Radar (cartões, lista, ordem, páginas, prévia, visita) | implementador | capable | 60 min | 6h15 |
@@ -75,8 +75,8 @@ O resto o controlador e os implementadores fazem sozinhos. Se a Task 4 medir o r
 
 | Momento | Ordem obrigatória | O que quebra se inverter |
 |---|---|---|
-| 0012 | Task 4: `gh run list --workflow sync.yml --limit 1` sem `in_progress` → aplicar → site no ar 200 → conferências [C1]–[C9]. Só depois, Task 10: `vercel deploy --prod --yes`. | Site novo antes da 0012: `buscar_editais` não conhece `p_ibges`/`p_valor_max`/`p_so_me_epp` e `radar_contagens` não existe → /radar dá erro; `eventos_tipo_check` recusa os eventos novos (o log mostra, a tela segue). |
-| 0012 aplicada, site antigo no ar | Nada a fazer: as funções novas aceitam as chamadas antigas (parâmetros novos com padrão nulo); `mapa_editais` chama `abertas_unicas` com os 9 primeiros argumentos. As políticas antigas não eram usadas (o site só usa a service role). | — |
+| 0014 | Task 4: `gh run list --workflow sync.yml --limit 1` sem `in_progress` → aplicar → site no ar 200 → conferências [C1]–[C9]. Só depois, Task 10: `vercel deploy --prod --yes`. | Site novo antes da 0014: `buscar_editais` não conhece `p_ibges`/`p_valor_max`/`p_so_me_epp` e `radar_contagens` não existe → /radar dá erro; `eventos_tipo_check` recusa os eventos novos (o log mostra, a tela segue). |
+| 0014 aplicada, site antigo no ar | Nada a fazer: as funções novas aceitam as chamadas antigas (parâmetros novos com padrão nulo); `mapa_editais` chama `abertas_unicas` com os 9 primeiros argumentos. As políticas antigas não eram usadas (o site só usa a service role). | — |
 | `SUPABASE_ANON_KEY` | Task 4: na Vercel (production) e no `.env` local **antes** do deploy da Task 10. | Sem a chave: `usuarioAtual()` devolve null (ninguém entra), `/api/conta/codigo` responde "Não foi possível concluir agora…", o proxy só não renova. Nada quebra fora do login. |
 | Modelo do e-mail e OTP de 6 | Task 4, antes do teste da Task 10. | E-mail em inglês com link (sem código) ou código de 8 dígitos (`lerCodigo` recusa). |
 | Sempre | `db:aplicar` fora de uma rodada do sync. | `lock_timeout` de 10 s estoura; a migração inteira volta atrás. |
@@ -94,7 +94,7 @@ O resto o controlador e os implementadores fazem sozinhos. Se a Task 4 medir o r
 | `app/api/conta/{route,codigo/route,entrar/route,sair/route}.ts` (novos) | Conta pelo servidor |
 | `lib/cliente/conta.ts` (novo) | `lerConta`, `esquecerConta`, `useConta` |
 | `app/entrar/page.tsx`, `components/conta/{FormEntrar,MenuConta}.tsx` (novos), `components/Cabecalho.tsx` | Login e menu |
-| `supabase/migrations/0012_conta_radar.sql` (novo), `scripts/migracoes.test.ts`, `docs/evolucao-fase-3.sql` (novo) | Banco, guardas, conferências |
+| `supabase/migrations/0014_conta_radar.sql` (novo), `scripts/migracoes.test.ts`, `docs/evolucao-fase-3.sql` (novo) | Banco, guardas, conferências |
 | `supabase/templates/codigo.html` (novo), `scripts/sessao.test.ts` (novo) | Modelo do e-mail; guardas de sessão e do modelo |
 | `lib/relevancia/pontuacao.ts` | `explicarPerfil`; `relevancia(a, b, { perfil })` |
 | `lib/radar.ts` (novo) | `Radar`, validação, busca, prévia, navegação, rascunho, resumo |
@@ -1275,10 +1275,10 @@ git commit -m "feat: entrar com código por e-mail e menu da conta" -m "Co-Autho
 
 ---
 
-### Task 3: Migração `0012` (conta e radar), guardas e conferências
+### Task 3: Migração `0014` (conta e radar), guardas e conferências
 
 **Files:**
-- Create: `supabase/migrations/0012_conta_radar.sql`, `docs/evolucao-fase-3.sql`, `supabase/templates/codigo.html`
+- Create: `supabase/migrations/0014_conta_radar.sql`, `docs/evolucao-fase-3.sql`, `supabase/templates/codigo.html`
 - Modify: `lib/eventos.ts` (`TIPOS_EVENTO_CONTA`), `scripts/migracoes.test.ts`, `scripts/sessao.test.ts` (guarda do modelo)
 
 **Interfaces:**
@@ -1304,8 +1304,8 @@ export type TipoEventoConta = (typeof TIPOS_EVENTO_CONTA)[number];
 
 Em `scripts/migracoes.test.ts`, troque a primeira linha de imports de `../lib/eventos` por `import { TIPOS_EVENTO, TIPOS_EVENTO_CONTA, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';` e acrescente, antes de `function corpoDe(`:
 ```ts
-describe('migração 0012 (conta e Meu Radar)', () => {
-  const sql = ler('supabase/migrations/0012_conta_radar.sql').replace(/\r\n/g, '\n');
+describe('migração 0014 (conta e Meu Radar)', () => {
+  const sql = ler('supabase/migrations/0014_conta_radar.sql').replace(/\r\n/g, '\n');
   const corpo = (inicio: string) => {
     const c = corpoDe(sql, inicio);
     expect(c, inicio).not.toBe('');
@@ -1441,13 +1441,13 @@ describe('modelo do e-mail do código', () => {
 - [ ] **Step 3: Rodar e ver falhar**
 
 Run: `npx vitest run scripts/migracoes.test.ts scripts/sessao.test.ts`
-Expected: FAIL (arquivos 0012 e `codigo.html` não existem).
+Expected: FAIL (arquivos 0014 e `codigo.html` não existem).
 
 - [ ] **Step 4: Escrever a migração**
 
-Crie `supabase/migrations/0012_conta_radar.sql`. Os corpos de `abertas_unicas` e `buscar_editais` são **cópia literal** dos da 0011 (mesmas linhas, mesmo recuo), mudando só o que está marcado; a guarda compara os dois.
+Crie `supabase/migrations/0014_conta_radar.sql`. Os corpos de `abertas_unicas` e `buscar_editais` são **cópia literal** dos da 0011 (mesmas linhas, mesmo recuo), mudando só o que está marcado; a guarda compara os dois.
 ```sql
--- Edital Map · Evolução · Fase 3 · Conta, onboarding e Meu Radar (0012).
+-- Edital Map · Evolução · Fase 3 · Conta, onboarding e Meu Radar (0014).
 -- 1. perfis: plano gratis | basic | pro (sem dados existentes) e a última visita ao Meu Radar.
 -- 2. radares (um por conta): municípios (IBGE), valor máximo, só ME/EPP, atualizado_em, checagens e índice único por user_id.
 -- 3. Dados da conta só pelo servidor (service_role, sempre filtrando pelo user_id da sessão validada em
@@ -1553,7 +1553,7 @@ Continue o arquivo com `buscar_editais`: copie da 0011 o bloco que começa em `-
   p_ibges text[] default null, p_valor_max numeric default null, p_so_me_epp boolean default null)
 ```
 2. As duas chamadas `public.abertas_unicas(v_tq, v_tq_excluir, p_ufs, p_valor_min, p_modalidades, p_orgao, p_ibge, p_raio_km, p_dias)` viram `public.abertas_unicas(v_tq, v_tq_excluir, p_ufs, p_valor_min, p_modalidades, p_orgao, p_ibge, p_raio_km, p_dias, p_ibges, p_valor_max, p_so_me_epp)`.
-3. Acrescente ao comentário de cima uma linha: `-- 0012: p_ibges (lista de municípios), p_valor_max e p_so_me_epp, repassados a abertas_unicas.` (o comentário fica fora do corpo comparado).
+3. Acrescente ao comentário de cima uma linha: `-- 0014: p_ibges (lista de municípios), p_valor_max e p_so_me_epp, repassados a abertas_unicas.` (o comentário fica fora do corpo comparado).
 
 Depois, ainda no mesmo arquivo:
 ```sql
@@ -1648,10 +1648,10 @@ Crie `supabase/templates/codigo.html` (assunto: **Seu código do Edital Map**; c
 
 Crie `docs/evolucao-fase-3.sql`:
 ```sql
--- Edital Map · Evolução · Fase 3 · Conta, onboarding e Meu Radar: conferências do controlador (0012).
+-- Edital Map · Evolução · Fase 3 · Conta, onboarding e Meu Radar: conferências do controlador (0014).
 -- Rodar no SQL Editor do Supabase (projeto edital-map) ou com execute_sql. Uma seção por vez; anotar em docs/fase-3-metricas.md.
 
--- ── [C0] ANTES da 0012. Esperado: perfis_plano_check existe; 0 linhas em auth.users, perfis, radares, salvos;
+-- ── [C0] ANTES da 0014. Esperado: perfis_plano_check existe; 0 linhas em auth.users, perfis, radares, salvos;
 -- 3 políticas (perfil próprio, radares próprios, salvos próprios). Anotar os totais de hoje.
 select conname from pg_constraint where conrelid = 'public.perfis'::regclass and contype = 'c';
 select (select count(*) from auth.users) as usuarios, (select count(*) from public.perfis) as perfis,
@@ -1747,36 +1747,36 @@ where tipo in ('conta_entrou', 'onboarding_iniciado', 'onboarding_concluido', 'r
 - [ ] **Step 7: Rodar e ver passar**
 
 Run: `npx vitest run scripts/migracoes.test.ts scripts/sessao.test.ts`
-Expected: PASS. Se a comparação com a 0011 falhar, o recuo ou alguma linha copiada difere: corrigir a 0012 (nunca a guarda nem a 0011).
+Expected: PASS. Se a comparação com a 0011 falhar, o recuo ou alguma linha copiada difere: corrigir a 0014 (nunca a guarda nem a 0011).
 
 - [ ] **Step 8: Verificação completa e commit**
 
 Run: `npm test && npm run typecheck`
 ```bash
-git add supabase/migrations/0012_conta_radar.sql supabase/templates/codigo.html docs/evolucao-fase-3.sql lib/eventos.ts scripts/migracoes.test.ts scripts/sessao.test.ts
-git commit -m "feat: migração 0012 (conta, radar, filtros novos e contagens)" -m "Co-Authored-By: <modelo> <noreply@anthropic.com>"
+git add supabase/migrations/0014_conta_radar.sql supabase/templates/codigo.html docs/evolucao-fase-3.sql lib/eventos.ts scripts/migracoes.test.ts scripts/sessao.test.ts
+git commit -m "feat: migração 0014 (conta, radar, filtros novos e contagens)" -m "Co-Authored-By: <modelo> <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 4 (controlador): aplicar a 0012, chave publicável e modelo do e-mail
+### Task 4 (controlador): aplicar a 0014, chave publicável e modelo do e-mail
 
 **Files:**
 - Modify: `docs/fase-3-metricas.md`
 
 **Interfaces:**
 - Consumes: os arquivos da Task 3.
-- Produces: 0012 aplicada em produção; `SUPABASE_ANON_KEY` na Vercel (production) e no `.env` local; modelos "Magic Link" e "Confirm signup" em português com `{{ .Token }}`; OTP de 6 dígitos. Pré-requisitos da Task 10.
+- Produces: 0014 aplicada em produção; `SUPABASE_ANON_KEY` na Vercel (production) e no `.env` local; modelos "Magic Link" e "Confirm signup" em português com `{{ .Token }}`; OTP de 6 dígitos. Pré-requisitos da Task 10.
 
 Todos os passos são do controlador (o `.env` do worktree tem `SUPABASE_DB_URL`; nunca imprimir).
 
 - [ ] **Step 1: Pré-condições**
 
-Task 3 commitada. `gh run list --workflow sync.yml --limit 1`: nenhuma rodada `in_progress` (se houver, esperar). Rodar [C0] de `docs/evolucao-fase-3.sql` e anotar (se `perfis_plano_check` não aparecer com esse nome, parar: trocar o nome na 0012, Task 3, novo commit).
+Task 3 commitada. `gh run list --workflow sync.yml --limit 1`: nenhuma rodada `in_progress` (se houver, esperar). Rodar [C0] de `docs/evolucao-fase-3.sql` e anotar (se `perfis_plano_check` não aparecer com esse nome, parar: trocar o nome na 0014, Task 3, novo commit).
 
 - [ ] **Step 2: Aplicar**
 
-Run: `npm run db:aplicar -- supabase/migrations/0012_conta_radar.sql`
+Run: `npm run db:aplicar -- supabase/migrations/0014_conta_radar.sql`
 Expected: `[migração] conta_radar aplicada`. `lock timeout`: esperar o sync terminar e repetir. Qualquer outro erro: nada ficou aplicado; corrigir na Task 3 e repetir.
 
 - [ ] **Step 3: Site no ar continua de pé**
@@ -1788,7 +1788,7 @@ for u in / "/api/busca?q=luva" "/api/mapa?q=luva" "/api/contagem?q=luva" "/api/e
 S=$(curl -s -H "$H" "$B/api/busca?q=luva" | node -e "const r=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(r.editais[0].slug)")
 curl -s -H "$H" -o /dev/null -w "%{http_code} edital\n" "$B/edital/$S"
 ```
-Expected: `200` em todas. Qualquer 502: olhar o log da Vercel; se for a 0012, avisar o dono.
+Expected: `200` em todas. Qualquer 502: olhar o log da Vercel; se for a 0014, avisar o dono.
 
 - [ ] **Step 4: Conferências**
 
@@ -1827,9 +1827,9 @@ Sem o token: pedir ao dono (~5 min) — em **Authentication → Emails → Templ
 Acrescente ao fim de `docs/fase-3-metricas.md`:
 ```markdown
 
-## Evolução · Fase 3 · Conta e Meu Radar (0012)
+## Evolução · Fase 3 · Conta e Meu Radar (0014)
 
-- 0012 aplicada em aaaa-mm-dd hh:mm UTC; site no ar seguiu 200 (busca, mapa, contagem, exportação, edital).
+- 0014 aplicada em aaaa-mm-dd hh:mm UTC; site no ar seguiu 200 (busca, mapa, contagem, exportação, edital).
 - Antes [C0]: lista N, mapa N, uniforme N; usuários 0. Depois [C4]: lista N, mapa N, uniforme N.
 - [C3] perfis/radares/salvos/alertas_enviados sem políticas, sem acesso de anon/authenticated, RLS ligado.
 - [C5] municípios N linhas (só os 2), faixa 10–50 mil N linhas, ME/EPP N linhas (todas exclusivas).
@@ -1839,7 +1839,7 @@ Acrescente ao fim de `docs/fase-3-metricas.md`:
 ```
 ```bash
 git add docs/fase-3-metricas.md
-git commit -m "docs: 0012 aplicada e conferida" -m "Co-Authored-By: <modelo> <noreply@anthropic.com>"
+git commit -m "docs: 0014 aplicada e conferida" -m "Co-Authored-By: <modelo> <noreply@anthropic.com>"
 ```
 
 ---
@@ -2096,9 +2096,9 @@ import type { Ordem } from './tipos';
 
 /**
  * Radar (perfil de interesse) de uma conta: regras puras de validação e da busca que alimenta o Meu Radar.
- * A busca é a mesma da Fase 2 (buscar_editais, 0011/0012): os produtos vão como termos digitados (OR), cada um com
+ * A busca é a mesma da Fase 2 (buscar_editais, 0011/0014): os produtos vão como termos digitados (OR), cada um com
  * seus relacionados (expandir), os excluídos tiram pelo objeto e os filtros novos (municípios, valor máximo, ME/EPP)
- * são da 0012. O dono do radar nunca está aqui: vem da sessão (lib/servidor/sessao.ts → lib/servidor/conta.ts).
+ * são da 0014. O dono do radar nunca está aqui: vem da sessão (lib/servidor/sessao.ts → lib/servidor/conta.ts).
  */
 
 export type Radar = {
@@ -2249,7 +2249,7 @@ export function buscaDoRadar(r: Radar): Busca {
   return { positivo: r.termos.join(', '), digitados: r.termos, relacionados: expandir(r.termos), excluidos: r.termosExcluir };
 }
 
-/** Filtros comuns a buscar_editais e radar_contagens (0012). Listas vazias e "não" viram nulo (sem filtro). */
+/** Filtros comuns a buscar_editais e radar_contagens (0014). Listas vazias e "não" viram nulo (sem filtro). */
 export function filtrosDoRadar(r: Radar) {
   const b = buscaDoRadar(r);
   return {
@@ -2500,7 +2500,7 @@ import type { Ordem, ResultadoBusca } from '../tipos';
 import { paraResumo, type Linha } from './consultas';
 import { supabaseServidor } from './supabase';
 
-/** Lista e contagens do Meu Radar: a mesma busca da Fase 2 (buscar_editais) com os filtros do radar (0012). */
+/** Lista e contagens do Meu Radar: a mesma busca da Fase 2 (buscar_editais) com os filtros do radar (0014). */
 const cache = criarCache(5 * 60 * 1000);
 
 export function editaisDoRadar(r: Radar, o: { ordem: Ordem | null; pagina: number; limite: number }): Promise<ResultadoBusca> {
@@ -2894,7 +2894,7 @@ const cache = criarCache(60 * 60 * 1000);
 type Linha = { codigo_ibge: unknown; nome: unknown; uf: unknown };
 const paraCidade = (l: Linha): Cidade => ({ ibge: String(l.codigo_ibge), nome: String(l.nome), uf: String(l.uf) });
 
-/** Municípios pelo nome, sem acento (buscar_municipios, 0012). `q` já limpo por lerBuscaMunicipio. */
+/** Municípios pelo nome, sem acento (buscar_municipios, 0014). `q` já limpo por lerBuscaMunicipio. */
 export function buscarMunicipios(q: string): Promise<Cidade[]> {
   const k = q.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
   return cache(`municipios:${k}`, async () => {
@@ -4234,7 +4234,7 @@ git commit -m "feat: eventos da conta, Meu Radar na navegação e guardas de iso
 - Modify: `docs/fase-3-metricas.md`
 
 **Interfaces:**
-- Consumes: Tasks 1–9 no branch; Task 4 concluída (0012, `SUPABASE_ANON_KEY`, modelo do e-mail, OTP 6).
+- Consumes: Tasks 1–9 no branch; Task 4 concluída (0014, `SUPABASE_ANON_KEY`, modelo do e-mail, OTP 6).
 - Produces: site publicado e conferido; números em `docs/fase-3-metricas.md`.
 
 - [ ] **Step 1: Pré-condições**
@@ -4279,7 +4279,7 @@ Rodar [C10] de `docs/evolucao-fase-3.sql`. Expected: uma linha para o dono, `pla
 
 - [ ] **Step 6: Registrar e commitar**
 
-Acrescente à seção "Evolução · Fase 3 · Conta e Meu Radar (0012)" de `docs/fase-3-metricas.md`:
+Acrescente à seção "Evolução · Fase 3 · Conta e Meu Radar (0014)" de `docs/fase-3-metricas.md`:
 ```markdown
 - Publicado em aaaa-mm-dd hh:mm. curl: /radar e /radar/editar → /entrar; /api/radar e /api/radar/visita 401 sem sessão (user_id do corpo ignorado); erros do código em português; municípios ok.
 - Login real (dono): e-mail em N s, em português, 6 dígitos; código errado com mensagem; onboarding 3 etapas; radar com N oportunidades (= buscar_editais), N novas, N prazo próximo; ordenação e páginas; edição; sair.
@@ -4308,7 +4308,7 @@ git commit -m "docs: evolução fase 3 publicada e conferida" -m "Co-Authored-By
 
 1. Depois da linha que começa com `- Evolução · Fase 2 (busca, relevância, lista e edital):`, acrescente:
 ```markdown
-- Evolução · Fase 3 (conta, onboarding e Meu Radar): spec docs/superpowers/specs/2026-10-18-evolucao-fase-3-conta-radar-design.md, plano docs/superpowers/plans/2026-10-18-evolucao-fase-3-conta-radar.md, conferências docs/evolucao-fase-3.sql (0012: perfis/radares ampliados, sem políticas; `abertas_unicas`/`buscar_editais` com `p_ibges`/`p_valor_max`/`p_so_me_epp`; `radar_contagens`, `exclusivo_me_epp`, `buscar_municipios`). "Editais salvos" na Fase 4; "Excluir minha conta" e limite por conta na Fase 5.
+- Evolução · Fase 3 (conta, onboarding e Meu Radar): spec docs/superpowers/specs/2026-10-18-evolucao-fase-3-conta-radar-design.md, plano docs/superpowers/plans/2026-10-18-evolucao-fase-3-conta-radar.md, conferências docs/evolucao-fase-3.sql (0014: perfis/radares ampliados, sem políticas; `abertas_unicas`/`buscar_editais` com `p_ibges`/`p_valor_max`/`p_so_me_epp`; `radar_contagens`, `exclusivo_me_epp`, `buscar_municipios`). "Editais salvos" na Fase 4; "Excluir minha conta" e limite por conta na Fase 5.
 ```
 2. Na seção "Regras", depois da linha que começa com `- O worker grava pelo supabase-js com SUPABASE_SERVICE_ROLE_KEY.`, acrescente:
 ```markdown
@@ -4343,7 +4343,7 @@ Merge no `main` e push: só com o ok do dono (fora deste plano).
 | §1 erros em pt-BR (código errado/expirado, muitas tentativas, e-mail inválido); reenvio após 60 s | Task 1 (`MENSAGENS_CONTA`, `mensagemErroAuth`, `segundosParaReenvio`), Task 2 |
 | §1 modelo "Magic Link" com `{{ .Token }}` em português | Task 3 (`supabase/templates/codigo.html` + guarda), Task 4 (API ou dono) |
 | §1 limite do grátis segue por navegador | Global Constraints; Task 7 (sem `decidirBusca`, guarda) |
-| §2 0012: colunas novas em radares e perfis, plano gratis/basic/pro | Task 3 |
+| §2 0014: colunas novas em radares e perfis, plano gratis/basic/pro | Task 3 |
 | §2 onboarding em 3 etapas (sugestões do catálogo, chips, Todo o Brasil/estados/municípios, valor, modalidades, ME/EPP, excluir, "Pular") | Tasks 5 (validação), 6 (`FormRadar`, `CampoTermos`, `CampoLocal`, `/api/municipios`) |
 | §2 sem "tipo de contratação" | Global Constraints |
 | §2 /radar/editar com as mesmas etapas numa página | Task 8 |
@@ -4358,7 +4358,7 @@ Merge no `main` e push: só com o ok do dono (fora deste plano).
 | §5 eventos novos sem e-mail | Tasks 3 (restrição), 9 (gravação + testes) |
 | §5 LGPD (só e-mail e preferências; exclusão na Fase 5) | Task 11 |
 | §6 vitest (onboarding, busca do radar, explicação, prévia de 5, rotas com sessão, user_id) | Tasks 1, 2, 5, 6, 7, 9 |
-| §6 banco (0012, funções antigas, filtros novos, < 500 ms com 5 produtos) | Task 4 ([C0]–[C9]) |
+| §6 banco (0014, funções antigas, filtros novos, < 500 ms com 5 produtos) | Task 4 ([C0]–[C9]) |
 | §6 ponta a ponta e navegador 1440/390 | Task 10 |
 
 ## Riscos conhecidos (para o revisor e o controlador)
@@ -4371,7 +4371,7 @@ Merge no `main` e push: só com o ok do dono (fora deste plano).
 - **Visita registrada ao sair** depende de `sendBeacon`; se o navegador não mandar (aba morta à força), "Novas" só fica maior na próxima visita (sem dano).
 - **Navegador interno vê tudo** no radar: a prévia só aparece numa janela anônima ou em outro navegador.
 - **Gatilho `novo_perfil`** continua `security definer` (dono postgres): grava o perfil mesmo sem permissões de anon/authenticated nas tabelas. [C10] confere 1 perfil por usuário.
-- **Corpos copiados da 0011**: a guarda compara `abertas_unicas` e `buscar_editais` da 0012 com os da 0011 tirando só os trechos novos; um espaço a mais falha o teste (é o objetivo).
+- **Corpos copiados da 0011**: a guarda compara `abertas_unicas` e `buscar_editais` da 0014 com os da 0011 tirando só os trechos novos; um espaço a mais falha o teste (é o objetivo).
 
 ## Auto-revisão (writing-plans)
 

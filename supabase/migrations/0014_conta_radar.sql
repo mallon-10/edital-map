@@ -1,4 +1,4 @@
--- Edital Map · Evolução · Fase 3 · Conta, onboarding e Meu Radar (0012).
+-- Edital Map · Evolução · Fase 3 · Conta, onboarding e Meu Radar (0014).
 -- 1. perfis: plano gratis | basic | pro (sem dados existentes) e a última visita ao Meu Radar.
 -- 2. radares (um por conta): municípios (IBGE), valor máximo, só ME/EPP, atualizado_em, checagens e índice único por user_id.
 -- 3. Dados da conta só pelo servidor (service_role, sempre filtrando pelo user_id da sessão validada em
@@ -101,7 +101,7 @@ $$;
 -- prazo e id. Com relevância a pontuação é calculada em todas as abertas da busca (para ordenar); nas outras ordens,
 -- só nas da página. Sem termo (ou termo sem palavra válida), pontuacao é nula e onde é 'objeto'.
 -- plan_cache_mode: as consultas de dentro sempre planejadas com os valores (um "termo nulo" constante deixa o índice valer).
--- 0012: p_ibges (lista de municípios), p_valor_max e p_so_me_epp, repassados a abertas_unicas.
+-- 0014: p_ibges (lista de municípios), p_valor_max e p_so_me_epp, repassados a abertas_unicas.
 create function public.buscar_editais(
   q text default null, p_ufs text[] default null, p_ibge text default null, p_dias int default null,
   p_valor_min numeric default null, p_modalidades int[] default null,

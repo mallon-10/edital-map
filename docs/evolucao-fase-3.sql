@@ -1,7 +1,7 @@
--- Edital Map · Evolução · Fase 3 · Conta, onboarding e Meu Radar: conferências do controlador (0012).
+-- Edital Map · Evolução · Fase 3 · Conta, onboarding e Meu Radar: conferências do controlador (0014).
 -- Rodar no SQL Editor do Supabase (projeto edital-map) ou com execute_sql. Uma seção por vez; anotar em docs/fase-3-metricas.md.
 
--- ── [C0] ANTES da 0012. Esperado: perfis_plano_check existe; 0 linhas em auth.users, perfis, radares, salvos;
+-- ── [C0] ANTES da 0014. Esperado: perfis_plano_check existe; 0 linhas em auth.users, perfis, radares, salvos;
 -- 3 políticas (perfil próprio, radares próprios, salvos próprios). Anotar os totais de hoje.
 select conname from pg_constraint where conrelid = 'public.perfis'::regclass and contype = 'c';
 select (select count(*) from auth.users) as usuarios, (select count(*) from public.perfis) as perfis,
