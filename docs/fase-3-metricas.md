@@ -57,3 +57,11 @@ O aumento em `contratacoes` são versões antigas das linhas (o `UPDATE` da 0005
 - Achados na conferência e corrigidos na hora: (1) Voltar do edital não renderizava a busca (replaceState(null) antes do Next instalar o seu; agora `trocarEndereco`); (2) /planos vazava a 390 px (tabela de 640 px; agora cartões abaixo de md). Nenhuma página passa de 390 px.
 - Tempos de produção: /api/busca 1,4–2,2 s (sem cache do CDN agora; o cache de 5 min do servidor continua), /api/mapa 1,5 s, página do edital 0,24 s.
 - Medição: o cabeçalho não grava mais `quer_recurso plano_pro` ao clicar em "Assinar Pro" (agora leva a /planos); a série de interesse no Pro passa a contar só "Quero o Pro" na página Planos. Comparar com os dias anteriores com esse corte em mente.
+
+## Evolução · Fase 2 · Busca e relevância (0011)
+
+- 0011 aplicada em 2026-10-18 11:44 UTC; site no ar seguiu 200 (busca, mapa, "Carregar mais", contagem, edital). Antes, ensaio em transação desfeita: chamadas antigas com termo 34–79 ms, sem termo ~800 ms (igual a antes).
+- Antes: 34.550 abertas pelo prazo (situação 2: 221, 3: 156, 4: 346). Depois [E3]: revogadas/anuladas na lista 0; suspensas 344; lista 33.578 = mapa 33.578 (sem município 0).
+- [E1] 12 funções só com service_role; [E2] uma assinatura por função.
+- [E5] tempos: material/relevância 170 ms; uniformes 145 ms; EPI 236 ms; luva nitrílica 236 ms; material de limpeza -escolar 216 ms; merenda, leite 202 ms; computador 236 ms; sem termo 858 ms (prazo) / 853 ms (maior valor); mapa sem termo 792 ms.
+- scripts/conferir-relevancia.ts: todas ok (pontuação do banco = pontuar; ordem não sobe; só termos da busca; excluídos fora).
