@@ -82,8 +82,21 @@ describe('envio pelo Resend', () => {
     expect(JSON.stringify(r)).not.toContain('re_segredo123');
   });
   it('o que repete', () => {
-    expect([null, 409, 429, 500, 503].map(repetivel)).toEqual([true, true, true, true, true]);
-    expect([200, 400, 401, 403, 422].map(repetivel)).toEqual([false, false, false, false, false]);
+    expect([null, 409, 429, 500, 503].map((s) => repetivel(s))).toEqual([true, true, true, true, true]);
+    expect([200, 400, 401, 403, 422].map((s) => repetivel(s))).toEqual([false, false, false, false, false]);
+    expect(repetivel(409, { name: 'concurrent_idempotent_requests' })).toBe(true);
+    expect(repetivel(409, { message: 'sem nome' })).toBe(true);
+    expect(repetivel(409, { name: 'invalid_idempotent_request' })).toBe(false);
+    expect(repetivel(409, { name: 'outro_conflito' })).toBe(false);
+    expect(repetivel(429, { name: 'rate_limit_exceeded' })).toBe(true);
+  });
+  it('409 mesma chave com outro conteúdo: falha final, sem repetir, com explicação', async () => {
+    const buscar = vi.fn(async () => resposta(409, { name: 'invalid_idempotent_request', message: 'Same idempotency key used with a different request payload.' }));
+    const esperar = vi.fn(async (_ms: number) => undefined);
+    expect(await criarEnvioResend({ chave: 'k', buscar: buscar as unknown as typeof fetch, esperar })(MSG)).toEqual({
+      ok: false, erro: 'Resend 409: mesma chave com outro conteúdo: provavelmente já enviado nas últimas 24 h', tentativas: 1,
+    });
+    expect(esperar).not.toHaveBeenCalled();
   });
   it('o que é cota esgotada', () => {
     expect(cotaEsgotada(429, { name: 'daily_quota_exceeded' })).toBe(true);

@@ -47,6 +47,28 @@ describe('banco do job dos alertas', () => {
     await criarBancoAlertas(sb).registrarEnvio({ alertaId: 'a', status: 'falhou', qtd: 2, tentativas: 1, erro: 'Resend 429: cota', selecionadoEm: 't' });
     expect(chamadas[0][1]).toMatchObject({ p_status: 'falhou', p_erro: 'Resend 429: cota', p_ids: null, p_id_mensagem: null });
   });
+  it('enviado com janelaInicial: fixa ultimo_envio_em (só se nulo) antes de registrar', async () => {
+    const chamadas: unknown[][] = [];
+    const filtro = {
+      eq: vi.fn((col: string, v: unknown) => (chamadas.push(['eq', col, v]), filtro)),
+      is: vi.fn(async (col: string, v: unknown) => (chamadas.push(['is', col, v]), { error: null })),
+    };
+    const sb = {
+      rpc: vi.fn(async (nome: string) => (chamadas.push(['rpc', nome]), { data: null, error: null })),
+      from: vi.fn((t: string) => ({ update: (v: unknown) => (chamadas.push(['update', t, v]), filtro) })),
+    } as unknown as SupabaseClient;
+    const banco = criarBancoAlertas(sb);
+    await banco.registrarEnvio({ alertaId: 'a', status: 'enviado', qtd: 1, tentativas: 1, ids: ['e1'], selecionadoEm: 't', avancar: false, janelaInicial: '2026-10-17T12:00:00.000Z' });
+    expect(chamadas).toEqual([
+      ['update', 'alertas', { ultimo_envio_em: '2026-10-17T12:00:00.000Z' }],
+      ['eq', 'id', 'a'],
+      ['is', 'ultimo_envio_em', null],
+      ['rpc', 'registrar_envio_alerta'],
+    ]);
+    chamadas.length = 0;
+    await banco.registrarEnvio({ alertaId: 'a', status: 'enviado', qtd: 1, tentativas: 1, ids: ['e1'], selecionadoEm: 't', avancar: true });
+    expect(chamadas).toEqual([['rpc', 'registrar_envio_alerta']]);
+  });
   it('erro do banco vira exceção com o nome da função', async () => {
     const sb = { rpc: vi.fn(async () => ({ data: null, error: { message: 'timeout' } })) } as unknown as SupabaseClient;
     await expect(criarBancoAlertas(sb).alertasParaEnvio()).rejects.toThrow('alertas_para_envio: timeout');

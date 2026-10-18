@@ -3,7 +3,7 @@ import { limparLog } from './log';
 
 /**
  * Envio pela API HTTP do Resend (sem dependência: fetch do Node 24). Repete só o que pode dar certo depois: 429 de
- * ritmo, 409 (mesma Idempotency-Key ainda em andamento), 5xx, rede ou tempo (15 s), com esperas de 2, 4 e 8 s (4
+ * ritmo, 409 da mesma Idempotency-Key ainda em andamento, 5xx, rede ou tempo (15 s), com esperas de 2, 4 e 8 s (4
  * tentativas no total, a regra do PNCP no worker). Cota esgotada (429 daily/monthly_quota_exceeded) não repete: volta
  * com `cotaEsgotada` e quem chamou encerra a rodada (spec §1b). Outro 4xx é falha final. Idempotency-Key: a mesma
  * mensagem repetida em 24 h não sai duas vezes. O erro nunca leva a chave nem e-mail. Sem opção de rastreio: clique e
@@ -21,9 +21,16 @@ export type Enviar = (m: Mensagem) => Promise<ResultadoEnvio>;
 
 type CorpoResend = { id?: unknown; name?: unknown; message?: unknown } | null;
 
-export function repetivel(status: number | null): boolean {
-  return status === null || status === 409 || status === 429 || status >= 500;
+/**
+ * 409 só repete quando é a mesma chave ainda em andamento (ou sem nome): `invalid_idempotent_request` (mesma chave, outro
+ * conteúdo) nunca dá certo repetindo.
+ */
+export function repetivel(status: number | null, corpo: CorpoResend = null): boolean {
+  if (status === 409) return typeof corpo?.name !== 'string' || corpo.name === 'concurrent_idempotent_requests';
+  return status === null || status === 429 || status >= 500;
 }
+
+const ERRO_MESMA_CHAVE = 'Resend 409: mesma chave com outro conteúdo: provavelmente já enviado nas últimas 24 h';
 
 const NOMES_COTA = new Set(['daily_quota_exceeded', 'monthly_quota_exceeded']);
 
@@ -45,6 +52,7 @@ export function criarEnvioResend(o: Opcoes): Enviar {
     let erro = '';
     for (let tentativa = 1; tentativa <= total; tentativa++) {
       let status: number | null = null;
+      let corpo: CorpoResend = null;
       try {
         const r = await buscar(URL_RESEND, {
           method: 'POST',
@@ -53,14 +61,15 @@ export function criarEnvioResend(o: Opcoes): Enviar {
           signal: AbortSignal.timeout(o.timeoutMs ?? 15_000),
         });
         status = r.status;
-        const corpo = (await r.json().catch(() => null)) as CorpoResend;
+        corpo = (await r.json().catch(() => null)) as CorpoResend;
         if (r.ok && typeof corpo?.id === 'string') return { ok: true, id: corpo.id, tentativas: tentativa };
         erro = `Resend ${r.status}: ${typeof corpo?.message === 'string' ? corpo.message : 'sem detalhe'}`;
         if (cotaEsgotada(status, corpo)) return { ok: false, erro: limpar(erro), tentativas: tentativa, cotaEsgotada: true };
+        if (status === 409 && corpo?.name === 'invalid_idempotent_request') erro = ERRO_MESMA_CHAVE;
       } catch (e) {
         erro = `Resend: ${e instanceof Error ? e.message : String(e)}`;
       }
-      if (!repetivel(status) || tentativa === total) return { ok: false, erro: limpar(erro), tentativas: tentativa };
+      if (!repetivel(status, corpo) || tentativa === total) return { ok: false, erro: limpar(erro), tentativas: tentativa };
       await esperar(ESPERAS_REENVIO_MS[tentativa - 1]);
     }
     return { ok: false, erro: limpar(erro), tentativas: total };

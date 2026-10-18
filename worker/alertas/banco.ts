@@ -27,6 +27,12 @@ export type RegistroEnvio = {
   ids?: string[];
   selecionadoEm: string;
   avancar?: boolean;
+  /**
+   * Alerta nunca enviado que ficou com sobra (avancar falso): a janela que o job usou. Gravada em ultimo_envio_em (só se
+   * ainda nulo) antes do registro, porque o fallback de registrar_envio_alerta (selecionado − 24 h) perderia a sobra
+   * mais antiga. Sem migração: a 0016 já está no ar.
+   */
+  janelaInicial?: string;
 };
 
 /** O job não tem navegador: os eventos dele usam este visitante fixo. */
@@ -86,6 +92,10 @@ export function criarBancoAlertas(sb: SupabaseClient): BancoAlertas {
     },
     async registrarEnvio(r) {
       // falhou, sem_novidades e pulado_plano não gravam alertas_enviados nem mexem na janela (registrar_envio_alerta).
+      if (r.status === 'enviado' && r.janelaInicial) {
+        const fixar = await sb.from('alertas').update({ ultimo_envio_em: r.janelaInicial }).eq('id', r.alertaId).is('ultimo_envio_em', null);
+        falhar('janela inicial do alerta', fixar.error);
+      }
       const { error } = await sb.rpc('registrar_envio_alerta', {
         p_alerta: r.alertaId, p_status: r.status, p_qtd: r.qtd, p_tentativas: r.tentativas, p_erro: r.erro ?? null,
         p_id_mensagem: r.idMensagem ?? null, p_ids: r.ids ?? null, p_selecionado_em: r.selecionadoEm, p_avancar: r.avancar ?? true,

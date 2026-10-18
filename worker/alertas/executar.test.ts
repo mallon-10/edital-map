@@ -5,6 +5,8 @@ import type { AlertaParaEnvio, BancoAlertas, EditalAlerta, RegistroEnvio } from 
 import {
   chaveIdempotencia,
   executarAlertas,
+  avisosDoResumo,
+  desdeDoAlerta,
   MAX_EMAILS_POR_RODADA,
   motivoSemEnvio,
   PAUSA_ENTRE_EMAILS_MS,
@@ -78,13 +80,25 @@ describe('rodada dos alertas', () => {
     expect(t.consultas.map((c) => c.id)).toEqual(['a', 'b', 'c', 'd', 'e'].map(id));
     expect(t.registros.find((x) => x.status === 'pulado_plano')?.alertaId).toBe(id('f'));
   });
-  it('janela: sem envio, últimas 24 h; com envio, desde ele; até 20 editais', async () => {
-    const t = montar([al('a', 'u1', 'pro', '2026-10-01T00:00:00Z'), al('b', 'u1', 'pro', '2026-10-02T00:00:00Z', { ultimoEnvioEm: '2026-10-17T10:00:05Z' })]);
+  it('janela: com envio, desde ele; sem envio, 24 h antes da criação (no máximo 7 dias + 24 h); até 20 editais', async () => {
+    const t = montar([
+      al('a', 'u1', 'pro', '2026-10-01T00:00:00Z'),
+      al('b', 'u1', 'pro', '2026-10-02T00:00:00Z', { ultimoEnvioEm: '2026-10-17T10:00:05Z' }),
+      al('c', 'u1', 'pro', '2026-10-18T12:00:00Z'),
+    ]);
     await executarAlertas(t.deps);
     expect(t.consultas).toEqual([
-      { id: id('a'), desde: '2026-10-18T10:00:00.000Z', limite: 20 },
+      { id: id('a'), desde: '2026-10-11T10:00:00.000Z', limite: 20 },
       { id: id('b'), desde: '2026-10-17T10:00:05Z', limite: 20 },
+      { id: id('c'), desde: '2026-10-17T12:00:00.000Z', limite: 20 },
     ]);
+  });
+  it('janela sem envio: ancorada na criação, não no relógio (o mesmo valor amanhã)', () => {
+    const amanha = new Date(AGORA.getTime() + 24 * 60 * 60 * 1000);
+    expect(desdeDoAlerta(null, '2026-10-18T12:00:00Z', AGORA)).toBe('2026-10-17T12:00:00.000Z');
+    expect(desdeDoAlerta(null, '2026-10-18T12:00:00Z', amanha)).toBe('2026-10-17T12:00:00.000Z');
+    expect(desdeDoAlerta('2026-10-18T10:00:00Z', '2026-10-01T00:00:00Z', AGORA)).toBe('2026-10-18T10:00:00Z');
+    expect(desdeDoAlerta(null, 'lixo', AGORA)).toBe('2026-10-18T10:00:00.000Z');
   });
   it('sem novidade: sem_novidades e nenhum e-mail', async () => {
     const t = montar([al('a', 'u1', 'pro', '2026-10-01T00:00:00Z')]);
@@ -124,10 +138,16 @@ describe('rodada dos alertas', () => {
     const tokens = [...m.texto.matchAll(/\/alertas\/sair\?t=([^\s]+)/g)].map((x) => lerTokenDescadastro(decodeURIComponent(x[1]), SEGREDO));
     expect(tokens).toContainEqual({ tipo: 'alerta', id: id('a') });
   });
-  it('sobra (mais de 20): a janela não avança', async () => {
-    const t = montar([al('a', 'u1', 'pro', '2026-10-01T00:00:00Z')], { a: { editais: [ed('e1')], total: 25 } });
+  it('sobra (mais de 20): a janela não avança; nunca enviado fixa a janela usada (não a de 24 h do banco)', async () => {
+    const t = montar(
+      [al('a', 'u1', 'pro', '2026-10-18T12:00:00Z'), al('b', 'u1', 'pro', '2026-10-01T00:00:00Z', { ultimoEnvioEm: '2026-10-18T10:00:00Z' })],
+      { a: { editais: [ed('e1')], total: 25 }, b: { editais: [ed('e2')], total: 25 } },
+    );
     await executarAlertas(t.deps);
-    expect(t.registros[0]).toMatchObject({ status: 'enviado', avancar: false });
+    const [b, a] = t.registros;
+    expect(a).toMatchObject({ alertaId: id('a'), status: 'enviado', avancar: false, janelaInicial: '2026-10-17T12:00:00.000Z' });
+    expect(b).toMatchObject({ alertaId: id('b'), status: 'enviado', avancar: false });
+    expect(b.janelaInicial).toBeUndefined();
   });
   it('falha do Resend: falhou com o erro e as tentativas, sem evento', async () => {
     const t = montar([al('a', 'u1', 'pro', '2026-10-01T00:00:00Z')], { a: { editais: [ed('e1')], total: 1 } }, { ok: false, erro: 'Resend 500: fora', tentativas: 4 });
@@ -175,7 +195,45 @@ describe('rodada dos alertas', () => {
     };
     const r = await executarAlertas({ ...t.deps, banco });
     expect(t.registros.map((x) => [x.alertaId, x.status])).toEqual([[id('b'), 'enviado']]);
-    expect(r).toMatchObject({ falhas: 1, enviados: 1, emails: 2 });
+    expect(r).toMatchObject({ falhas: 1, enviados: 1, emails: 2, aceitosSemRegistro: 1 });
+    expect(t.logs).toContain(`[alertas] ACEITO_SEM_REGISTRO alerta ${id('a').slice(0, 8)} msg msg-1 qtd 1`);
+  });
+  it('registro do enviado falha uma vez e depois grava: enviado, sem falhou (espera 2 s)', async () => {
+    const t = montar([al('a', 'u1', 'pro', '2026-10-01T00:00:00Z')], { a: { editais: [ed('e1')], total: 1 } });
+    const registrar = t.deps.banco.registrarEnvio;
+    let vezes = 0;
+    const banco: BancoAlertas = {
+      ...t.deps.banco,
+      registrarEnvio: async (x) => {
+        if (vezes++ === 0) throw new Error('timeout');
+        return registrar(x);
+      },
+    };
+    const r = await executarAlertas({ ...t.deps, banco });
+    expect(t.registros.map((x) => [x.alertaId, x.status])).toEqual([[id('a'), 'enviado']]);
+    expect(t.esperar.mock.calls).toEqual([[2000]]);
+    expect(t.eventos).toEqual([{ qtd: 1, alertas: 1 }]);
+    expect(r).toMatchObject({ falhas: 0, enviados: 1, aceitosSemRegistro: 0 });
+  });
+  it('registro da seção A falha de vez: a B ainda é registrada e o evento sai', async () => {
+    const t = montar(
+      [al('a', 'u1', 'pro', '2026-10-01T00:00:00Z'), al('b', 'u1', 'pro', '2026-10-02T00:00:00Z')],
+      { a: { editais: [ed('e1')], total: 1 }, b: { editais: [ed('e2'), ed('e3')], total: 2 } },
+    );
+    const registrar = t.deps.banco.registrarEnvio;
+    const banco: BancoAlertas = {
+      ...t.deps.banco,
+      registrarEnvio: async (x) => {
+        if (x.alertaId === id('a')) throw new Error('banco fora');
+        return registrar(x);
+      },
+    };
+    const r = await executarAlertas({ ...t.deps, banco });
+    expect(t.registros.map((x) => [x.alertaId, x.status])).toEqual([[id('b'), 'enviado']]);
+    expect(t.esperar.mock.calls).toEqual([[2000], [4000]]);
+    expect(t.eventos).toEqual([{ qtd: 3, alertas: 2 }]);
+    expect(t.logs).toContain(`[alertas] ACEITO_SEM_REGISTRO alerta ${id('a').slice(0, 8)} msg msg-1 qtd 1`);
+    expect(r).toMatchObject({ falhas: 1, enviados: 1, editais: 2, aceitosSemRegistro: 1 });
   });
   it('pausa de 600 ms entre e-mails, não antes do primeiro', async () => {
     const t = montar([al('a', 'u1', 'pro', '2026-10-01T00:00:00Z'), al('b', 'u2', 'pro', '2026-10-01T00:00:00Z')], { a: { editais: [ed('e1')], total: 1 }, b: { editais: [ed('e2')], total: 1 } });
@@ -224,11 +282,32 @@ describe('rodada dos alertas', () => {
   });
   it('quem espera há mais tempo vai primeiro (o que ficou de ontem não fica para sempre)', async () => {
     const t = montar(
-      [al('a', 'u1', 'pro', '2026-10-01T00:00:00Z'), al('b', 'u2', 'pro', '2026-10-01T00:00:00Z', { ultimoEnvioEm: '2026-10-17T10:00:00Z' }), al('c', 'u3', 'pro', '2026-10-01T00:00:00Z')],
+      [al('a', 'u1', 'pro', '2026-10-01T00:00:00Z'), al('b', 'u2', 'pro', '2026-10-01T00:00:00Z', { ultimoEnvioEm: '2026-10-05T10:00:00Z' }), al('c', 'u3', 'pro', '2026-10-01T00:00:00Z')],
       { a: { editais: [ed('e1')], total: 1 }, b: { editais: [ed('e2')], total: 1 }, c: { editais: [ed('e3')], total: 1 } },
     );
     await executarAlertas(t.deps);
     expect(t.enviar.mock.calls.map((c) => c[0].para)).toEqual(['u2@empresa.com.br', 'u1@empresa.com.br', 'u3@empresa.com.br']);
+  });
+  it('nunca enviado e adiado: guarda a janela de ontem e vai primeiro no dia seguinte', async () => {
+    const velhos = Array.from({ length: MAX_EMAILS_POR_RODADA }, (_, i) => `v${i}`);
+    const antigos = velhos.map((c) => al(c, c, 'pro', '2026-09-01T00:00:00Z', { ultimoEnvioEm: '2026-10-17T00:00:00Z' }));
+    const novo = al('n', 'novo', 'pro', '2026-10-18T12:00:00Z');
+    const editais = Object.fromEntries([...velhos, 'n'].map((c) => [c, { editais: [ed(`e${c}`)], total: 1 }]));
+    const dia1 = montar([...antigos, novo], editais);
+    expect(await executarAlertas(dia1.deps)).toMatchObject({ enviados: MAX_EMAILS_POR_RODADA, adiados: 1 });
+    expect(dia1.registros.map((x) => x.alertaId)).not.toContain(id('n'));
+    // Dia seguinte: os 60 avançaram a janela; o novo não foi registrado e continua com a janela de ontem.
+    const dia2 = montar([...antigos.map((a) => ({ ...a, ultimoEnvioEm: AGORA.toISOString() })), novo], editais);
+    await executarAlertas({ ...dia2.deps, agora: () => new Date(AGORA.getTime() + 24 * 60 * 60 * 1000) });
+    expect(dia2.enviar.mock.calls[0][0].para).toBe('novo@empresa.com.br');
+    expect(dia2.consultas[0]).toEqual({ id: id('n'), desde: '2026-10-17T12:00:00.000Z', limite: 20 });
+  });
+  it('avisos do GitHub: só contagens; adiar sozinho não é falha', () => {
+    const base = { contas: 70, emails: 60, enviados: 60, semNovidades: 0, falhas: 0, puladosPlano: 0, editais: 60, adiados: 0, cotaEsgotada: false, aceitosSemRegistro: 0 };
+    expect(avisosDoResumo(base)).toEqual([]);
+    expect(avisosDoResumo({ ...base, adiados: 10 })).toEqual([`::warning::Teto de ${MAX_EMAILS_POR_RODADA} e-mails atingido: 10 contas ficaram para amanhã`]);
+    expect(avisosDoResumo({ ...base, adiados: 3, cotaEsgotada: true })).toEqual(['::warning::Cota do Resend esgotada: 3 contas ficaram para amanhã']);
+    expect(avisosDoResumo({ ...base, aceitosSemRegistro: 2 })).toEqual(['::error::2 alertas enviados sem registro (podem repetir amanhã): procure ACEITO_SEM_REGISTRO no log']);
   });
   it('logs sem e-mail e sem uuid completo', async () => {
     const t = montar(

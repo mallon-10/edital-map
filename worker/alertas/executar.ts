@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { montarEmail } from '../../lib/alertas/email';
 import { criarTokenDescadastro } from '../../lib/alertas/token';
 import { LIMITES_CONTA } from '../../lib/limitesConta';
-import type { AlertaParaEnvio, BancoAlertas, EditalAlerta } from './banco';
+import type { AlertaParaEnvio, BancoAlertas, EditalAlerta, RegistroEnvio } from './banco';
 import { curto, limparLog } from './log';
 import type { Enviar } from './resend';
 
@@ -19,7 +19,11 @@ export const LIMITE_EDITAIS_EMAIL = 20;
 export const PAUSA_ENTRE_EMAILS_MS = 600;
 /** Plano grátis do Resend: 100 por dia, divididos com os códigos de login. */
 export const MAX_EMAILS_POR_RODADA = 60;
+/** Gravar o enviado depois do aceite: 3 tentativas (registrar_envio_alerta é idempotente nos editais e na janela). */
+export const ESPERAS_REGISTRO_MS = [2000, 4000] as const;
 const DIA_MS = 24 * 60 * 60 * 1000;
+/** Retenção (pg_cron): encerrada há mais de 7 dias sai do banco; a janela nunca precisa ir além disso. */
+const RETENCAO_MS = 7 * DIA_MS;
 
 export type DepsEnvio = {
   enviar: Enviar | null;
@@ -40,10 +44,20 @@ export type ResumoAlertas = {
   /** Contas que ficaram para amanhã (limite da rodada ou cota esgotada), sem registro. */
   adiados: number;
   cotaEsgotada: boolean;
+  /** Seções aceitas pelo Resend cujo registro não gravou (ACEITO_SEM_REGISTRO no log): podem repetir amanhã. */
+  aceitosSemRegistro: number;
 };
 
-export function desdeDoAlerta(ultimoEnvioEm: string | null, agora: Date): string {
-  return ultimoEnvioEm ?? new Date(agora.getTime() - DIA_MS).toISOString();
+/**
+ * Desde quando procurar editais. Com envio: desde ele. Nunca enviado: 24 h antes da criação, ancorado (não no relógio),
+ * para um alerta adiado pela cota não perder o dia que ficou para trás; no máximo 7 dias (retenção) + 24 h. Criação
+ * ilegível: as últimas 24 h. editais_do_alerta não tem fallback próprio (p_desde é obrigatório e vai sempre daqui).
+ */
+export function desdeDoAlerta(ultimoEnvioEm: string | null, criadoEm: string, agora: Date): string {
+  if (ultimoEnvioEm) return ultimoEnvioEm;
+  const criado = Date.parse(criadoEm);
+  const base = Number.isNaN(criado) ? agora.getTime() : Math.max(criado, agora.getTime() - RETENCAO_MS);
+  return new Date(base - DIA_MS).toISOString();
 }
 
 /** Alertas agrupados por conta, cada grupo do mais antigo para o mais novo. */
@@ -59,7 +73,7 @@ export function porConta(lista: readonly AlertaParaEnvio[]): AlertaParaEnvio[][]
  */
 export function porEspera(contas: readonly AlertaParaEnvio[][], agora: Date): AlertaParaEnvio[][] {
   const espera = (as: readonly AlertaParaEnvio[]) =>
-    Math.min(...as.map((a) => Date.parse(desdeDoAlerta(a.ultimoEnvioEm, agora))).map((t) => (Number.isNaN(t) ? Infinity : t)));
+    Math.min(...as.map((a) => Date.parse(desdeDoAlerta(a.ultimoEnvioEm, a.criadoEm, agora))).map((t) => (Number.isNaN(t) ? Infinity : t)));
   return contas
     .map((c, i) => ({ c, i, k: espera(c) }))
     .sort((x, y) => (x.k === y.k ? x.i - y.i : x.k < y.k ? -1 : 1))
@@ -86,10 +100,23 @@ export function motivoSemEnvio(d: DepsEnvio): string | null {
 
 export const mensagemDeErro = (erro: unknown) => (erro instanceof Error ? erro.message : String(erro)).slice(0, 300);
 
-type ComNovidade = { alerta: AlertaParaEnvio; editais: EditalAlerta[]; total: number };
+type ComNovidade = { alerta: AlertaParaEnvio; editais: EditalAlerta[]; total: number; desde: string };
+
+/** Anotações do GitHub Actions no fim da rodada (só contagens). Adiar sozinho é aviso, não falha (código de saída 0). */
+export function avisosDoResumo(r: ResumoAlertas): string[] {
+  const avisos: string[] = [];
+  if (r.cotaEsgotada) avisos.push(`::warning::Cota do Resend esgotada: ${r.adiados} contas ficaram para amanhã`);
+  else if (r.adiados > 0) avisos.push(`::warning::Teto de ${MAX_EMAILS_POR_RODADA} e-mails atingido: ${r.adiados} contas ficaram para amanhã`);
+  if (r.aceitosSemRegistro > 0) {
+    avisos.push(`::error::${r.aceitosSemRegistro} alertas enviados sem registro (podem repetir amanhã): procure ACEITO_SEM_REGISTRO no log`);
+  }
+  return avisos;
+}
 
 export async function executarAlertas(d: DepsAlertas): Promise<ResumoAlertas> {
-  const r: ResumoAlertas = { contas: 0, emails: 0, enviados: 0, semNovidades: 0, falhas: 0, puladosPlano: 0, editais: 0, adiados: 0, cotaEsgotada: false };
+  const r: ResumoAlertas = {
+    contas: 0, emails: 0, enviados: 0, semNovidades: 0, falhas: 0, puladosPlano: 0, editais: 0, adiados: 0, cotaEsgotada: false, aceitosSemRegistro: 0,
+  };
   const log = (linha: string) => d.log(limparLog(linha));
   const contas = porEspera(porConta(await d.banco.alertasParaEnvio()), d.agora());
   r.contas = contas.length;
@@ -98,6 +125,9 @@ export async function executarAlertas(d: DepsAlertas): Promise<ResumoAlertas> {
   let aceitos = 0;
 
   for (const [i, alertas] of contas.entries()) {
+    // Só conta o que o Resend confirmou. Um tempo esgotado ou 5xx que o Resend tenha aceito mesmo assim (as novas
+    // tentativas voltam o mesmo id pela Idempotency-Key, mas a que desistiu não) gasta a cota dividida com os códigos de
+    // login sem entrar nestes 60: a folga de 40 por dia cobre isso.
     if (r.cotaEsgotada || aceitos >= MAX_EMAILS_POR_RODADA) {
       r.adiados = contas.length - i;
       break;
@@ -120,9 +150,10 @@ export async function executarAlertas(d: DepsAlertas): Promise<ResumoAlertas> {
       const comNovidade: ComNovidade[] = [];
       for (const a of permitidos) {
         try {
-          const achados = await d.banco.editaisDoAlerta(a, desdeDoAlerta(a.ultimoEnvioEm, d.agora()), LIMITE_EDITAIS_EMAIL);
+          const desde = desdeDoAlerta(a.ultimoEnvioEm, a.criadoEm, d.agora());
+          const achados = await d.banco.editaisDoAlerta(a, desde, LIMITE_EDITAIS_EMAIL);
           if (achados.editais.length > 0) {
-            comNovidade.push({ alerta: a, ...achados });
+            comNovidade.push({ alerta: a, ...achados, desde });
             continue;
           }
           await d.banco.registrarEnvio({ alertaId: a.id, status: 'sem_novidades', qtd: 0, tentativas: 0, selecionadoEm });
@@ -157,16 +188,38 @@ export async function executarAlertas(d: DepsAlertas): Promise<ResumoAlertas> {
         for (const c of comNovidade) await registrarFalha(c, envio.erro, envio.tentativas);
         continue;
       }
-      // Aceito: o e-mail saiu. Daqui em diante nada vira falhou (só o histórico ou o evento podem faltar).
+      // Aceito: o e-mail saiu. Daqui em diante nada vira falhou; cada seção grava por conta própria, com nova tentativa.
       aceitos++;
       pendentes = [];
       for (const c of comNovidade) {
-        await d.banco.registrarEnvio({
+        const avancar = c.total <= c.editais.length;
+        const registro: RegistroEnvio = {
           alertaId: c.alerta.id, status: 'enviado', qtd: c.editais.length, tentativas: envio.tentativas, idMensagem: envio.id,
-          ids: c.editais.map((e) => e.id), selecionadoEm, avancar: c.total <= c.editais.length,
-        });
-        r.enviados++;
-        r.editais += c.editais.length;
+          ids: c.editais.map((e) => e.id), selecionadoEm, avancar,
+          ...(!avancar && !c.alerta.ultimoEnvioEm ? { janelaInicial: c.desde } : {}),
+        };
+        let gravou = false;
+        for (let tentativa = 0; !gravou; tentativa++) {
+          try {
+            await d.banco.registrarEnvio(registro);
+            gravou = true;
+          } catch (erro) {
+            if (tentativa >= ESPERAS_REGISTRO_MS.length) {
+              log(`[alertas] registro do alerta ${curto(c.alerta.id)}: ${mensagemDeErro(erro)}`);
+              break;
+            }
+            await d.esperar(ESPERAS_REGISTRO_MS[tentativa]);
+          }
+        }
+        if (gravou) {
+          r.enviados++;
+          r.editais += c.editais.length;
+        } else {
+          // Marcador fixo para procurar no log público: o e-mail saiu, mas alertas_enviados não gravou (pode repetir).
+          log(`[alertas] ACEITO_SEM_REGISTRO alerta ${curto(c.alerta.id)} msg ${curto(envio.id)} qtd ${c.editais.length}`);
+          r.aceitosSemRegistro++;
+          r.falhas++;
+        }
       }
       try {
         await d.banco.gravarEventoEnvio({ qtd: ids.length, alertas: comNovidade.length });
