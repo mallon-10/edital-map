@@ -73,7 +73,18 @@ export function MenuConta() {
       ref={caixa}
       className="relative"
       onBlur={(e) => {
-        if (aberto && !caixa.current?.contains(e.relatedTarget as Node | null)) setAberto(false);
+        if (!aberto) return;
+        const destino = e.relatedTarget as Node | null;
+        if (destino) {
+          if (!caixa.current?.contains(destino)) setAberto(false);
+          return;
+        }
+        // Sem relatedTarget (Safari/Firefox no Mac não focam botão nem link no clique): só fecha se, depois do clique,
+        // o foco de fato saiu da caixa. Clique fora já fecha pelo mousedown do documento.
+        window.requestAnimationFrame(() => {
+          const ativo = document.activeElement;
+          if (document.hasFocus() && ativo && ativo !== document.body && !caixa.current?.contains(ativo)) setAberto(false);
+        });
       }}
     >
       <button
@@ -100,7 +111,15 @@ export function MenuConta() {
         <span className="hidden max-w-[12rem] truncate lg:inline">{conta.email}</span>
       </button>
       {aberto ? (
-        <div ref={menu} role="menu" aria-label="Conta" onKeyDown={teclaNoMenu} className="absolute right-0 top-full z-50 mt-2 flex w-64 flex-col rounded-md border border-line bg-raised p-1">
+        <div
+          ref={menu}
+          role="menu"
+          aria-label="Conta"
+          tabIndex={-1}
+          onKeyDown={teclaNoMenu}
+          // Clique com o mouse não tira o foco do menu (senão o onBlur da caixa o fecharia antes do clique).
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute right-0 top-full z-50 mt-2 flex w-64 flex-col rounded-md border border-line bg-raised p-1">
           <p className="truncate px-3 py-2 text-xs text-ink-muted">{conta.email}</p>
           <Link role="menuitem" href="/radar" prefetch={false} className={ITEM} onClick={() => setAberto(false)}>
             Meu Radar
