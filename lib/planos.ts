@@ -1,11 +1,35 @@
 import type { PlanoPago } from './eventos';
-import { LIMITE_GRATIS } from './limites';
 
 /**
  * Planos (spec do pagamento, revisão 2, §2): só Grátis e Pro. O Basic saiu de linha; `'basic'` continua no tipo só como
  * valor antigo aceito pelo banco (perfis.plano, assinaturas), nada novo o cria.
  */
 export type IdPlano = 'gratis' | PlanoPago;
+/** Plano de quem está na página (lib/servidor/plano.ts, planoAtual). */
+export type Plano = IdPlano;
+
+/** O que o cabeçalho precisa saber do visitante: o plano e se é o dono confiável (cookie em_dono). */
+export type PlanoDaPagina = { plano: Plano; dono: boolean };
+
+/**
+ * Oferta do Pro (decisão de 19/10/2026): buscar, abrir editais, link oficial, raio, órgão, parecidos e exportar são
+ * grátis e sem limite; o que se vende é receber as licitações certas por e-mail (alertas, resumo semanal, Meu Radar).
+ * A faixa abaixo do cabeçalho convida quem não é Pro a criar o radar (components/FaixaOferta.tsx).
+ */
+export const OFERTA = {
+  texto: 'Receba no seu e-mail as licitações que combinam com o seu negócio',
+  cta: 'Criar meu radar grátis',
+  href: '/radar/comecar',
+} as const;
+
+/** Páginas em que a faixa da oferta não aparece: o próprio radar, a conta e o checkout (a faixa só atrapalharia). */
+const SEM_FAIXA = ['/radar', '/entrar', '/assinar', '/assinatura', '/obrigado', '/alertas', '/oportunidades'];
+
+/** Faixa da oferta: para quem não é Pro nem o dono, fora das páginas da conta e do checkout. Plano desconhecido: sem faixa. */
+export function mostrarOferta(p: PlanoDaPagina | null | undefined, caminho: string): boolean {
+  if (!p || p.dono || p.plano !== 'gratis') return false;
+  return !SEM_FAIXA.some((c) => caminho === c || caminho.startsWith(c + '/'));
+}
 export type Periodo = 'mensal' | 'anual';
 export const PERIODOS: readonly Periodo[] = ['mensal', 'anual'];
 
@@ -39,19 +63,20 @@ export type Celula = { valor: string | boolean; emBreve?: boolean };
 export type LinhaPlanos = { recurso: string; gratis: Celula; pro: Celula };
 
 export const LINHAS_PLANOS: readonly LinhaPlanos[] = [
-  { recurso: 'Buscas por dia', gratis: { valor: String(LIMITE_GRATIS.busca) }, pro: { valor: 'Ilimitadas' } },
-  { recurso: 'Editais abertos por dia', gratis: { valor: String(LIMITE_GRATIS.edital) }, pro: { valor: 'Ilimitados' } },
-  { recurso: 'Botão "Abrir edital oficial"', gratis: { valor: false }, pro: { valor: true } },
-  { recurso: 'Filtros (UF, município, valor, modalidade, prazo)', gratis: { valor: true }, pro: { valor: true } },
-  { recurso: 'Filtros Pro (raio em km e órgão comprador)', gratis: { valor: false }, pro: { valor: true } },
-  { recurso: 'Exportar a lista para planilha', gratis: { valor: false }, pro: { valor: true } },
-  { recurso: 'Editais parecidos abertos', gratis: { valor: '3 primeiros' }, pro: { valor: true } },
-  { recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true } },
   { recurso: 'Alertas por e-mail às 7h (busca salva)', gratis: { valor: false }, pro: { valor: 'Até 5' } },
+  { recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true } },
+  // Prévia = os 5 primeiros (VISIVEIS_GRATIS em lib/radar.ts; o teste guarda o número).
+  { recurso: 'Meu Radar', gratis: { valor: 'Prévia (5)' }, pro: { valor: 'Completo' } },
   { recurso: 'Editais salvos', gratis: { valor: false }, pro: { valor: 'Uso justo' } },
+  { recurso: 'Buscas e editais', gratis: { valor: 'Ilimitados' }, pro: { valor: 'Ilimitados' } },
+  { recurso: 'Botão "Abrir edital oficial"', gratis: { valor: true }, pro: { valor: true } },
+  { recurso: 'Filtros (UF, município, valor, modalidade, prazo)', gratis: { valor: true }, pro: { valor: true } },
+  { recurso: 'Filtros por raio em km e órgão comprador', gratis: { valor: true }, pro: { valor: true } },
+  { recurso: 'Exportar a lista para planilha (CSV)', gratis: { valor: true }, pro: { valor: true } },
+  { recurso: 'Editais parecidos abertos', gratis: { valor: true }, pro: { valor: true } },
   { recurso: 'Preço de referência, quem venceu e resumo com IA', gratis: { valor: false }, pro: { valor: true, emBreve: true } },
 ];
 
-/** A tabela descreve os planos de quando o pagamento abrir; até lá, o que já existe está aberto a todos. */
+/** Com o pagamento desligado (lista de espera no lugar do "Assinar o Pro"). */
 export const AVISO_PLANOS =
-  'Enquanto o pagamento não abre, o botão "Abrir edital oficial", os editais parecidos, os filtros Pro e a exportação ficam liberados para todos, dentro dos limites do Grátis.';
+  'Buscar, abrir editais, filtrar e exportar são grátis e sem limite. O pagamento do Pro ainda não abriu: entre na lista de espera e avisamos quando der para assinar os alertas e o resumo semanal.';

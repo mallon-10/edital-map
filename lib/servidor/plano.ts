@@ -1,5 +1,5 @@
 import 'server-only';
-import type { Plano } from '../limites';
+import type { Plano, PlanoDaPagina } from '../planos';
 import { configPagamento } from '../pagamento/config';
 import type { Contexto } from './registro';
 import { usuarioAtual } from './sessao';
@@ -8,6 +8,14 @@ import { supabaseServidor } from './supabase';
 /** Pagamento ligado = as variáveis da Cakto estão configuradas (lib/pagamento/config.ts). */
 export function pagamentoLigado(): boolean {
   return configPagamento() !== null;
+}
+
+/**
+ * Acesso de dono (vê o Meu Radar inteiro sem o Pro): o cookie em_dono; e o interno (em_interno) enquanto o pagamento
+ * está desligado. Com o pagamento ligado, o interno só sai das métricas.
+ */
+export function acessoDeDono(ctx: Contexto): boolean {
+  return ctx.dono || (ctx.interno && !pagamentoLigado());
 }
 
 /** Assinatura válida (não estornada e dentro da validade; cancelada vale até o fim) com o e-mail da conta. */
@@ -42,4 +50,9 @@ export async function planoAtual(ctx: Contexto | null): Promise<Plano> {
   const usuario = await usuarioAtual();
   if (usuario?.email && (await proPeloEmail(usuario.email))) return 'pro';
   return 'gratis';
+}
+
+/** Plano e dono para o cabeçalho (botão "Minha assinatura" e a faixa da oferta). Nada conta nem bloqueia aqui. */
+export async function planoDaPagina(ctx: Contexto | null): Promise<PlanoDaPagina> {
+  return { plano: await planoAtual(ctx), dono: Boolean(ctx?.dono) };
 }

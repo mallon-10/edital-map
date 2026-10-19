@@ -6,7 +6,7 @@ import { MENSAGENS_LIMITE_CONTA } from '@/lib/limitesConta';
 const BOTAO_SECUNDARIO = 'inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-3 text-[13px] font-semibold hover:bg-sunken';
 
 /**
- * Balão junto ao botão: convite ao Pro (grátis: "Assinar o Pro" e "Comparar planos", como o CartaoLimite) ou só a
+ * Balão junto ao botão: convite ao Pro (grátis: "Assinar o Pro" e "Comparar planos") ou só a
  * mensagem (limite do Pro, plano não confirmado, falha). Fica por cima do card (z-30). A mensagem é texto (React).
  */
 export function AvisoPlano({ mensagem, planos, aoFechar }: { mensagem: string; planos: boolean; aoFechar: () => void }) {

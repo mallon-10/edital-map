@@ -1,21 +1,18 @@
-import Link from 'next/link';
-import { EtiquetaPro } from '@/components/EtiquetaPro';
 import { ESTILO_ETIQUETA, PONTO_ETIQUETA } from '@/components/inicio/estilos';
 import { etiqueta, moedaCurta } from '@/lib/formato';
 import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalRelacionado } from '@/lib/tipos';
 import { LinkRelacionado } from './LinkRelacionado';
 
-type Props = { editais: EditalRelacionado[]; origem: string; agora: Date; maisNoPro?: boolean };
+type Props = { editais: EditalRelacionado[]; origem: string; agora: Date };
 
 /** "Editais parecidos abertos": cards no estilo do CardCompacto, cada um levando à página do edital. Sem nenhum, o bloco não aparece. */
-export function Relacionados({ editais, origem, agora, maisNoPro = false }: Props) {
+export function Relacionados({ editais, origem, agora }: Props) {
   if (editais.length === 0) return null;
   return (
     <section aria-labelledby="parecidos-titulo" className="rounded-lg border border-line bg-raised p-5">
-      <h2 id="parecidos-titulo" className="mb-3 flex items-baseline gap-1.5 text-[17px] font-bold">
+      <h2 id="parecidos-titulo" className="mb-3 text-[17px] font-bold">
         Editais parecidos abertos
-        <EtiquetaPro className="text-[13px]" />
       </h2>
       <ul className="grid gap-2.5 sm:grid-cols-2">
         {editais.map((e) => {
@@ -47,15 +44,6 @@ export function Relacionados({ editais, origem, agora, maisNoPro = false }: Prop
           );
         })}
       </ul>
-      {maisNoPro ? (
-        <p className="mt-3 text-[13px] text-ink-muted">
-          Veja todos os parecidos no{' '}
-          <Link href="/assinar" prefetch={false} className="font-semibold text-pin-strong hover:underline">
-            Pro
-          </Link>
-          .
-        </p>
-      ) : null}
     </section>
   );
 }

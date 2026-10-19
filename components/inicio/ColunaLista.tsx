@@ -1,10 +1,8 @@
 'use client';
 
 import { useEffect, useState, type RefObject } from 'react';
-import { CartaoLimite, CartaoPro } from '@/components/CartaoLimite';
 import { FONTE_COBERTURA } from '@/lib/cobertura';
 import { moedaCurta, numero } from '@/lib/formato';
-import { planoDoLimite, type Limite } from '@/lib/limites';
 import type { Painel } from '@/lib/painel';
 import type { Cidade, EditalResumo, FiltrosTela, Ordem, ResultadoBusca } from '@/lib/tipos';
 import type { Vista } from '@/lib/urlBusca';
@@ -28,11 +26,6 @@ type Props = {
   selecionadoId: string | null;
   carregandoLista: boolean;
   erro: string | null;
-  /** Busca nova além das 3 do dia: no lugar da lista, o cartão dos planos. */
-  limite: Limite | null;
-  /** A busca usa raio ou órgão sem o plano Pro (402 recurso_pro): o cartão do Pro no lugar da lista. */
-  proBloqueado: boolean;
-  aoTirarFiltrosPro: () => void;
   pagina: number;
   /** Ordem que vale agora (ordemEfetiva). */
   ordem: Ordem;
@@ -47,7 +40,7 @@ type Props = {
   aoMudarPrazo: (seteDias: boolean) => void;
   aoMudarOrdem: (o: Ordem) => void;
   aoIrPagina: (pagina: number) => void;
-  /** Sugestão do estado vazio: outra busca (conta como busca nova). */
+  /** Sugestão do estado vazio: outra busca. */
   aoAplicar: (f: FiltrosTela) => void;
 };
 
@@ -90,28 +83,6 @@ export function ColunaLista(p: Props) {
   useEffect(() => {
     if (p.carregandoLista) p.listaRef.current?.scrollTo({ top: 0 });
   }, [p.carregandoLista, p.listaRef]);
-
-  if (p.proBloqueado) {
-    return (
-      <div className="flex flex-col p-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-        <CartaoPro aoTirarFiltros={p.aoTirarFiltrosPro} />
-      </div>
-    );
-  }
-
-  if (p.limite) {
-    return (
-      <div className="flex flex-col p-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-        {/* Celular: o município fica à mão acima do cartão (tirar o filtro pode voltar a uma busca já feita hoje). */}
-        {cidade ? (
-          <div className="mb-3 flex lg:hidden">
-            <PilulaCidade cidade={cidade} raio={raio} aoTirar={p.aoTirarCidade} />
-          </div>
-        ) : null}
-        <CartaoLimite tipo={p.limite.tipo} plano={planoDoLimite(p.limite)} />
-      </div>
-    );
-  }
 
   const valor = moedaCurta(p.painel.valorTotal);
   const vazia = editais.length === 0 && !p.carregandoLista && !p.erro;

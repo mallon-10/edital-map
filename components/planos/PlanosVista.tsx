@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { LINHAS_PLANOS, PLANOS, type Celula, type Periodo } from '@/lib/planos';
+import { LINHAS_PLANOS, PLANOS, type Celula, type Periodo, type Plano } from '@/lib/planos';
 import { AlternadorPeriodo } from './AlternadorPeriodo';
-import type { Plano } from '@/lib/limites';
 import { AcaoDoPlano } from './AcaoDoPlano';
 import { CartoesPlanos } from './CartoesPlanos';
 import { PrecoDoPlano } from './PrecoDoPlano';

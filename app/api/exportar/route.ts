@@ -1,23 +1,17 @@
 import { gerarCsv, nomeArquivo } from '@/lib/csv';
 import { LIMITES } from '@/lib/eventos';
 import { lerFiltros } from '@/lib/filtros';
-import { SEM_CACHE } from '@/lib/http';
-import { corpoLimite, corpoRecursoPro, STATUS_LIMITE } from '@/lib/limites';
 import { exportarEditais } from '@/lib/servidor/consultas';
 import { contexto, exportacaoDentroDoLimite, gravarEvento } from '@/lib/servidor/registro';
-import { decidirBusca, semRecursoPro } from '@/lib/servidor/uso';
 
-/** Planilha (CSV) com os editais da busca atual: os mesmos parâmetros de /api/busca, desde o começo, até 2.000 (e 4 MB). */
+/**
+ * Planilha (CSV) com os editais da busca atual: os mesmos parâmetros de /api/busca, desde o começo, até 2.000 (e 4 MB).
+ * Grátis para todos; contra abuso, 20 exportações por hora por IP (429).
+ */
 export async function GET(request: Request) {
   const filtros = lerFiltros(new URL(request.url).searchParams);
   try {
     const ctx = await contexto();
-    if (await semRecursoPro(ctx)) return Response.json(corpoRecursoPro(), { status: STATUS_LIMITE, headers: SEM_CACHE });
-    // A exportação usa a busca da tela (já contada); combinação nova além do limite do dia não exporta.
-    const decisao = await decidirBusca(ctx, filtros, { avisar: false });
-    if (!decisao.permitido) {
-      return Response.json(corpoLimite('busca', decisao.limite.usados, decisao.plano), { status: STATUS_LIMITE, headers: SEM_CACHE });
-    }
     if (!(await exportacaoDentroDoLimite(ctx.ipHash, LIMITES.exportacoesPorHora))) {
       return Response.json(
         { erro: `Limite de ${LIMITES.exportacoesPorHora} exportações por hora atingido. Tente de novo mais tarde.` },
@@ -26,7 +20,7 @@ export async function GET(request: Request) {
     }
     const { editais, total } = await exportarEditais(filtros);
     const agora = new Date();
-    // A medição (que também conta o limite) não pode impedir o download.
+    // A medição (que também conta as exportações da hora) não pode impedir o download.
     await gravarEvento(ctx, 'usou_recurso', { recurso: 'exportou', total: editais.length }).catch((erro: unknown) => console.error(erro));
     return new Response(gerarCsv(editais, undefined, total), {
       headers: {

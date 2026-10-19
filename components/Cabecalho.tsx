@@ -2,28 +2,47 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useUso } from '@/lib/cliente/uso';
-import type { UsoHoje } from '@/lib/limites';
+import { useEffect } from 'react';
+import { planoConhecido, publicarPlano, usePlano } from '@/lib/cliente/plano';
+import { mostrarOferta, type PlanoDaPagina } from '@/lib/planos';
 import { Logo } from './Logo';
-import { FaixaPlano } from './FaixaPlano';
+import { FaixaOferta } from './FaixaOferta';
 import { MenuConta } from './conta/MenuConta';
 
 const ABA = 'rounded-sm px-3 py-1.5 text-sm font-semibold';
 
 type Props = {
-  /** Uso do dia calculado no servidor (página inicial e edital). Sem ele, a faixa do plano grátis pergunta a /api/uso. */
-  uso?: UsoHoje | null;
+  /** Plano do visitante calculado no servidor (inicial, edital, licitações, planos, radar). Sem ele, pergunta a /api/plano uma vez. */
+  plano?: PlanoDaPagina | null;
 };
 
 /**
  * Computador: logo, abas (Mapa, Meu Radar, Alertas, Planos), Sobre, conta e "Assinar Pro". Celular: logo, conta e "Assinar" (Mapa, Lista,
- * Alertas e Planos ficam na barra de baixo). Logo abaixo, a faixa do plano grátis (some no navegador interno).
+ * Alertas e Planos ficam na barra de baixo). Logo abaixo, a faixa da oferta (alertas por e-mail) para quem não é Pro nem o dono.
  */
-export function Cabecalho({ uso }: Props) {
+export function Cabecalho({ plano }: Props) {
   const caminho = usePathname() ?? '/';
-  // Plano pago (não o dono): "Minha assinatura" no lugar de "Assinar Pro". A loja do uso tem o mais novo.
-  const u = useUso() ?? uso ?? null;
-  const pago = !u?.interno && (u?.plano === 'basic' || u?.plano === 'pro');
+  const daLoja = usePlano();
+  useEffect(() => {
+    if (plano) {
+      publicarPlano(plano);
+      return;
+    }
+    if (planoConhecido()) return;
+    let cancelado = false;
+    fetch('/api/plano', { cache: 'no-store' })
+      .then((r) => (r.ok ? (r.json() as Promise<PlanoDaPagina>) : null))
+      .then((p) => {
+        if (p && !cancelado) publicarPlano(p);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelado = true;
+    };
+  }, [plano]);
+  // Plano pago (não o dono): "Minha assinatura" no lugar de "Assinar Pro". O do servidor vale primeiro.
+  const p = plano ?? daLoja;
+  const pago = Boolean(p && !p.dono && (p.plano === 'basic' || p.plano === 'pro'));
   const ativa = (href: string) => (href === '/' ? caminho === '/' : caminho === href || caminho.startsWith(href + '/'));
   const estilo = (href: string) => `${ABA} ${ativa(href) ? 'bg-pin-soft text-pin-strong' : 'text-ink hover:bg-sunken'}`;
   return (
@@ -70,7 +89,7 @@ export function Cabecalho({ uso }: Props) {
           )}
         </div>
       </header>
-      <FaixaPlano inicial={uso} />
+      {mostrarOferta(p, caminho) ? <FaixaOferta /> : null}
     </>
   );
 }

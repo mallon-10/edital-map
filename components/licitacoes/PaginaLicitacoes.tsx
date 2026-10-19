@@ -2,20 +2,20 @@ import Link from 'next/link';
 import { Cabecalho } from '@/components/Cabecalho';
 import { FaixaCobertura } from '@/components/FaixaCobertura';
 import { CardLista } from '@/components/inicio/CardLista';
-import type { UsoHoje } from '@/lib/limites';
 import { jsonLdPerguntas, PERGUNTAS_LICITACOES } from '@/lib/seo/marca';
+import type { PlanoDaPagina } from '@/lib/planos';
 import { buscaDaPagina, introDaPagina, jsonLdMigalhas, migalhas, type Pagina, tituloDaPagina, vizinhos } from '@/lib/seo/textos';
 import { atualizadoEm } from '@/lib/servidor/consultas';
 import { dadosDaPagina, type DadosDaPagina } from '@/lib/servidor/licitacoes';
+import { planoDaPagina } from '@/lib/servidor/plano';
 import { contextoDaPagina } from '@/lib/servidor/registro';
-import { usoDoDia } from '@/lib/servidor/uso';
 
 const ESCAPE_MENOR = '\\u003c';
 
-type Props = DadosDaPagina & { pagina: Pagina; atualizadoEm: string | null; uso: UsoHoje | null };
+type Props = DadosDaPagina & { pagina: Pagina; atualizadoEm: string | null; plano: PlanoDaPagina | null };
 
 /** Página fixa de /licitacoes (assunto, UF ou os dois): lista dos que encerram antes, link para o mapa e páginas vizinhas. */
-export function PaginaLicitacoes({ pagina, total, editais, porUf, cidades, atualizadoEm: atualizado, uso }: Props) {
+export function PaginaLicitacoes({ pagina, total, editais, porUf, cidades, atualizadoEm: atualizado, plano }: Props) {
   const agora = new Date();
   const caminho = migalhas(pagina);
   const links = vizinhos(pagina, porUf);
@@ -23,7 +23,7 @@ export function PaginaLicitacoes({ pagina, total, editais, porUf, cidades, atual
   const ehBrasil = !pagina.assunto && !pagina.uf;
   return (
     <>
-      <Cabecalho uso={uso} />
+      <Cabecalho plano={plano} />
       <FaixaCobertura atualizadoEm={atualizado} />
       <script
         type="application/ld+json"
@@ -120,9 +120,9 @@ export function PaginaLicitacoes({ pagina, total, editais, porUf, cidades, atual
   );
 }
 
-/** Rota completa: dados, uso do dia (só lido, nada conta aqui) e a página. */
+/** Rota completa: dados, plano do visitante (para o cabeçalho) e a página. */
 export async function RotaLicitacoes({ pagina }: { pagina: Pagina }) {
   const ctx = await contextoDaPagina();
-  const [dados, atualizado, uso] = await Promise.all([dadosDaPagina(pagina), atualizadoEm().catch(() => null), usoDoDia(ctx)]);
-  return <PaginaLicitacoes pagina={pagina} {...dados} atualizadoEm={atualizado} uso={uso} />;
+  const [dados, atualizado, plano] = await Promise.all([dadosDaPagina(pagina), atualizadoEm().catch(() => null), planoDaPagina(ctx)]);
+  return <PaginaLicitacoes pagina={pagina} {...dados} atualizadoEm={atualizado} plano={plano} />;
 }

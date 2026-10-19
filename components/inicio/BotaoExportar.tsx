@@ -1,10 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { EtiquetaPro } from '@/components/EtiquetaPro';
-import { LinkPro } from '@/components/LinkPro';
-import { useUso } from '@/lib/cliente/uso';
-import { cadeadoPro } from '@/lib/limites';
 import { MAX_EXPORTACAO } from '@/lib/csv';
 import { ERRO_EXPORTAR, ErroDaApi, mensagemDaApi, nomeDoArquivo } from '@/lib/exportar-cliente';
 import { numero } from '@/lib/formato';
@@ -21,7 +17,6 @@ type Props = {
 /** Baixa a planilha (CSV) da busca atual. Por fetch, para mostrar o erro da API (como o limite por hora) em vez de um download quebrado. */
 export function BotaoExportar({ parametros, total, aoErro }: Props) {
   const [baixando, setBaixando] = useState(false);
-  const bloqueado = cadeadoPro(useUso());
 
   async function exportar() {
     setBaixando(true);
@@ -48,15 +43,6 @@ export function BotaoExportar({ parametros, total, aoErro }: Props) {
     }
   }
 
-  if (bloqueado) {
-    return (
-      <LinkPro
-        rotulo="Exportar"
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-sm border border-line-strong bg-raised px-2.5 text-[13px] font-semibold hover:bg-sunken"
-      />
-    );
-  }
-
   return (
     <button
       type="button"
@@ -69,7 +55,6 @@ export function BotaoExportar({ parametros, total, aoErro }: Props) {
     >
       <Planilha className="size-4" />
       {baixando ? 'Exportando…' : 'Exportar'}
-      <EtiquetaPro />
     </button>
   );
 }

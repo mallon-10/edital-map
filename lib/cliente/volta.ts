@@ -1,4 +1,3 @@
-import type { Limite } from '../limites';
 import type { FiltrosTela, ResultadoBusca } from '../tipos';
 import type { Tela } from '../urlBusca';
 
@@ -7,10 +6,9 @@ export type Volta = {
   /** Endereço (urlDaBusca) em que o estado vale. */
   endereco: string;
   filtros: FiltrosTela;
-  /** Última busca que o mapa mostrou (com o limite do dia, o mapa fica com a última permitida). */
+  /** Última busca que o mapa mostrou. */
   filtrosMapa: FiltrosTela;
   resultado: ResultadoBusca;
-  limite: Limite | null;
   tela: Tela;
   selecionadoId: string | null;
   /** Posição da lista (scrollTop). */

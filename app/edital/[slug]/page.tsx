@@ -5,7 +5,6 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
-import { CartaoLimite } from '@/components/CartaoLimite';
 import { BotaoCompartilhar } from '@/components/edital/BotaoCompartilhar';
 import { BotaoDescartar } from '@/components/oportunidades/BotaoDescartar';
 import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
@@ -29,8 +28,7 @@ import { modalidadeCurta } from '@/lib/participacao';
 import { resumoOportunidade } from '@/lib/resumoEdital';
 import { arquivosDoEdital, atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
 import { contextoDaPagina } from '@/lib/servidor/registro';
-import { pagamentoLigado, planoAtual } from '@/lib/servidor/plano';
-import { decidirEdital, semLimite, usoDoDia } from '@/lib/servidor/uso';
+import { planoDaPagina } from '@/lib/servidor/plano';
 import { avisoSituacao, rotuloSituacao } from '@/lib/situacao';
 import { assunto, lotesDaInfo, nomeProprio, paragrafos } from '@/lib/texto';
 import type { Edital, EditalRelacionado, ResumoItens } from '@/lib/tipos';
@@ -55,15 +53,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-/** Parecidos que o grátis vê (tabela de /planos: "3 primeiros"). */
-const PARECIDOS_GRATIS = 3;
-
 const ETIQUETA = 'rounded-xs bg-sunken px-2 py-0.5 text-xs font-semibold text-ink-muted';
 
 /** Resumo de reserva: se a consulta do resumo falhar, a página do edital continua de pé. */
 const RESUMO_VAZIO: ResumoItens = { total: 0, materiais: 0, servicos: 0, comBeneficio: 0, exclusivos: 0, cota: 0, criterios: [] };
 
-/** Itens, documentos, resumo e parecidos: só consultados quando o edital está liberado para este navegador hoje. */
+/** Itens, documentos, resumo e parecidos (grátis e sem limite para todos). */
 async function detalhesDoEdital(e: Edital, todos: boolean) {
   const [itens, arquivos, resumo, parecidos] = await Promise.all([
     itensDoEdital(e, todos ? 2000 : 50),
@@ -87,18 +82,9 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const e = await edital(slug);
   if (!e) notFound();
 
-  // Cada edital diferente aberto no dia conta no grátis (reabrir não conta). Interno e visitante sem cookie: liberado.
   const ctx = await contextoDaPagina();
-  const decisao = await decidirEdital(ctx, e.slug);
-  // Grátis com o pagamento ligado: sem o link oficial e só 3 parecidos (tabela de /planos).
-  const gratisComCadeado = pagamentoLigado() && !(ctx && semLimite(ctx)) && (await planoAtual(ctx)) === 'gratis';
   const todos = modoItens === 'todos';
-  // A faixa do plano grátis lê o uso depois de contar este edital.
-  const [atualizado, detalhes, uso] = await Promise.all([
-    atualizadoEm(),
-    decisao.permitido ? detalhesDoEdital(e, todos) : Promise.resolve(null),
-    usoDoDia(ctx),
-  ]);
+  const [atualizado, detalhes, plano] = await Promise.all([atualizadoEm(), detalhesDoEdital(e, todos), planoDaPagina(ctx)]);
   const agora = new Date();
   const p = prazo(e.encerramento_em, agora);
   const titulo = assunto(e.objeto);
@@ -106,7 +92,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const nomeUf = NOMES_UF[e.uf] ?? e.uf;
   const lotes = e.info_complementar ? lotesDaInfo(e.info_complementar) : null;
   const textoInfo = e.info_complementar && !lotes ? paragrafos(e.info_complementar) : [];
-  const exclusivoTotal = detalhes !== null && detalhes.resumo.total > 0 && detalhes.resumo.exclusivos === detalhes.resumo.total;
+  const exclusivoTotal = detalhes.resumo.total > 0 && detalhes.resumo.exclusivos === detalhes.resumo.total;
   const aviso = avisoSituacao(e.situacao_id);
   // Revogada ou anulada (link direto): só o rótulo da situação, sem a tag de prazo "Aberta".
   const rotuloSit = rotuloSituacao(e.situacao_id);
@@ -114,9 +100,9 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
 
   return (
     <>
-      <Cabecalho uso={uso} />
+      <Cabecalho plano={plano} />
       <FaixaCobertura atualizadoEm={atualizado} />
-      {detalhes ? <RegistrarAbertura slug={e.slug} /> : null}
+      <RegistrarAbertura slug={e.slug} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -165,10 +151,9 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
               </p>
             ) : null}
           </div>
-          {/* "Abrir edital oficial" e "Compartilhar" ficam sempre à mão, inclusive com os editais grátis do dia esgotados:
-              o cartão dos planos esconde o detalhe, não a fonte oficial. Salvar e Descartar também (a rota decide o plano). */}
+          {/* "Abrir edital oficial" e "Compartilhar" para todos; Salvar e Descartar também (a rota decide o plano). */}
           <div className="flex flex-wrap gap-2">
-            <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} bloqueado={gratisComCadeado} />
+            <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} />
             <BotaoCompartilhar titulo={titulo.titulo} slug={e.slug} />
             <BotaoSalvar id={e.id} variante="botao" />
             <BotaoDescartar id={e.id} />
@@ -184,70 +169,58 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
 
         {/* Celular: "Abrir edital oficial" fixo acima da barra de navegação (sempre, como no cabeçalho do computador). */}
         <div className="fixed inset-x-0 bottom-[var(--altura-barra)] z-30 border-t border-line bg-raised py-3 pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))] lg:hidden">
-          <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" bloqueado={gratisComCadeado} />
+          <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" />
         </div>
 
-        {/* Tudo abaixo do cabeçalho fica atrás do cartão quando os editais grátis do dia acabaram.
-            Seção nova da página entra dentro deste bloco (e a consulta dela, em detalhesDoEdital). */}
-        {detalhes ? (
-          <>
-            <ResumoOportunidade frases={resumoOportunidade(e)} />
-            <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} />
-            <PrincipaisInformacoes edital={e} resumo={{ ...detalhes.resumo, total: detalhes.totalItens }} agora={agora} />
+        {/* Seção nova da página entra aqui (e a consulta dela, em detalhesDoEdital). */}
+        <ResumoOportunidade frases={resumoOportunidade(e)} />
+        <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} />
+        <PrincipaisInformacoes edital={e} resumo={{ ...detalhes.resumo, total: detalhes.totalItens }} agora={agora} />
 
-            <div className="flex flex-wrap items-start gap-5">
-              <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5">
-                <section className="rounded-lg border border-line bg-raised p-5">
-                  <h2 className="mb-1 text-[17px] font-bold">Documentos do edital</h2>
-                  <p className="mb-2 text-[13px] text-ink-muted">Os documentos exigidos para participar estão no edital e no termo de referência.</p>
-                  <DocumentosEdital arquivos={detalhes.arquivos} slug={e.slug} />
-                </section>
-                <section className="rounded-lg border border-line bg-raised p-5">
-                  <h2 className="mb-3 text-[17px] font-bold">Itens da licitação</h2>
-                  <ListaItens itens={detalhes.itens} total={detalhes.totalItens} slug={e.slug} todos={todos} />
-                </section>
-                <Relacionados
-                  editais={gratisComCadeado ? detalhes.parecidos.slice(0, PARECIDOS_GRATIS) : detalhes.parecidos}
-                  origem={e.slug}
-                  agora={agora}
-                  maisNoPro={gratisComCadeado && detalhes.parecidos.length > PARECIDOS_GRATIS}
-                />
-                <section className="rounded-lg border border-line bg-raised p-5">
-                  <h2 className="mb-2 text-[17px] font-bold">Informações complementares</h2>
-                  {lotes ? (
-                    <ol className="flex flex-col gap-1.5 text-[15px]">
-                      {lotes.map((l) => (
-                        <li key={l.numero} className="break-words">
-                          <span className="font-semibold">Lote {l.numero}</span> · {l.texto}
-                        </li>
-                      ))}
-                    </ol>
-                  ) : textoInfo.length > 0 ? (
-                    <TextoRecolhivel paragrafos={textoInfo} />
-                  ) : (
-                    <p className="text-[15px] text-ink-muted">Não informado pelo órgão.</p>
-                  )}
-                </section>
-              </div>
-              <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5">
-                <VitrineEmBreve slug={e.slug} />
-                <section className="flex flex-col gap-3 rounded-lg border border-line bg-raised p-5 text-[15px]">
-                  <h2 className="text-base font-bold">Local</h2>
-                  <p>
-                    <span className="block text-xs text-ink-muted">Sede do órgão comprador</span>
-                    {local}
-                  </p>
-                  <p className="text-[13px] text-ink-muted">O local de entrega pode ser outro: confira no edital.</p>
-                </section>
-                <p className="rounded-md bg-sunken p-4 text-[13px] text-ink-muted">
-                  O Edital Map ajuda a encontrar editais. Não participa da licitação: as regras valem conforme o edital oficial.
-                </p>
-              </aside>
-            </div>
-          </>
-        ) : (
-          <CartaoLimite tipo="edital" plano={decisao.permitido ? undefined : decisao.plano} />
-        )}
+        <div className="flex flex-wrap items-start gap-5">
+          <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5">
+            <section className="rounded-lg border border-line bg-raised p-5">
+              <h2 className="mb-1 text-[17px] font-bold">Documentos do edital</h2>
+              <p className="mb-2 text-[13px] text-ink-muted">Os documentos exigidos para participar estão no edital e no termo de referência.</p>
+              <DocumentosEdital arquivos={detalhes.arquivos} slug={e.slug} />
+            </section>
+            <section className="rounded-lg border border-line bg-raised p-5">
+              <h2 className="mb-3 text-[17px] font-bold">Itens da licitação</h2>
+              <ListaItens itens={detalhes.itens} total={detalhes.totalItens} slug={e.slug} todos={todos} />
+            </section>
+            <Relacionados editais={detalhes.parecidos} origem={e.slug} agora={agora} />
+            <section className="rounded-lg border border-line bg-raised p-5">
+              <h2 className="mb-2 text-[17px] font-bold">Informações complementares</h2>
+              {lotes ? (
+                <ol className="flex flex-col gap-1.5 text-[15px]">
+                  {lotes.map((l) => (
+                    <li key={l.numero} className="break-words">
+                      <span className="font-semibold">Lote {l.numero}</span> · {l.texto}
+                    </li>
+                  ))}
+                </ol>
+              ) : textoInfo.length > 0 ? (
+                <TextoRecolhivel paragrafos={textoInfo} />
+              ) : (
+                <p className="text-[15px] text-ink-muted">Não informado pelo órgão.</p>
+              )}
+            </section>
+          </div>
+          <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5">
+            <VitrineEmBreve slug={e.slug} />
+            <section className="flex flex-col gap-3 rounded-lg border border-line bg-raised p-5 text-[15px]">
+              <h2 className="text-base font-bold">Local</h2>
+              <p>
+                <span className="block text-xs text-ink-muted">Sede do órgão comprador</span>
+                {local}
+              </p>
+              <p className="text-[13px] text-ink-muted">O local de entrega pode ser outro: confira no edital.</p>
+            </section>
+            <p className="rounded-md bg-sunken p-4 text-[13px] text-ink-muted">
+              O Edital Map ajuda a encontrar editais. Não participa da licitação: as regras valem conforme o edital oficial.
+            </p>
+          </aside>
+        </div>
       </main>
     </>
   );

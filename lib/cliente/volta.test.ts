@@ -23,7 +23,7 @@ const quebrado = {
 };
 const F: FiltrosTela = { q: 'luva', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
 const V: Volta = {
-  endereco: '/?q=luva&tela=lista', filtros: F, filtrosMapa: F, resultado: { total: 0, editais: [] }, limite: null, tela: 'lista', selecionadoId: null, rolagem: 420,
+  endereco: '/?q=luva&tela=lista', filtros: F, filtrosMapa: F, resultado: { total: 0, editais: [] }, tela: 'lista', selecionadoId: null, rolagem: 420,
 };
 
 describe('volta do edital', () => {

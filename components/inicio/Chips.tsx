@@ -1,10 +1,6 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { EtiquetaPro } from '@/components/EtiquetaPro';
-import { LinkPro } from '@/components/LinkPro';
-import { useUso } from '@/lib/cliente/uso';
-import { cadeadoPro } from '@/lib/limites';
 import { MODALIDADES, RAIOS_KM, UFS_ORDENADAS, ufIgnoradaPeloRaio, VALORES_MINIMOS } from '@/lib/filtros';
 import { haQuanto, numero } from '@/lib/formato';
 import type { Cidade, FiltrosTela, PontoMapa } from '@/lib/tipos';
@@ -47,7 +43,7 @@ function normalizar(s: string): string {
 /**
  * Chip que é uma pílula inteira clicável: o texto é só visual e o select nativo (transparente) cobre a pílula toda.
  * O foco aparece no contorno da pílula; a lista de opções é a do sistema. `desabilitado` apaga a pílula e trava o select;
- * `pro` acrescenta a etiqueta "· Pro"; `aviso` aparece depois do valor. Desabilitado, o texto ("escolha um município") e o
+ * `aviso` aparece depois do valor. Desabilitado, o texto ("escolha um município") e o
  * aviso entram no nome acessível, porque o valor do select travado não diz por que ele está travado.
  */
 function ChipSelect({
@@ -57,7 +53,6 @@ function ChipSelect({
   valor,
   aoMudar,
   desabilitado = false,
-  pro = false,
   aviso,
   grande = false,
   children,
@@ -68,7 +63,6 @@ function ChipSelect({
   valor: string;
   aoMudar: (v: string) => void;
   desabilitado?: boolean;
-  pro?: boolean;
   aviso?: string;
   /** Chip de 44 px (folha de Filtros do celular). */
   grande?: boolean;
@@ -83,7 +77,6 @@ function ChipSelect({
         {rotulo}: {textoValor}
         {aviso ? ` · ${aviso}` : ''}
       </span>
-      {pro ? <EtiquetaPro className="pointer-events-none" /> : null}
       <Seta className="pointer-events-none absolute right-3 size-3.5" />
       <select
         aria-label={[rotulo, desabilitado ? textoValor : null, aviso].filter(Boolean).join(', ')}
@@ -145,8 +138,6 @@ function PainelMunicipio({ ordenados, cidade, aoEscolher }: { ordenados: { p: Po
 }
 
 export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha = false }: Props) {
-  // Grátis com o pagamento ligado: órgão e raio viram cadeado (o servidor também barra).
-  const bloqueado = cadeadoPro(useUso());
   // Mais editais primeiro, depois ordem alfabética; a chave normalizada é calculada uma vez por lista de pontos.
   const ordenados = useMemo(
     () =>
@@ -240,52 +231,38 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha =
             })}
           </fieldset>
         </Popover>
-        {bloqueado ? (
-          <LinkPro rotulo="Órgão" className={`${chip(false, emFolha)} gap-1.5`} />
-        ) : (
-          <Popover
-            grande={emFolha}
-            nome="Órgão"
-            ativo={Boolean(filtros.orgao)}
-            rotulo={
-              <>
-                <span className="max-w-[14rem] truncate">{filtros.orgao ? `Órgão: ${filtros.orgao.nome}` : 'Órgão'}</span>
-                <EtiquetaPro />
-              </>
-            }
-          >
-            {(fechar) => (
-              <PainelOrgao
-                orgao={filtros.orgao}
-                aoEscolher={(o) => {
-                  aoMudar({ ...filtros, orgao: o });
-                  fechar();
-                }}
-              />
-            )}
-          </Popover>
-        )}
-        {bloqueado ? (
-          <LinkPro rotulo="Raio" className={`${chip(false, emFolha)} gap-1.5`} />
-        ) : (
-          <ChipSelect
-            grande={emFolha}
-            rotulo="Raio"
-            textoValor={!cidade ? 'escolha um município' : filtros.raio ? `${filtros.raio} km` : 'só o município'}
-            ativo={Boolean(cidade && filtros.raio)}
-            valor={cidade && filtros.raio ? String(filtros.raio) : ''}
-            desabilitado={!cidade}
-            pro
-            aoMudar={(v) => aoMudar({ ...filtros, raio: v ? Number(v) : null })}
-          >
-            <option value="">só o município</option>
-            {RAIOS_KM.map((km) => (
-              <option key={km} value={km}>
-                {km} km
-              </option>
-            ))}
-          </ChipSelect>
-        )}
+        <Popover
+          grande={emFolha}
+          nome="Órgão"
+          ativo={Boolean(filtros.orgao)}
+          rotulo={<span className="max-w-[14rem] truncate">{filtros.orgao ? `Órgão: ${filtros.orgao.nome}` : 'Órgão'}</span>}
+        >
+          {(fechar) => (
+            <PainelOrgao
+              orgao={filtros.orgao}
+              aoEscolher={(o) => {
+                aoMudar({ ...filtros, orgao: o });
+                fechar();
+              }}
+            />
+          )}
+        </Popover>
+        <ChipSelect
+          grande={emFolha}
+          rotulo="Raio"
+          textoValor={!cidade ? 'escolha um município' : filtros.raio ? `${filtros.raio} km` : 'só o município'}
+          ativo={Boolean(cidade && filtros.raio)}
+          valor={cidade && filtros.raio ? String(filtros.raio) : ''}
+          desabilitado={!cidade}
+          aoMudar={(v) => aoMudar({ ...filtros, raio: v ? Number(v) : null })}
+        >
+          <option value="">só o município</option>
+          {RAIOS_KM.map((km) => (
+            <option key={km} value={km}>
+              {km} km
+            </option>
+          ))}
+        </ChipSelect>
       </div>
       {emFolha ? null : (
         <p className="hidden shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted xl:block">

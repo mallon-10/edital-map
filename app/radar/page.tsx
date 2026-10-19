@@ -18,8 +18,7 @@ import { contagensDoRadar, editaisDoRadar } from '@/lib/servidor/radar';
 import { contextoDaPagina, gravarEvento } from '@/lib/servidor/registro';
 import { estadoDosSalvos } from '@/lib/servidor/salvos';
 import { usuarioAtual } from '@/lib/servidor/sessao';
-import { planoAtual } from '@/lib/servidor/plano';
-import { semLimite, usoDoDia } from '@/lib/servidor/uso';
+import { acessoDeDono, planoAtual } from '@/lib/servidor/plano';
 import { paraUrlSearchParams } from '@/lib/urlBusca';
 
 /** Página da conta: fora do Google. */
@@ -29,7 +28,7 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 /**
  * Meu Radar: cartões com contagens reais, o perfil e a lista personalizada (mesmos cards, ordens e páginas da busca).
- * Exige conta; sem radar, onboarding. Abrir e ordenar não contam busca do grátis; abrir um edital conta (página do edital).
+ * Exige conta; sem radar, onboarding.
  * Grátis vê os 5 primeiros e as contagens; o resto fica atrás da "Prévia do Radar".
  */
 export default async function MeuRadar({ searchParams }: Props) {
@@ -52,15 +51,14 @@ export default async function MeuRadar({ searchParams }: Props) {
   // Plano pago pela Cakto vale por navegador (planoAtual); o da conta (perfis.plano) também. Dono confiável vê tudo.
   const planoNavegador = await planoAtual(ctx);
   const plano = perfil.plano !== 'gratis' ? perfil.plano : planoNavegador;
-  const vista = vistaDoRadar(plano, ctx ? semLimite(ctx) : false, nav.pagina);
+  const vista = vistaDoRadar(plano, ctx ? acessoDeDono(ctx) : false, nav.pagina);
   const agora = new Date();
   const { desde, primeira } = desdeDaVisita(perfil.ultimaVisitaRadar, agora);
   // Descartados somem do radar (lista, total e cartões); ficam na aba Descartados de Minhas Oportunidades.
   const descartados = salvos ? idsDescartados(salvos) : [];
-  const [contagens, lista, uso, cidades] = await Promise.all([
+  const [contagens, lista, cidades] = await Promise.all([
     contagensDoRadar(radar, desde, descartados),
     editaisDoRadar(radar, { ordem: nav.ordem, pagina: vista.pagina, limite: vista.limite }, descartados),
-    usoDoDia(ctx),
     municipiosPorIbge(radar.municipios),
   ]);
   // Página além do fim (endereço antigo ou digitado): o total vem das linhas, então volta para a primeira.
@@ -77,7 +75,7 @@ export default async function MeuRadar({ searchParams }: Props) {
 
   return (
     <>
-      <Cabecalho uso={uso} />
+      <Cabecalho plano={{ plano: planoNavegador, dono: Boolean(ctx?.dono) }} />
       <main className="mx-auto flex w-full max-w-[1080px] flex-col gap-5 px-4 py-6 lg:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>

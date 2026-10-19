@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { trocarEndereco } from '@/lib/cliente/endereco';
 import { registrar } from '@/lib/cliente/registrar';
-import { publicarUso } from '@/lib/cliente/uso';
 import { guardarUltimaBusca, guardarVolta, tomarVolta, type Volta } from '@/lib/cliente/volta';
 import type { Raio } from '@/lib/geo';
 import { buscaDoCampo, filtrosAtivos, normalizarTela, ordemEfetiva, paraParametros, recursosUsados } from '@/lib/filtros';
@@ -11,7 +10,6 @@ import { PainelCnpj } from '@/components/cnpj/PainelCnpj';
 import { consultarCnpj, type RespostaCnpj } from '@/lib/cliente/cnpj';
 import { medir } from '@/lib/cliente/medir';
 import { urlDosPontos } from '@/lib/pontosMapa';
-import { LimiteAtingido, lerLimite, lerRecursoPro, RecursoProBloqueado, type Limite, type RespostaBusca } from '@/lib/limites';
 import { resumirPontos } from '@/lib/painel';
 import { temTermo } from '@/lib/relevancia/termos';
 import type { Cidade, EditalResumo, FiltrosTela, Ordem, PontoMapa, ResultadoBusca } from '@/lib/tipos';
@@ -27,7 +25,6 @@ import { FolhaFiltros } from './inicio/FolhaFiltros';
 import { OndeMaisCompram } from './inicio/OndeMaisCompram';
 
 const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
-const SEM_RESULTADO: ResultadoBusca = { total: 0, editais: [] };
 const ERRO_LISTA = 'Não foi possível buscar agora. Confira a conexão e tente de novo.';
 const ERRO_MAPA = 'Não foi possível carregar o mapa agora.';
 const TEMPO_LIMITE_MS = 20_000;
@@ -56,11 +53,6 @@ async function obter<T>(url: string, padrao: string): Promise<T> {
     // página de erro que não é JSON (502 do servidor, por exemplo)
   }
   if (!resposta.ok) {
-    // Limite do grátis (402): a tela mostra o cartão dos planos, não um erro.
-    const limite = lerLimite(resposta.status, corpo);
-    if (limite) throw new LimiteAtingido(limite);
-    // Raio ou órgão sem o Pro: a tela mostra o cartão do Pro.
-    if (lerRecursoPro(resposta.status, corpo)) throw new RecursoProBloqueado();
     const erro = typeof corpo === 'object' && corpo !== null ? (corpo as { erro?: unknown }).erro : null;
     throw new Error(typeof erro === 'string' && erro.trim() ? erro : padrao);
   }
@@ -74,21 +66,18 @@ type Props = {
   filtrosIniciais: FiltrosTela;
   /** Vista, parte do celular, página e ordem lidas do endereço. */
   estadoInicial: EstadoTela;
-  /** null quando a busca do endereço já bateu no limite do dia. */
-  inicial: ResultadoBusca | null;
-  limiteInicial: Limite | null;
-  /** A busca do endereço usa raio ou órgão sem o Pro. */
-  proInicial?: boolean;
+  /** Lista da busca do endereço, já consultada no servidor. */
+  inicial: ResultadoBusca;
   agoraInicial: string;
   atualizadoEm: string | null;
 };
 
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
-type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'limite' | 'tela' | 'selecionadoId'>;
+type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'tela' | 'selecionadoId'>;
 
-export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInicial, proInicial = false, agoraInicial, atualizadoEm }: Props) {
+export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInicial, atualizadoEm }: Props) {
   const [filtros, setFiltros] = useState<FiltrosTela>(filtrosIniciais);
-  // Celular: a parte da página pedida por último (botão da barra, cidade escolhida, aviso ou limite na lista), guardada
+  // Celular: a parte da página pedida por último (botão da barra, cidade escolhida ou aviso na lista), guardada
   // no endereço (`tela=lista` abre a página rolada até a lista). Só muda por ação explícita, nunca pela rolagem.
   const [tela, setTela] = useState<Tela>(estadoInicial.tela);
   // Lista ou Mapa (alternador no topo dos resultados), página e ordem da lista: vão no endereço e não contam como busca.
@@ -98,9 +87,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
   // Item aceso na barra de baixo: segue a rolagem. Fica fora do endereço: o replaceState do Next durante uma navegação
   // pendente (tocar num card e rolar um pouco) a descartaria.
   const [ativoBarra, setAtivoBarra] = useState<Tela>(estadoInicial.vista === 'lista' ? 'lista' : estadoInicial.tela);
-  const [resultado, setResultado] = useState<ResultadoBusca>(inicial ?? SEM_RESULTADO);
-  const [limite, setLimite] = useState<Limite | null>(limiteInicial);
-  const [proBloqueado, setProBloqueado] = useState(proInicial);
+  const [resultado, setResultado] = useState<ResultadoBusca>(inicial);
   // Campo da busca com um CNPJ: a empresa e os segmentos aparecem embaixo da barra (a busca só roda em "Ver editais").
   const [cnpj, setCnpj] = useState<
     { estado: 'carregando' } | { estado: 'erro'; erro: string } | { estado: 'ok'; r: RespostaCnpj } | null
@@ -120,7 +107,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
   const [pontos, setPontos] = useState<PontoMapa[]>([]);
   // Falso até o primeiro mapa chegar: antes disso o resumo (UFs, valor, municípios) ainda não existe.
   const [pontosProntos, setPontosProntos] = useState(false);
-  const [selecionadoId, setSelecionadoId] = useState<string | null>(inicial?.editais[0]?.id ?? null);
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(inicial.editais[0]?.id ?? null);
   const [folhaAberta, setFolhaAberta] = useState(false);
   // Falso até o primeiro filtro mudado pelo usuário: o foco do mapa na abertura (link direto, volta do edital) não anima.
   const [animarFoco, setAnimarFoco] = useState(false);
@@ -178,7 +165,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
     else window.scrollTo({ top: 0, behavior: jeito });
   }, []);
 
-  /** Celular: vai ao mapa ou à lista (barra de baixo, cidade escolhida, aviso ou cartão do limite na lista). */
+  /** Celular: vai ao mapa ou à lista (barra de baixo, cidade escolhida ou aviso na lista). */
   const irPara = useCallback(
     (t: Tela, f: FiltrosTela) => {
       trocarTela(t, f);
@@ -189,7 +176,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
   );
 
   const carregarLista = useCallback(
-    /** 'ok', 'erro' (falha ou limite do dia) ou 'velho' (um pedido mais novo tomou o lugar: esta resposta não vale). */
+    /** 'ok', 'erro' (falha) ou 'velho' (um pedido mais novo tomou o lugar: esta resposta não vale). */
     async (f: FiltrosTela, lista: { pagina?: number; ordem?: Ordem | null } = {}): Promise<'ok' | 'erro' | 'velho'> => {
       const id = ++pedidoLista.current;
       // Posições de uma volta do edital que ainda não foram aplicadas são da lista antiga: não valem para a nova.
@@ -197,33 +184,19 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
       rolagemPaginaPendente.current = null;
       setCarregandoLista(true);
       try {
-        // Mesma busca em outra página ou ordem: mesma chave no limite do dia (não conta de novo).
         const ordemPedida = lista.ordem === undefined ? estadoAtual.current.ordem : lista.ordem;
-        const novo = await obter<RespostaBusca>(`/api/busca?${paraParametros(f, { pagina: lista.pagina ?? 1, ordem: ordemPedida })}`, ERRO_LISTA);
+        const novo = await obter<ResultadoBusca>(`/api/busca?${paraParametros(f, { pagina: lista.pagina ?? 1, ordem: ordemPedida })}`, ERRO_LISTA);
         if (id !== pedidoLista.current) return 'velho';
         setResultado({ total: novo.total, editais: novo.editais });
         if (f.q.trim()) medir('buscou', { chave: 'dia' });
-        setLimite(null);
-        setProBloqueado(false);
-        if (novo.buscasUsadas !== null) publicarUso({ buscas: novo.buscasUsadas });
         setSelecionadoId(novo.editais[0]?.id ?? null);
         setAgora(new Date());
         setErroLista(null);
         return 'ok';
       } catch (e) {
         if (id !== pedidoLista.current) return 'velho';
-        if (e instanceof RecursoProBloqueado) {
-          setProBloqueado(true);
-          setErroLista(null);
-        } else if (e instanceof LimiteAtingido) {
-          // Busca nova além do limite do dia: o cartão dos planos no lugar da lista (o mapa fica com a última permitida).
-          setLimite(e.limite);
-          publicarUso({ buscas: e.limite.usados });
-          setErroLista(null);
-        } else {
-          setErroLista(mensagem(e, ERRO_LISTA));
-        }
-        // No celular o aviso e o cartão aparecem na lista, embaixo do mapa: a página rola até eles.
+        setErroLista(mensagem(e, ERRO_LISTA));
+        // No celular o aviso aparece na lista, embaixo do mapa: a página rola até ele.
         if (ehCelular()) irPara('lista', f);
         return 'erro';
       } finally {
@@ -235,10 +208,9 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
 
   const carregarMapa = useCallback(async (f: FiltrosTela) => {
     const id = ++pedidoMapa.current;
-    const anterior = filtrosDoMapa.current;
     filtrosDoMapa.current = f;
     try {
-      // Os mesmos parâmetros da lista: a mesma busca no limite do dia (o servidor ignora a cidade sem raio no mapa).
+      // Os mesmos parâmetros da lista (o servidor ignora a cidade sem raio no mapa).
       const novos = await obter<PontoMapa[]>(urlDosPontos(paraParametros(f)), ERRO_MAPA);
       if (id !== pedidoMapa.current) return;
       setPontos(novos);
@@ -251,19 +223,14 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
       setErroMapa(null);
     } catch (e) {
       if (id !== pedidoMapa.current) return;
-      // Limite do dia: o mapa fica com a última busca permitida, sem aviso (o cartão aparece na lista).
-      if (e instanceof LimiteAtingido || e instanceof RecursoProBloqueado) {
-        filtrosDoMapa.current = anterior;
-        return;
-      }
       setErroMapa(mensagem(e, ERRO_MAPA));
     }
   }, []);
 
   // Estado que a página guarda ao sair (a limpeza do efeito de montagem não enxerga o estado novo).
   useEffect(() => {
-    paraGuardar.current = { filtros, resultado, limite, tela, selecionadoId };
-  }, [filtros, resultado, limite, tela, selecionadoId]);
+    paraGuardar.current = { filtros, resultado, tela, selecionadoId };
+  }, [filtros, resultado, tela, selecionadoId]);
 
   // Última busca, para os links Mapa e Lista da barra do celular nas outras páginas.
   useEffect(() => guardarUltimaBusca(urlDaBusca(filtros, { pagina, ordem })), [filtros, pagina, ordem]);
@@ -315,7 +282,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
     () => () => {
       rolagemPagina.current = window.scrollY;
     },
-    [carregarMapa, filtrosIniciais, estadoInicial, limiteInicial, proInicial],
+    [carregarMapa, filtrosIniciais, estadoInicial],
   );
 
   // Montagem: voltando do edital (mesmo endereço), restaura busca, lista, tela e posições; senão, vale o que o servidor
@@ -328,7 +295,6 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
       estadoAtual.current = { ...estadoAtual.current, tela: volta.tela };
       setAtivoBarra(estadoAtual.current.vista === 'lista' ? 'lista' : volta.tela);
       setResultado(volta.resultado);
-      setLimite(volta.limite);
       setSelecionadoId(volta.selecionadoId);
       // Os prazos ("encerra em 2 dias") contam a partir de agora, não da hora em que a lista foi guardada.
       setAgora(new Date());
@@ -340,9 +306,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
       trocarEndereco(urlDaBusca(filtrosIniciais, estadoInicial));
       // Celular com `tela=lista` no endereço (botão Lista de outra página, link compartilhado): abre rolada até a lista.
       if (estadoInicial.tela === 'lista') rolarPara('lista', 'auto');
-      // Mesmos parâmetros da busca que o servidor já contou (a lista veio pronta): o mapa não conta de novo.
-      // Busca do endereço bloqueada pelo limite: o mapa do Brasil todo, que não conta.
-      void carregarMapa(limiteInicial || proInicial ? VAZIO : filtrosIniciais);
+      // A lista veio pronta do servidor; o mapa pede os pontos da mesma busca.
+      void carregarMapa(filtrosIniciais);
     }
     return () => {
       const atual = paraGuardar.current;
@@ -355,9 +320,9 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         rolagemPagina: rolagemPagina.current,
       });
     };
-  }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial, limiteInicial, proInicial]);
+  }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial]);
 
-  /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança conta como busca. */
+  /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança grava o evento "busca". */
   function aplicar(pedido: FiltrosTela, opcoes: { abrirLista?: boolean } = {}) {
     // Sem município não há raio (trocar a UF ou tirar a cidade tira o raio também).
     const novo = normalizarTela(pedido);
@@ -393,7 +358,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
   }
 
   /**
-   * Lista | Mapa: troca a tela e escreve a vista no endereço (uma escrita). Não busca de novo nem conta: os pontos
+   * Lista | Mapa: troca a tela e escreve a vista no endereço (uma escrita). Não busca de novo: os pontos
    * do mapa já estão carregados; se o mapa tinha falhado (ou não chegou), ir ao Mapa pede de novo a mesma busca dele.
    */
   function mudarVista(v: Vista) {
@@ -424,8 +389,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
   }
 
   /**
-   * Outra página da mesma busca: não conta como busca nem grava o evento "busca"; o mapa não muda.
-   * O limite (402) e o uso do dia seguem o caminho de `carregarLista`.
+   * Outra página da mesma busca: não grava o evento "busca"; o mapa não muda.
    */
   async function irParaPagina(n: number) {
     if (n < 1 || n === pagina || carregandoLista) return;
@@ -445,7 +409,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
     }
   }
 
-  /** Outra ordem da mesma busca: volta à página 1; não conta como busca nem grava o evento "busca"; o mapa não muda. */
+  /** Outra ordem da mesma busca: volta à página 1; não grava o evento "busca"; o mapa não muda. */
   async function mudarOrdem(o: Ordem) {
     const antes = { ordem, pagina };
     setOrdem(o);
@@ -503,7 +467,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
         <div className="hidden lg:block">
           <Chips filtros={filtros} pontos={pontos} atualizadoEm={atualizadoEm} agora={agora} aoMudar={aplicar} />
         </div>
-        {/* Lista | Mapa no topo dos resultados, nas duas larguras (vai no endereço e não conta como busca). */}
+        {/* Lista | Mapa no topo dos resultados, nas duas larguras (vai no endereço). */}
         <div className="mt-3 flex lg:mt-0 lg:justify-end">
           <AlternadorVista vista={vista} aoMudar={mudarVista} />
         </div>
@@ -533,9 +497,6 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
             selecionadoId={selecionado?.id ?? null}
             carregandoLista={carregandoLista}
             erro={erroLista}
-            limite={limite}
-            proBloqueado={proBloqueado}
-            aoTirarFiltrosPro={() => aplicar({ ...filtros, orgao: null, raio: null })}
             pagina={pagina}
             ordem={ordemEfetiva(ordem, comTermo)}
             temTermo={comTermo}

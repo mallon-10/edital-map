@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { Plano } from '@/lib/limites';
-import type { Periodo } from '@/lib/planos';
+import type { Periodo, Plano } from '@/lib/planos';
 import { BotaoQueroPlano } from './BotaoQueroPlano';
 
 /**

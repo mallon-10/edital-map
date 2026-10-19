@@ -1,6 +1,5 @@
 import { AcaoDoPlano } from '@/components/planos/AcaoDoPlano';
-import type { Plano } from '@/lib/limites';
-import { LINHAS_PLANOS, PLANOS, type Celula, type Periodo } from '@/lib/planos';
+import { LINHAS_PLANOS, PLANOS, type Celula, type Periodo, type Plano } from '@/lib/planos';
 import { PrecoDoPlano } from './PrecoDoPlano';
 
 const EM_BREVE = 'whitespace-nowrap rounded-xs bg-ouro-soft px-1.5 py-0.5 text-[11px] font-semibold text-ouro-strong';
