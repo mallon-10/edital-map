@@ -27,7 +27,7 @@ function aberturasDeLink(texto: string): string[] {
   return achadas;
 }
 
-describe('links para /edital sem prefetch (cada edital aberto conta no limite do dia)', () => {
+describe('links para /edital sem prefetch (abrir edital é sob demanda: evita carga no PNCP e no banco)', () => {
   it('o achador enxerga a tag inteira, mesmo com setas dentro de chaves, e ignora outros componentes', () => {
     expect(aberturasDeLink('<Link href={`/edital/${x}`} onClick={() => f()} prefetch={false}>t</Link>')).toEqual([
       '<Link href={`/edital/${x}`} onClick={() => f()} prefetch={false}>',
@@ -43,7 +43,7 @@ describe('links para /edital sem prefetch (cada edital aberto conta no limite do
     }
     expect(faltando).toEqual([]);
   });
-  it('todo <Link> para a página inicial com busca (/?…) tem prefetch={false} (abrir conta como busca)', () => {
+  it('todo <Link> para a página inicial com busca (/?…) tem prefetch={false} (abrir consulta o banco)', () => {
     const faltando: string[] = [];
     for (const arquivo of [...arquivosTsx('app'), ...arquivosTsx('components')]) {
       for (const a of aberturasDeLink(readFileSync(join(RAIZ, arquivo), 'utf8'))) {

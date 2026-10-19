@@ -34,7 +34,7 @@ export function BarraCelular({ ativo, aoTrocarTela }: Props) {
         <span>{rotulo}</span>
       </button>
     ) : (
-      // Sem pré-carregamento: abrir a página inicial com uma busca no endereço conta no limite do dia.
+      // Sem pré-carregamento: a página inicial com uma busca no endereço consulta o banco na hora.
       <Link href={href} prefetch={false} aria-current={atual(t)} className={estilo(t)}>
         {icone}
         <span>{rotulo}</span>

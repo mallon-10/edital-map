@@ -5,14 +5,14 @@ import { renovarSessao } from '@/lib/sessaoProxy';
 import { COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie } from '@/lib/visitante';
 
 /**
- * 1. Garante o cookie em_visitante antes das páginas e rotas que contam o uso do dia. A página inicial e a do edital são
+ * 1. Garante o cookie em_visitante antes das páginas e rotas que gravam eventos ou leem o plano. A página inicial e a do edital são
  *    componentes de servidor (não gravam cookie), e na primeira visita /api/busca e /api/mapa chegam juntas (sem isto,
  *    cada uma criaria um visitante). O cookie novo vai na resposta e na própria requisição (o cookies() da página já o lê).
  * 2. Com cookie de sessão do Supabase (sb-…-auth-token) e só em /entrar, /radar, /oportunidades, /alertas e nas APIs da
  *    conta, do radar, dos salvos e dos alertas, renova a sessão (lib/sessaoProxy.ts). No resto do site, nada de rede.
  */
 export async function proxy(request: NextRequest) {
-  // Robô de busca não devolve cookie: cada visita viraria um visitante novo gravando uso_diario. Sem cookie, nada conta.
+  // Robô de busca não devolve cookie: cada visita viraria um visitante novo. Sem cookie, nada é gravado.
   if (ehRobo(request.headers.get('user-agent'))) return NextResponse.next();
   // Link do e-mail de entrar (modelo com link em vez do código): o Supabase devolve para a inicial com ?code= (PKCE).
   const codigoDoLink = request.nextUrl.pathname === '/' ? lerCodigoDoLink(request.nextUrl.searchParams.get('code')) : null;

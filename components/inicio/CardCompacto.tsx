@@ -18,7 +18,7 @@ type Props = { edital: EditalResumo; agora: Date; selecionado: boolean; aoSeleci
  * Card da lista: título limpo (com os termos destacados), valor curto à direita, órgão · UF, etiqueta de prazo,
  * "Suspensa" e a relevância (com termo).
  * Computador (lg+): clicar seleciona (o resumo aparece na coluna da direita). Celular: tocar abre o edital.
- * Ctrl/⌘/Shift/Alt/botão do meio abrem em outra aba. Sem prefetch: cada edital aberto conta no limite do dia.
+ * Ctrl/⌘/Shift/Alt/botão do meio abrem em outra aba. Sem prefetch: o edital consulta o PNCP e o banco só quando abre.
  * No computador, Enter e Espaço selecionam (como o botão de antes; abrir é o "Ver edital" da coluna da direita); no celular Enter segue o link e o card escolhido é o `aria-current`.
  * O link cobre o card inteiro (::after); a pílula da relevância é um botão e fica fora do link, por cima dele:
  * tocar nela abre o aviso sem abrir nem selecionar o edital. O "Salvar" também fica fora do link, por cima dele.

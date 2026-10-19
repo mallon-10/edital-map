@@ -14,7 +14,7 @@ type Props = {
 
 /**
  * Empresa do CNPJ e os segmentos: os da atividade principal vêm marcados; fora dos segmentos, todos aparecem para marcar.
- * "Ver editais" busca pelos termos dos marcados na UF da sede (conta como busca do dia).
+ * "Ver editais" busca pelos termos dos marcados na UF da sede.
  */
 export function PainelCnpj({ r, aoVer }: Props) {
   const [marcados, setMarcados] = useState<Set<string>>(() => new Set(r.assuntos.filter((a) => a.principal).map((a) => a.slug)));

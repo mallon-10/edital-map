@@ -40,7 +40,7 @@ export async function contexto(): Promise<Contexto> {
 
 /**
  * Contexto para páginas (componente de servidor não grava cookie; o proxy.ts já garantiu em_visitante).
- * null = sem visitante válido: a página não conta uso.
+ * null = sem visitante válido: a página não grava nada em nome dele.
  */
 export async function contextoDaPagina(): Promise<Contexto | null> {
   const c = await cookies();

@@ -7,7 +7,7 @@ const SEM_FILTRO: FiltrosBusca = {
 };
 
 /**
- * Pontos do Brasil todo, sem filtro (não conta busca, fora do proxy: sem cookie). A CDN da Vercel guarda por 5 min e,
+ * Pontos do Brasil todo, sem filtro (fora do proxy: sem cookie). A CDN da Vercel guarda por 5 min e,
  * depois disso, entrega a versão anterior enquanto renova (o mapa da página inicial abre na hora). Erro: sem cache.
  */
 export async function GET() {

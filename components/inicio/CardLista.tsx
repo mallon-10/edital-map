@@ -15,8 +15,8 @@ const ROTULO = 'text-xs text-ink-muted';
 /**
  * Card largo da vista Lista: título descritivo com destaque, órgão, município/UF, valor, modalidade, prazo, publicação,
  * relevância com explicação (com termo) e "Suspensa". O título é o link (a área toda do card abre o edital);
- * o "?" da relevância fica por cima. Salvar (e, no radar, Descartar) fica por cima do link. Sem prefetch: cada edital
- * aberto conta no limite do dia.
+ * o "?" da relevância fica por cima. Salvar (e, no radar, Descartar) fica por cima do link. Sem prefetch: o edital
+ * consulta o PNCP e o banco só quando abre.
  */
 export function CardLista({ edital: e, agora, acoes = 'salvar' }: { edital: EditalResumo; agora: Date; acoes?: 'salvar' | 'radar' }) {
   const et = etiqueta(e, agora);

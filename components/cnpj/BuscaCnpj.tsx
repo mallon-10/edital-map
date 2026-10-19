@@ -4,7 +4,7 @@ import { useId, useState, type FormEvent } from 'react';
 import { consultarCnpj, type RespostaCnpj } from '@/lib/cliente/cnpj';
 import { PainelCnpj } from './PainelCnpj';
 
-/** Campo do CNPJ da página /cnpj: mostra a empresa e os segmentos e leva à busca pronta (que conta como busca do dia). */
+/** Campo do CNPJ da página /cnpj: mostra a empresa e os segmentos e leva à busca pronta. */
 export function BuscaCnpj() {
   const campo = useId();
   const [cnpj, setCnpj] = useState('');

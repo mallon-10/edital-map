@@ -44,7 +44,7 @@ export function introDaPagina(p: Pagina, total: number): string {
   return `${contagem(p, total)} no PNCP (Portal Nacional de Contratações Públicas), com prazo para enviar proposta. A lista é atualizada a cada 3 horas e mostra primeiro ${ordem}.${busca}`;
 }
 
-/** Link "Ver todos no mapa": a mesma busca na página inicial (conta como busca quando a pessoa chega lá). */
+/** Link "Ver todos no mapa": a mesma busca na página inicial . */
 export function buscaDaPagina(p: Pagina): string {
   const q = new URLSearchParams();
   if (p.assunto) q.set('q', p.assunto.termo);

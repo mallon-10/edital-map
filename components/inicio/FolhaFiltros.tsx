@@ -20,8 +20,8 @@ const ALTERNADOR = 'h-10 flex-1 rounded-sm text-sm font-semibold transition-colo
 
 /**
  * Celular: folha em tela cheia com os mesmos controles do computador (UF, Município, Valor, Modalidade, Órgão, Raio) e o prazo.
- * As escolhas ficam num rascunho e só valem no "Ver N editais" (uma busca só, no limite do dia). N vem de /api/contagem,
- * que não conta como busca. Fechada, a folha não existe: cada abertura começa um rascunho novo dos filtros que valem.
+ * As escolhas ficam num rascunho e só valem no "Ver N editais" (uma busca só). N vem de /api/contagem,
+ * que não grava o evento de busca. Fechada, a folha não existe: cada abertura começa um rascunho novo dos filtros que valem.
  */
 export function FolhaFiltros({ aberta, ...resto }: Props) {
   return aberta ? <ConteudoFolha {...resto} /> : null;

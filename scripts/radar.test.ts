@@ -13,7 +13,7 @@ describe('página Meu Radar', () => {
   it('fora do Google', () => {
     expect(pagina).toContain('robots: { index: false, follow: false }');
   });
-  it('não conta busca do grátis (o radar é o perfil, não uma busca avulsa)', () => {
+  it('nada de contar busca (o radar é o perfil, não uma busca avulsa)', () => {
     expect(pagina).not.toContain('decidirBusca');
     expect(pagina).not.toContain('registrar_uso');
   });

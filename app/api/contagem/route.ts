@@ -2,7 +2,7 @@ import { lerFiltros } from '@/lib/filtros';
 import { CACHE_PUBLICO } from '@/lib/http';
 import { buscarEditais } from '@/lib/servidor/consultas';
 
-/** Só o total de uma busca (botão "Ver N editais" da folha de Filtros). Não devolve editais, então não conta como busca. Ordem prazo: o total é o mesmo e o banco não calcula a relevância de todas. */
+/** Só o total de uma busca (botão "Ver N editais" da folha de Filtros). Ordem prazo: o total é o mesmo e o banco não calcula a relevância de todas. */
 export async function GET(request: Request) {
   const filtros = lerFiltros(new URL(request.url).searchParams);
   try {

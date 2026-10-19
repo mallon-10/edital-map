@@ -27,8 +27,8 @@ export default async function Assinar({ searchParams }: Props) {
         <div className="flex flex-col gap-2">
           <h1 className="text-[28px] font-bold leading-tight tracking-[-0.015em] md:text-[32px]">Assinar o Pro</h1>
           <p className="text-[15px] text-ink-muted">
-            Buscas e editais sem limite, botão do edital oficial, raio em km, órgão comprador, planilha e o resumo semanal do seu segmento por
-            e-mail.{' '}
+            Receba as licitações certas no seu e-mail, sem procurar todo dia: o Meu Radar completo, até 5 alertas por e-mail às 7h e o
+            resumo semanal do seu segmento.{' '}
             <Link href="/planos" prefetch={false} className="font-semibold text-pin-strong hover:underline">
               Comparar planos
             </Link>

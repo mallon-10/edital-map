@@ -11,7 +11,7 @@ export const CONVERSOES = {
   assinou: 'AW-18520543547/RW5kCOOwmKEdELuipP9E',
   /** Secundária: "Gerar QR Code" ou "Pagar" em /assinar. */
   checkout: 'AW-18520543547/HKjPCOawmKEdELuipP9E',
-  /** Secundária: primeiro cartão do limite grátis no dia. */
+  /** Secundária antiga: primeiro cartão do limite grátis no dia. Não dispara mais (o grátis ficou sem limite em 19/10/2026). */
   limite: 'AW-18520543547/mNfMCOmwmKEdELuipP9E',
   /** Secundária: primeira busca com termo no dia. */
   buscou: 'AW-18520543547/Cw0ACOywmKEdELuipP9E',
