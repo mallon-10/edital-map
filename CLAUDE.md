@@ -27,7 +27,7 @@ Referências:
 - Supabase (Postgres), projeto edital-map em sa-east-1, plano grátis (teto 500 MB). Schema em supabase/migrations/; mudança só com nova migration.
 - Supabase: ref omtwaflypzlebjoeubvp, região sa-east-1.
 - Site: Next.js 16 (App Router) + React 19 + Tailwind 4 + maplibre-gl 6 com fundo OpenFreeMap positron (reserva sem fundo se ele não responder), na Vercel (região gru1).
-- Pagamento: Cakto (não Stripe). Resend para alertas e login por e-mail.
+- Pagamento: Cakto (não Stripe). Resend para alertas e login por e-mail. Visual dos e-mails com a marca: `moldura` em lib/alertas/email.ts, logo em public/marca/logo-email.png (regenerar com scripts/gerar-logo-email.mjs), prévias com `npx tsx scripts/previa-emails.ts <pasta> [--capturas]`; o modelo do código (supabase/templates/codigo.html) é colado à mão no Supabase (Magic Link e Confirm signup).
 
 ## Regras
 - O worker grava pelo supabase-js com SUPABASE_SERVICE_ROLE_KEY. Essa chave nunca vai para o navegador nem para o git. O mesmo vale para SUPABASE_DB_URL (só no .env local).
