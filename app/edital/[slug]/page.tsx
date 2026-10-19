@@ -1,3 +1,4 @@
+import { OPEN_GRAPH_BASE } from '@/lib/seo/site';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -48,7 +49,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: titulo,
     description: descricao,
     alternates: { canonical: `/edital/${e.slug}` },
-    openGraph: { title: titulo, description: descricao, url: `/edital/${e.slug}` },
+    openGraph: { ...OPEN_GRAPH_BASE, title: titulo, description: descricao, url: `/edital/${e.slug}` },
     // Encerrado, revogado ou anulado sai do índice; apagado pela retenção já é 404.
     robots: editalAberto(e, new Date()) ? undefined : { index: false, follow: true },
   };

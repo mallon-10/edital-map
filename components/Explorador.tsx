@@ -516,7 +516,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, limiteInic
           naLista ? 'lg:grid-cols-[minmax(0,1fr)_300px]' : 'lg:grid-cols-[360px_minmax(0,1fr)_300px]'
         }`}
       >
-        <h1 className="sr-only">{naLista ? 'Editais abertos' : 'Editais abertos no mapa'}</h1>
+        <h1 className="sr-only">{naLista ? 'Licitações abertas no Brasil' : 'Licitações abertas no Brasil, no mapa'}</h1>
         <section
           aria-label="Lista de editais"
           id="lista-editais"

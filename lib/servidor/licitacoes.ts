@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { caminhoDaPagina, descricaoDaPagina, type Pagina, tituloDaPagina } from '../seo/textos';
 import type { EditalResumo, FiltrosBusca } from '../tipos';
 import { escolherCidades, type CidadePagina } from '../seo/municipios';
+import { OPEN_GRAPH_BASE } from '../seo/site';
 import { abertosPorUf, buscarEditais, municipiosAbertos } from './consultas';
 
 const BASE: FiltrosBusca = {
@@ -43,7 +44,7 @@ export async function metadadosDaPagina(p: Pagina): Promise<Metadata> {
     title: { absolute: `${titulo} · Edital Map` },
     description: descricao,
     alternates: { canonical: caminhoDaPagina(p) },
-    openGraph: { title: titulo, description: descricao, url: caminhoDaPagina(p) },
+    openGraph: { ...OPEN_GRAPH_BASE, title: titulo, description: descricao, url: caminhoDaPagina(p) },
     // Zero editais sai do índice; banco fora (null) não tira a página do índice por uma queda.
     robots: total === 0 ? { index: false, follow: true } : undefined,
   };

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Instrument_Sans, JetBrains_Mono } from 'next/font/google';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { BarraCelularGlobal } from '@/components/BarraCelular';
+import { Rodape } from '@/components/Rodape';
 import { TagGoogle } from '@/components/TagGoogle';
 import { NOME_SITE, SITE_URL } from '@/lib/seo/site';
 import './globals.css';
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="pt-BR" className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-dvh font-sans antialiased">
         {children}
+        <Rodape />
         <BarraCelularGlobal />
         <TagGoogle />
       </body>

@@ -3,11 +3,14 @@ import { Cabecalho } from '@/components/Cabecalho';
 import { FaixaCobertura } from '@/components/FaixaCobertura';
 import { CardLista } from '@/components/inicio/CardLista';
 import type { UsoHoje } from '@/lib/limites';
+import { jsonLdPerguntas, PERGUNTAS_LICITACOES } from '@/lib/seo/marca';
 import { buscaDaPagina, introDaPagina, jsonLdMigalhas, migalhas, type Pagina, tituloDaPagina, vizinhos } from '@/lib/seo/textos';
 import { atualizadoEm } from '@/lib/servidor/consultas';
 import { dadosDaPagina, type DadosDaPagina } from '@/lib/servidor/licitacoes';
 import { contextoDaPagina } from '@/lib/servidor/registro';
 import { usoDoDia } from '@/lib/servidor/uso';
+
+const ESCAPE_MENOR = '\\u003c';
 
 type Props = DadosDaPagina & { pagina: Pagina; atualizadoEm: string | null; uso: UsoHoje | null };
 
@@ -16,6 +19,8 @@ export function PaginaLicitacoes({ pagina, total, editais, porUf, cidades, atual
   const agora = new Date();
   const caminho = migalhas(pagina);
   const links = vizinhos(pagina, porUf);
+  // Página /licitacoes (Brasil, sem assunto e sem UF): perguntas frequentes para quem chega pela busca.
+  const ehBrasil = !pagina.assunto && !pagina.uf;
   return (
     <>
       <Cabecalho uso={uso} />
@@ -74,6 +79,21 @@ export function PaginaLicitacoes({ pagina, total, editais, porUf, cidades, atual
                 </li>
               ))}
             </ul>
+          </section>
+        ) : null}
+        {ehBrasil ? (
+          <section aria-labelledby="perguntas" className="flex max-w-[78ch] flex-col gap-4">
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdPerguntas(PERGUNTAS_LICITACOES)).replace(/</g, ESCAPE_MENOR) }}
+            />
+            <h2 id="perguntas" className="text-lg font-bold text-ink">Perguntas frequentes sobre licitações</h2>
+            {PERGUNTAS_LICITACOES.map((p) => (
+              <div key={p.pergunta} className="flex flex-col gap-1">
+                <h3 className="text-[15px] font-bold text-ink">{p.pergunta}</h3>
+                <p className="text-[15px] text-ink-muted">{p.resposta}</p>
+              </div>
+            ))}
           </section>
         ) : null}
         {links.length > 0 ? (
