@@ -12,7 +12,7 @@ function segredoDoHash(): string | null {
 
 /**
  * /sobre?interno=1 marca o navegador como interno (fora das métricas). /sobre#dono=<segredo> marca também como dono
- * (sem limites e com o Pro): o segredo segue no corpo do POST e sai do endereço logo em seguida.
+ * (com o Pro): o segredo segue no corpo do POST e sai do endereço logo em seguida.
  */
 export function MarcarInterno({ ativo }: { ativo: boolean }) {
   const [estado, setEstado] = useState<Estado>('parado');
@@ -54,7 +54,7 @@ export function MarcarInterno({ ativo }: { ativo: boolean }) {
   const texto = {
     marcando: 'Marcando este navegador…',
     interno: 'Este navegador foi marcado como interno: suas visitas não entram nas métricas do Edital Map.',
-    dono: 'Este navegador é do dono: sem limites, com o plano Pro e fora das métricas.',
+    dono: 'Este navegador é do dono: com o plano Pro e fora das métricas.',
   }[estado];
   return (
     <p role="status" className="rounded-sm bg-rio-soft px-3 py-2 text-sm text-rio">

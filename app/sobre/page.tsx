@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { Cabecalho } from '@/components/Cabecalho';
 import { MarcarInterno } from '@/components/MarcarInterno';
 import { FONTE_COBERTURA } from '@/lib/cobertura';
+import { planoDaPagina } from '@/lib/servidor/plano';
+import { contextoDaPagina } from '@/lib/servidor/registro';
 
 export const metadata: Metadata = {
   title: 'Sobre',
@@ -14,9 +16,11 @@ type Props = { searchParams: Promise<{ interno?: string }> };
 
 export default async function PaginaSobre({ searchParams }: Props) {
   const { interno } = await searchParams;
+  // Plano no servidor: a faixa da oferta já vem no HTML (sem pular depois do carregamento).
+  const plano = await planoDaPagina(await contextoDaPagina());
   return (
     <>
-      <Cabecalho />
+      <Cabecalho plano={plano} />
       <main className="mx-auto flex max-w-[760px] flex-col gap-6 px-4 py-8 text-[15px] leading-relaxed md:px-6">
         <MarcarInterno ativo={interno === '1'} />
         <h1 className="text-[32px] font-bold leading-tight tracking-[-0.015em]">Sobre o Edital Map</h1>

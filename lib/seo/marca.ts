@@ -67,7 +67,7 @@ export const PERGUNTAS_LICITACOES: readonly Pergunta[] = [
   {
     pergunta: 'Quanto custa usar o Edital Map?',
     resposta:
-      'O plano grátis tem 3 buscas e 3 editais por dia. O Pro custa R$ 37,90 por mês (ou R$ 349,90 por ano) e libera buscas sem limite, alertas por e-mail e o resumo semanal do seu segmento.',
+      'Buscar e ver os editais é grátis e sem limite, sem precisar de conta. O Pro custa R$ 37,90 por mês (ou R$ 349,90 por ano) e inclui os alertas por e-mail, o resumo semanal do seu segmento, o Meu Radar completo e os editais salvos.',
   },
 ];
 

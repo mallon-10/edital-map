@@ -3,7 +3,7 @@ import { contexto, marcarInterno } from '@/lib/servidor/registro';
 
 /**
  * Marca o navegador como interno (fora das métricas). Com `{ valor: <INTERNO_SEGREDO> }` (vindo de /sobre#dono=…),
- * também como dono (sem limites e com o Pro).
+ * também como dono (com o Pro).
  */
 export async function POST(request: Request) {
   const recusa = recusaForaDoSite(request);

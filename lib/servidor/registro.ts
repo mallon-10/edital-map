@@ -12,7 +12,7 @@ export { COOKIE_INTERNO, COOKIE_VISITANTE };
 
 /**
  * `interno`: fora das métricas (cookie em_interno, ou o dono). `dono`: o dono confiável (cookie em_dono assinado com
- * INTERNO_SEGREDO, lib/dono.ts): sem limites e com o Pro. O em_interno sozinho não libera nada com o pagamento ligado.
+ * INTERNO_SEGREDO, lib/dono.ts): com o Pro. O em_interno sozinho não libera nada com o pagamento ligado.
  */
 export type Contexto = { visitante: string; interno: boolean; dono: boolean; ipHash: string | null };
 

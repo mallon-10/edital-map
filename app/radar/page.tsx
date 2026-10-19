@@ -75,7 +75,7 @@ export default async function MeuRadar({ searchParams }: Props) {
 
   return (
     <>
-      <Cabecalho plano={{ plano: planoNavegador, dono: Boolean(ctx?.dono) }} />
+      <Cabecalho plano={{ plano, dono: Boolean(ctx?.dono) }} />
       <main className="mx-auto flex w-full max-w-[1080px] flex-col gap-5 px-4 py-6 lg:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
