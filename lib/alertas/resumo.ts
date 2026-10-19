@@ -1,7 +1,10 @@
-import { moeda, numero } from '../formato';
+import { moeda, moedaCurta, numero } from '../formato';
 import { url } from '../seo/site';
 import { nomeProprio } from '../texto';
-import { cabecalhosDescadastro, editalHtml, editalTexto, escapar, linkSair, moldura, umaLinha, type EditalDoEmail, type EmailMontado } from './email';
+import {
+  abertura, botao, cabecalhosDescadastro, COR, editalHtml, editalTexto, escapar, FONTE, linkRodape, linkSair, MONO, moldura, tituloSecao, umaLinha,
+  type EditalDoEmail, type EmailMontado,
+} from './email';
 
 /**
  * Resumo semanal do Pro (segunda às 7h): números da semana no Meu Radar, os novos (até 10), os que encerram em 7 dias
@@ -143,47 +146,121 @@ const textoValor = (r: ResumoSemanal) =>
 const textoOrgao = (o: OrgaoResumo) => `${umaLinha(nomeProprio(o.nome))} (${o.uf}) · ${plural(o.qtd, 'edital aberto', 'editais abertos')}${moeda(o.valor) ? ` · ${moeda(o.valor)}` : ''}`;
 const textoCidade = (c: CidadeResumo) => `${umaLinha(c.nome)}/${c.uf} · ${plural(c.qtd, 'edital aberto', 'editais abertos')}`;
 
-const H2 = 'margin:20px 0 4px;font-size:17px;color:#0c2340;';
-const P = 'margin:4px 0;font-size:14px;color:#0c2340;';
 
-export function montarResumo(r: ResumoSemanal, tokenSair: string): EmailMontado {
+/* ---------- HTML do resumo (moldura, card do edital e botão vêm de ./email) ---------- */
+
+/** Bloco de número grande em JetBrains Mono. `valor` e `rotulo` são escapados aqui. */
+function blocoNumero(valor: string, rotulo: string, destaque = false): string {
+  const curto = valor.length <= 7;
+  return `<td class="em-col" width="33%" valign="top" style="padding:0 4px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="${destaque ? COR.pinSoft : COR.sunken}" style="background:${destaque ? COR.pinSoft : COR.sunken};border-radius:10px;padding:14px 14px 12px;">
+<div style="font-family:${MONO};font-size:${curto ? 28 : 20}px;line-height:32px;font-weight:700;letter-spacing:-0.02em;color:${destaque ? COR.pinStrong : COR.ink};white-space:nowrap;">${escapar(valor)}</div>
+<div style="margin-top:6px;font-family:${MONO};font-size:10px;line-height:1.4;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:${COR.inkMuted};">${escapar(rotulo)}</div>
+</td></tr></table>
+</td>`;
+}
+
+const rotuloLista = (t: string) =>
+  `<div style="margin:16px 0 2px;font-family:${MONO};font-size:11px;line-height:1.4;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${COR.inkMuted};">${escapar(t)}</div>`;
+
+/** Linha do ranking: posição, nome (e detalhe), contagem à direita e uma barra fina proporcional ao primeiro. */
+function linhaRanking(pos: number, nome: string, detalhe: string | null, contagemTexto: string, pct: number, cor: string): string {
+  const barra = pct >= 100
+    ? `<td width="100%" style="background:${cor};height:6px;line-height:6px;font-size:0;border-radius:3px;">&nbsp;</td>`
+    : `<td width="${pct}%" style="background:${cor};height:6px;line-height:6px;font-size:0;border-radius:3px;">&nbsp;</td><td style="height:6px;line-height:6px;font-size:0;">&nbsp;</td>`;
+  const det = detalhe ? `<div style="margin-top:2px;font-family:${MONO};font-size:12px;line-height:1.4;color:${COR.inkMuted};">${escapar(detalhe)}</div>` : '';
+  return `<tr><td style="padding:10px 0 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td width="24" valign="top" style="font-family:${MONO};font-size:13px;line-height:1.4;font-weight:700;color:${COR.inkMuted};">${pos}</td>
+<td valign="top" style="font-family:${FONTE};font-size:14px;line-height:1.4;font-weight:600;color:${COR.ink};">${escapar(nome)}${det}</td>
+<td valign="top" align="right" style="padding-left:10px;font-family:${MONO};font-size:12px;line-height:1.4;font-weight:700;color:${COR.ink};white-space:nowrap;">${escapar(contagemTexto)}</td></tr>
+<tr><td></td><td colspan="2" style="padding-top:6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${COR.sunken}" style="background:${COR.sunken};border-radius:3px;"><tr>${barra}</tr></table></td></tr>
+</table>
+</td></tr>`;
+}
+
+const pct = (q: number, max: number) => (max > 0 ? Math.max(4, Math.min(100, Math.round((q / max) * 100))) : 0);
+const linhaHtml = (conteudo: string, estilo = 'padding:18px 28px 6px;') => `<tr><td class="em-px" style="${estilo}">${conteudo}</td></tr>`;
+const listaEditais = (lista: readonly EditalDoEmail[], agora: Date) =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;">${lista.map((e) => editalHtml(e, agora)).join('')}</table>`;
+const BORDA = `padding:22px 28px 6px;border-top:1px solid ${COR.line};`;
+
+function preCabecalhoResumo(r: ResumoSemanal): string {
+  const partes = [];
+  if (r.novas > 0) partes.push(`${plural(r.novas, 'edital novo', 'editais novos')} no seu radar`);
+  if (r.prazoProximo > 0) partes.push(`${plural(r.prazoProximo, 'edital encerra', 'editais encerram')} em até 7 dias`);
+  return partes.join(' · ');
+}
+
+export function montarResumo(r: ResumoSemanal, tokenSair: string, agora: Date = new Date()): EmailMontado {
   const radar = url('/radar');
   const alertas = url('/alertas');
-  const numeros = [
-    `Editais novos na semana: <strong>${numero(r.novas)}</strong>`,
-    `Encerram em até 7 dias: <strong>${numero(r.prazoProximo)}</strong>`,
-    `Abertos no seu radar: <strong>${numero(r.total)}</strong>`,
-    escapar(textoValor(r)),
+  const valorBloco = r.comValor > 0 ? (moedaCurta(r.valorTotal) ?? 'não informado') : 'não informado';
+  const linhas: string[] = [
+    abertura('Resumo semanal · Pro', 'Sua semana no Meu Radar', `Abertos no seu radar: ${plural(r.total, 'edital', 'editais')}.`),
+    linhaHtml(
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+${blocoNumero(numero(r.novas), 'Editais novos na semana')}
+${blocoNumero(numero(r.prazoProximo), 'Encerram em até 7 dias', r.prazoProximo > 0)}
+${blocoNumero(valorBloco, 'Valor estimado aberto')}
+</tr></table>
+<p style="margin:10px 0 0;font-family:${FONTE};font-size:12px;line-height:1.5;color:${COR.inkMuted};">${escapar(textoValor(r))}</p>`,
+      'padding:14px 24px 10px;',
+    ),
   ];
-  const partes: string[] = [`<h2 style="${H2}">Resumo da semana</h2>`, ...numeros.map((t) => `<p style="${P}">${t}</p>`)];
   if (r.novos.length > 0) {
-    partes.push(`<h2 style="${H2}">Editais novos da semana</h2>`, `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${r.novos.map(editalHtml).join('')}</table>`);
-    if (r.novas > r.novos.length) partes.push(`<p style="${P}"><a href="${escapar(radar)}" style="color:#b33a0e;">Mais ${numero(r.novas - r.novos.length)} no seu Meu Radar.</a></p>`);
+    const mais = r.novas > r.novos.length
+      ? `<p style="margin:0 0 14px;font-family:${FONTE};font-size:13px;line-height:1.5;"><a href="${escapar(radar)}" style="color:${COR.pinStrong};font-weight:700;">Mais ${numero(r.novas - r.novos.length)} no seu Meu Radar.</a></p>`
+      : '';
+    linhas.push(linhaHtml(`${tituloSecao('Editais novos da semana', plural(r.novas, 'edital novo', 'editais novos'))}${listaEditais(r.novos, agora)}${mais}`, BORDA));
   }
   if (r.encerrando.length > 0) {
-    partes.push(`<h2 style="${H2}">Encerram nos próximos 7 dias</h2>`, `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${r.encerrando.map(editalHtml).join('')}</table>`);
+    linhas.push(linhaHtml(`${tituloSecao('Encerram nos próximos 7 dias', plural(r.prazoProximo, 'edital', 'editais'))}${listaEditais(r.encerrando, agora)}`, BORDA));
   }
   if (r.orgaos.length > 0 || r.cidades.length > 0) {
-    partes.push(`<h2 style="${H2}">Quem mais compra no seu radar</h2>`);
-    for (const o of r.orgaos) partes.push(`<p style="${P}">${escapar(textoOrgao(o))}</p>`);
-    for (const c of r.cidades) partes.push(`<p style="${P}">${escapar(textoCidade(c))}</p>`);
+    const partes = [tituloSecao('Quem mais compra no seu radar')];
+    if (r.orgaos.length > 0) {
+      const max = Math.max(...r.orgaos.map((o) => o.qtd));
+      partes.push(
+        rotuloLista('Órgãos'),
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${r.orgaos
+          .map((o, i) => linhaRanking(i + 1, `${nomeProprio(o.nome)} (${o.uf})`, moeda(o.valor), plural(o.qtd, 'edital aberto', 'editais abertos'), pct(o.qtd, max), COR.pin))
+          .join('')}</table>`,
+      );
+    }
+    if (r.cidades.length > 0) {
+      const max = Math.max(...r.cidades.map((c) => c.qtd));
+      partes.push(
+        rotuloLista('Cidades'),
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${r.cidades
+          .map((c, i) => linhaRanking(i + 1, `${c.nome}/${c.uf}`, null, plural(c.qtd, 'edital aberto', 'editais abertos'), pct(c.qtd, max), COR.mata))
+          .join('')}</table>`,
+      );
+    }
+    linhas.push(linhaHtml(`${partes.join('\n')}<div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>`, BORDA));
   }
-  partes.push(`<p style="margin:20px 0 0;"><a href="${escapar(radar)}" style="display:inline-block;padding:12px 18px;background:#ff5a1f;color:#0c2340;font-weight:bold;text-decoration:none;border-radius:4px;">Abrir o Meu Radar</a></p>`);
+  linhas.push(
+    `<tr><td class="em-px" align="center" style="padding:22px 28px 28px;border-top:1px solid ${COR.line};">${botao(radar, 'Abrir meu radar', 'grande')}</td></tr>`,
+  );
   const rodape = `Você recebe este resumo porque tem o plano Pro e o Meu Radar no Edital Map. Os editais vêm do PNCP: confira sempre o edital oficial.<br>
-<a href="${escapar(linkSair(tokenSair))}" style="color:#3e5373;">Parar o resumo semanal</a> · Para voltar a receber, ligue o resumo em <a href="${escapar(alertas)}" style="color:#3e5373;">Alertas</a>.`;
+${linkRodape(linkSair(tokenSair), 'Parar o resumo semanal')} · Para voltar a receber, ligue o resumo em ${linkRodape(alertas, 'Alertas')}.`;
   const corpo = [
     'Resumo da semana',
     `Editais novos na semana: ${numero(r.novas)}`,
     `Encerram em até 7 dias: ${numero(r.prazoProximo)}`,
     `Abertos no seu radar: ${numero(r.total)}`,
     textoValor(r),
-    ...(r.novos.length ? ['', 'Editais novos da semana', ...r.novos.map(editalTexto), ...(r.novas > r.novos.length ? [`Mais ${numero(r.novas - r.novos.length)} no seu Meu Radar: ${radar}`] : [])] : []),
-    ...(r.encerrando.length ? ['', 'Encerram nos próximos 7 dias', ...r.encerrando.map(editalTexto)] : []),
+    ...(r.novos.length
+      ? ['', 'Editais novos da semana', ...r.novos.map((e) => editalTexto(e, agora)), ...(r.novas > r.novos.length ? [`Mais ${numero(r.novas - r.novos.length)} no seu Meu Radar: ${radar}`] : [])]
+      : []),
+    ...(r.encerrando.length ? ['', 'Encerram nos próximos 7 dias', ...r.encerrando.map((e) => editalTexto(e, agora))] : []),
     ...(r.orgaos.length || r.cidades.length ? ['', 'Quem mais compra no seu radar', ...r.orgaos.map(textoOrgao), ...r.cidades.map(textoCidade)] : []),
     '',
-    `Abrir o Meu Radar: ${radar}`,
+    `Abrir meu radar: ${radar}`,
+    '',
+    'Você recebe este resumo porque tem o plano Pro e o Meu Radar no Edital Map. Os editais vêm do PNCP: confira sempre o edital oficial.',
     `Parar o resumo semanal: ${linkSair(tokenSair)}`,
     `Para voltar a receber, ligue o resumo em Alertas: ${alertas}`,
   ].join('\n');
-  return { assunto: assuntoDoResumo(r), html: moldura(`<tr><td style="padding:4px 28px 8px;">${partes.join('\n')}</td></tr>`, rodape), texto: corpo, cabecalhos: cabecalhosDescadastro(tokenSair) };
+  return { assunto: assuntoDoResumo(r), html: moldura(linhas.join('\n'), rodape, preCabecalhoResumo(r)), texto: corpo, cabecalhos: cabecalhosDescadastro(tokenSair) };
 }

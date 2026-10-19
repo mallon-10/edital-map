@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { moeda } from '../formato';
+import { moeda, moedaCurta } from '../formato';
 import { nomeProprio } from '../texto';
-import { escapar, linkSair, linkUmClique } from './email';
+import { escapar, LOGO_EMAIL, linkSair, linkUmClique } from './email';
 import { assuntoDoResumo, montarResumo, resumoDaResposta, temNovidade, type ResumoSemanal } from './resumo';
 
 const item = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -47,12 +47,15 @@ describe('resumo semanal', () => {
       escapar(`${moeda(1234567.89)} (soma de 30 editais com valor informado)`),
       'Editais novos da semana', 'Mais 10 no seu Meu Radar.', 'Encerram nos próximos 7 dias',
       'Quem mais compra no seu radar', escapar(nomeProprio('PREFEITURA MUNICIPAL DE JOINVILLE')), '6 editais abertos', escapar(moeda(50000)!),
-      'Joinville/SC · 8 editais abertos', 'https://www.editalmap.com.br/radar', 'https://www.editalmap.com.br/edital/00394452000103-2026-1',
+      'Joinville/SC', '8 editais abertos', 'https://www.editalmap.com.br/radar', 'https://www.editalmap.com.br/edital/00394452000103-2026-1',
     ]) {
       expect(e.html, parte).toContain(parte);
     }
     expect(e.html).toContain('Valor não informado');
-    expect(e.html).not.toContain(`${escapar(nomeProprio('ESTADO DE SANTA CATARINA'))} (SC) · 3 editais abertos ·`);
+    // Órgão com valor 0: sem valor inventado (nem "R$ 0,00")
+    expect(e.html).toContain(`${escapar(nomeProprio('ESTADO DE SANTA CATARINA'))} (SC)`);
+    expect(e.html).not.toMatch(/R\$\s0,00/);
+    expect(e.texto).not.toMatch(/R\$\s0,00/);
   });
   it('sem nenhum valor informado: não inventa soma', () => {
     const e = montarResumo({ ...resumoDaResposta(JSON_BANCO)!, valorTotal: 0, comValor: 0 }, 't');
@@ -183,5 +186,37 @@ describe('resumoDaResposta é defensivo', () => {
     const hostil = { get total(): number { throw new Error('x'); } };
     expect(() => resumoDaResposta(hostil)).not.toThrow();
     expect(resumoDaResposta(hostil)).toBeNull();
+  });
+});
+
+describe('visual do resumo', () => {
+  const AGORA = new Date('2026-10-20T12:00:00Z');
+  it('marca, pré-cabeçalho e fontes', () => {
+    const e = montarResumo(base(), 't', AGORA);
+    expect(e.html).toContain(`src="${LOGO_EMAIL}"`);
+    expect(e.html).toMatch(/<div style="display:none;[^"]*"[^>]*>12 editais novos/);
+    expect(e.html).toContain("'JetBrains Mono','Courier New'");
+  });
+  it('blocos de números em JetBrains Mono: novos, encerram em 7 dias e valor aberto (curto)', () => {
+    const e = montarResumo(base(), 't', AGORA);
+    for (const [rotulo, valor] of [['Editais novos na semana', '12'], ['Encerram em até 7 dias', '5'], ['Valor estimado aberto', escapar(moedaCurta(1234567.89)!)]]) {
+      expect(e.html, rotulo).toMatch(new RegExp(`font-family:'JetBrains Mono'[^"]*"[^>]*>${valor.replace(/[$]/g, '\\$&')}<`));
+      expect(e.html).toContain(rotulo);
+    }
+  });
+  it('valor aberto sem nenhum valor informado: o bloco não inventa número', () => {
+    const e = montarResumo({ ...base(), valorTotal: 0, comValor: 0 }, 't', AGORA);
+    expect(e.html).toMatch(/font-family:'JetBrains Mono'[^"]*"[^>]*>não informado</);
+  });
+  it('quem mais compra: barras proporcionais à maior contagem', () => {
+    const e = montarResumo(base(), 't', AGORA);
+    expect(e.html).toContain('width="100%" style="background:#ff5a1f;');
+    expect(e.html).toContain('width="50%" style="background:#ff5a1f;');
+  });
+  it('botões: "Abrir meu radar" e "Ver edital"', () => {
+    const e = montarResumo(base(), 't', AGORA);
+    expect(e.html).toMatch(/<a href="https:\/\/www\.editalmap\.com\.br\/radar"[^>]*>Abrir meu radar<\/a>/);
+    expect(e.html).toMatch(/<a href="https:\/\/www\.editalmap\.com\.br\/edital\/00394452000103-2026-1"[^>]*>Ver edital<\/a>/);
+    expect(e.texto).toContain('Abrir meu radar: https://www.editalmap.com.br/radar');
   });
 });

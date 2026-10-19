@@ -30,4 +30,14 @@ describe('modelo do e-mail do código', () => {
     expect(html).not.toContain('ConfirmationURL');
     expect(html).not.toContain('TokenHash');
   });
+  it('visual da marca: logo absoluto, código em JetBrains Mono, validade e aviso; só a variável do código', () => {
+    expect(html).toContain('src="https://www.editalmap.com.br/marca/logo-email.png"');
+    expect(html).toContain('alt="Edital Map"');
+    expect(html).toMatch(/font-family:'JetBrains Mono','Courier New'[^"]*"[^>]*>\{\{ \.Token \}\}</);
+    expect(html).toContain('1 hora');
+    expect(html).toContain('ignore este e-mail');
+    expect(html).toMatch(/<div style="display:none;/);
+    expect(html.match(/\{\{/g)).toHaveLength(html.match(/\{\{ \.Token \}\}/g)!.length);
+    expect([...html.matchAll(/src="([^"]+)"/g)].map((m) => m[1])).toEqual(['https://www.editalmap.com.br/marca/logo-email.png']);
+  });
 });
