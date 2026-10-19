@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
 import { OPCOES_COOKIE_SESSAO, temCookieDeSessao, type ErroAuth } from '../conta';
+import { enviarCodigoPeloSite } from './emailCodigo';
 
 declare const MARCA_SESSAO: unique symbol;
 /**
@@ -69,8 +70,13 @@ export const usuarioAtual = cache(async function usuarioAtual(): Promise<Usuario
   }
 });
 
-/** Manda o código de 6 dígitos por e-mail (modelo "Magic Link"/"Confirm signup" com {{ .Token }}); cria a conta se for nova. */
+/**
+ * Manda o código de 6 dígitos por e-mail e cria a conta se for nova. Primeiro o site (generateLink + Resend, modelo da
+ * marca, lib/servidor/emailCodigo.ts); se não der, o Supabase manda pelo SMTP dele (signInWithOtp, que também grava o
+ * code_verifier do link PKCE de /entrar/confirmar).
+ */
 export async function enviarCodigo(email: string): Promise<{ ok: true } | { ok: false; erro: ErroAuth }> {
+  if (await enviarCodigoPeloSite(email)) return { ok: true };
   const env = envAuth();
   if (!env) {
     console.error('SUPABASE_ANON_KEY ausente: login desligado');

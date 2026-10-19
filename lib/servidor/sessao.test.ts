@@ -10,7 +10,11 @@ const m = vi.hoisted(() => ({
   signInWithOtp: vi.fn(),
   verifyOtp: vi.fn(),
   signOut: vi.fn(),
+  generateLink: vi.fn(),
+  createUser: vi.fn(),
 }));
+
+vi.mock('./supabase', () => ({ supabaseServidor: () => ({ auth: { admin: { generateLink: m.generateLink, createUser: m.createUser } } }) }));
 
 vi.mock('next/headers', () => ({
   cookies: async () => ({
@@ -41,8 +45,13 @@ beforeEach(() => {
   m.signInWithOtp.mockResolvedValue({ data: {}, error: null });
   m.verifyOtp.mockResolvedValue({ data: { user: { id: 'u-1', email: 'dono@empresa.com.br' } }, error: null });
   m.signOut.mockResolvedValue({ error: null });
+  vi.stubEnv('RESEND_API_KEY', '');
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('usuarioAtual', () => {
   it('sem SUPABASE_ANON_KEY: null, sem criar cliente', async () => {
@@ -132,5 +141,111 @@ describe('código por e-mail', () => {
     expect(await sair()).toEqual({ ok: true });
     expect(m.signOut).toHaveBeenCalledTimes(1);
     expect(m.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+});
+
+describe('código por e-mail pelo site (generateLink + Resend)', () => {
+  const EMAIL = 'dono@empresa.com.br';
+  const CODIGO = '482913';
+  const CHAVE = 're_teste_segredo';
+  const link = (otp: unknown = CODIGO) => ({ data: { properties: { email_otp: otp, action_link: 'x', hashed_token: 'h' }, user: { id: 'u-1' } }, error: null });
+  let buscar: ReturnType<typeof vi.fn>;
+  let logs: string[];
+
+  beforeEach(() => {
+    vi.stubEnv('RESEND_API_KEY', CHAVE);
+    m.generateLink.mockResolvedValue(link());
+    m.createUser.mockResolvedValue({ data: { user: { id: 'u-1' } }, error: null });
+    buscar = vi.fn(async () => new Response(JSON.stringify({ id: 'msg-1' }), { status: 200 }));
+    vi.stubGlobal('fetch', buscar);
+    logs = [];
+    const guardar = (...a: unknown[]) => void logs.push(a.map((x) => (x instanceof Error ? `${x.name}: ${x.message}` : typeof x === 'string' ? x : JSON.stringify(x))).join(' '));
+    for (const nivel of ['error', 'warn', 'log', 'info'] as const) vi.spyOn(console, nivel).mockImplementation(guardar);
+  });
+
+  const semSegredos = () => {
+    for (const l of logs) {
+      expect(l).not.toContain(CODIGO);
+      expect(l.toLowerCase()).not.toContain(EMAIL);
+      expect(l).not.toContain(CHAVE);
+    }
+  };
+
+  it('caminho feliz: gera o código no Auth (sem e-mail do Supabase) e manda o modelo da marca pelo Resend', async () => {
+    expect(await enviarCodigo(EMAIL)).toEqual({ ok: true });
+    expect(m.generateLink).toHaveBeenCalledWith({ type: 'magiclink', email: EMAIL });
+    expect(m.signInWithOtp).not.toHaveBeenCalled();
+    expect(buscar).toHaveBeenCalledTimes(1);
+    const [url, init] = buscar.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api.resend.com/emails');
+    const cab = init.headers as Record<string, string>;
+    expect(cab.authorization).toBe(`Bearer ${CHAVE}`);
+    expect(cab['idempotency-key']).toMatch(/^codigo-[0-9a-f]{64}$/);
+    expect(cab['idempotency-key']).not.toContain(CODIGO);
+    const corpo = JSON.parse(String(init.body));
+    expect(corpo.from).toBe('Edital Map <nao-responda@editalmap.com.br>');
+    expect(corpo.to).toEqual([EMAIL]);
+    expect(corpo.subject).toBe('Seu código do Edital Map');
+    expect(corpo.html).toContain(`>${CODIGO}</div>`);
+    expect(corpo.html).toContain('Use este código para entrar no Edital Map');
+    expect(corpo.html).not.toContain('{{ .Token }}');
+    expect(corpo.text).toContain(CODIGO);
+    semSegredos();
+  });
+  it('conta nova: generateLink magiclink já cria (vira signup no Auth); sem createUser', async () => {
+    m.generateLink.mockResolvedValueOnce({ ...link(), data: { ...link().data, properties: { ...link().data.properties, verification_type: 'signup' } } });
+    expect(await enviarCodigo('novo@empresa.com.br')).toEqual({ ok: true });
+    expect(m.createUser).not.toHaveBeenCalled();
+    expect(m.signInWithOtp).not.toHaveBeenCalled();
+  });
+  it('conta nova que o Auth não criou (user_not_found): createUser confirmado e gera de novo', async () => {
+    m.generateLink.mockResolvedValueOnce({ data: { properties: null, user: null }, error: { code: 'user_not_found', status: 404 } });
+    expect(await enviarCodigo('novo@empresa.com.br')).toEqual({ ok: true });
+    expect(m.createUser).toHaveBeenCalledWith({ email: 'novo@empresa.com.br', email_confirm: true });
+    expect(m.generateLink).toHaveBeenCalledTimes(2);
+    expect(m.signInWithOtp).not.toHaveBeenCalled();
+  });
+  it('generateLink com erro: volta ao e-mail do Supabase (signInWithOtp), sem Resend', async () => {
+    m.generateLink.mockResolvedValueOnce({ data: { properties: null, user: null }, error: { code: 'unexpected_failure', status: 500 } });
+    expect(await enviarCodigo(EMAIL)).toEqual({ ok: true });
+    expect(buscar).not.toHaveBeenCalled();
+    expect(m.signInWithOtp).toHaveBeenCalledWith({ email: EMAIL, options: { shouldCreateUser: true } });
+    expect(logs.length).toBeGreaterThan(0);
+    semSegredos();
+  });
+  it('generateLink estoura ou devolve código fora do formato: volta ao Supabase', async () => {
+    m.generateLink.mockRejectedValueOnce(new Error(`rede caiu para ${EMAIL}`));
+    expect(await enviarCodigo(EMAIL)).toEqual({ ok: true });
+    m.generateLink.mockResolvedValueOnce(link('12345678'));
+    expect(await enviarCodigo(EMAIL)).toEqual({ ok: true });
+    expect(buscar).not.toHaveBeenCalled();
+    expect(m.signInWithOtp).toHaveBeenCalledTimes(2);
+    semSegredos();
+  });
+  it('Resend recusa (não 2xx) ou cai: volta ao Supabase', async () => {
+    buscar.mockResolvedValueOnce(new Response(JSON.stringify({ name: 'validation_error', message: `bad ${EMAIL} ${CODIGO}` }), { status: 422 }));
+    expect(await enviarCodigo(EMAIL)).toEqual({ ok: true });
+    buscar.mockRejectedValueOnce(new Error(`fetch failed ${CODIGO}`));
+    expect(await enviarCodigo(EMAIL)).toEqual({ ok: true });
+    expect(m.signInWithOtp).toHaveBeenCalledTimes(2);
+    semSegredos();
+  });
+  it('fallback devolve o erro do Supabase quando ele também falha', async () => {
+    buscar.mockResolvedValueOnce(new Response('{}', { status: 500 }));
+    m.signInWithOtp.mockResolvedValueOnce({ data: {}, error: { code: 'over_email_send_rate_limit', status: 429, message: 'x' } });
+    expect(await enviarCodigo(EMAIL)).toEqual({ ok: false, erro: { code: 'over_email_send_rate_limit', status: 429 } });
+  });
+  it('sem RESEND_API_KEY: nem gera o código no Auth, vai direto ao Supabase', async () => {
+    vi.stubEnv('RESEND_API_KEY', '');
+    expect(await enviarCodigo(EMAIL)).toEqual({ ok: true });
+    expect(m.generateLink).not.toHaveBeenCalled();
+    expect(buscar).not.toHaveBeenCalled();
+    expect(m.signInWithOtp).toHaveBeenCalledTimes(1);
+    semSegredos();
+  });
+  it('sem SUPABASE_ANON_KEY mas com Resend: o site manda o código mesmo assim', async () => {
+    vi.stubEnv('SUPABASE_ANON_KEY', '');
+    expect(await enviarCodigo(EMAIL)).toEqual({ ok: true });
+    expect(buscar).toHaveBeenCalledTimes(1);
   });
 });

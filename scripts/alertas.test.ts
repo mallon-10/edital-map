@@ -141,8 +141,11 @@ describe('isolamento: salvos, alertas e resumo', () => {
 });
 
 describe('segredos do e-mail', () => {
-  it('RESEND_API_KEY só no job; ALERTAS_SEGREDO só no job, em /alertas/sair e no descadastro', () => {
-    expect(codigo.filter((f) => ler(f).includes('process.env.RESEND_API_KEY'))).toEqual(['worker/enviar-alertas.ts']);
+  it('RESEND_API_KEY só no job e no envio do código (server-only); ALERTAS_SEGREDO só no job, em /alertas/sair e no descadastro', () => {
+    expect(codigo.filter((f) => ler(f).includes('process.env.RESEND_API_KEY')).sort()).toEqual(
+      ['lib/servidor/emailCodigo.ts', 'worker/enviar-alertas.ts'].sort(),
+    );
+    expect(ler('lib/servidor/emailCodigo.ts')).toMatch(/^import 'server-only';/);
     expect(codigo.filter((f) => ler(f).includes('process.env.ALERTAS_SEGREDO')).sort()).toEqual(
       ['app/alertas/sair/page.tsx', 'app/api/descadastro/route.ts', 'worker/enviar-alertas.ts'].sort(),
     );

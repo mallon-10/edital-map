@@ -6,9 +6,11 @@ import { hashDoIp } from '@/lib/servidor/registro';
 import { enviarCodigo } from '@/lib/servidor/sessao';
 
 /**
- * Pede ao Supabase Auth o código de 6 dígitos (e-mail pelo Resend). Primeiro acesso cria a conta.
+ * Manda o código de 6 dígitos: o Auth gera (generateLink) e o site envia pelo Resend com o modelo da marca; se não der,
+ * o Supabase manda pelo SMTP dele. Primeiro acesso cria a conta.
  * Trava própria (lib/servidor/limiteTentativas.ts, por instância): 5 pedidos por e-mail e 20 por IP por hora; acima
- * disso, 429 sem chamar o Supabase (que mantém os limites dele como segunda camada).
+ * disso, 429 sem chamar o Supabase. Ela conta antes de qualquer chamada: generateLink pela service role não passa pelo
+ * limite de e-mails do Supabase, então esta trava é a única no caminho do site.
  */
 export async function POST(request: Request) {
   const recusa = recusaForaDoSite(request);
