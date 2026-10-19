@@ -65,9 +65,9 @@ describe('tabela de planos', () => {
 describe('faixa da oferta', () => {
   it('texto e destino', () => {
     expect(OFERTA).toEqual({
-      texto: 'Receba no seu e-mail as licitações que combinam com o seu negócio',
-      cta: 'Criar meu radar grátis',
-      href: '/radar/comecar',
+      texto: 'Receba no seu e-mail, toda semana, as licitações que combinam com o seu negócio',
+      cta: 'Conhecer o Pro',
+      href: '/planos',
     });
   });
   it('aparece para o grátis; some para o Pro, o Basic antigo, o dono e com o plano desconhecido', () => {
@@ -79,9 +79,9 @@ describe('faixa da oferta', () => {
     expect(mostrarOferta({ plano: 'gratis', dono: true }, '/')).toBe(false);
     expect(mostrarOferta(null, '/')).toBe(false);
   });
-  it('some no radar, na conta e no checkout', () => {
+  it('some no radar, na conta, no checkout e nos planos (o destino do botão)', () => {
     const g = { plano: 'gratis', dono: false } as const;
-    for (const c of ['/radar', '/radar/comecar', '/entrar', '/assinar', '/assinatura', '/obrigado/abc', '/alertas', '/oportunidades']) {
+    for (const c of ['/radar', '/radar/comecar', '/entrar', '/assinar', '/assinatura', '/obrigado/abc', '/alertas', '/oportunidades', '/planos']) {
       expect(mostrarOferta(g, c)).toBe(false);
     }
     expect(mostrarOferta(g, '/radares-antigos')).toBe(true);

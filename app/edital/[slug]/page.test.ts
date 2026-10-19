@@ -54,7 +54,7 @@ describe('página do edital no grátis (sem limite e sem cadeado)', async () => 
     expect(html).not.toContain('Veja todos os parecidos');
   });
   it('a faixa da oferta no lugar da faixa do plano grátis', () => {
-    expect(html).toContain('Criar meu radar grátis');
+    expect(html).toContain('Conhecer o Pro');
     expect(html).not.toMatch(/Plano grátis|Renova à 0h/);
   });
 });

@@ -4,7 +4,7 @@ import { IconeSino, SetaDireita } from './inicio/Icones';
 
 /**
  * Faixa logo abaixo do cabeçalho com a oferta do Pro (receber as licitações certas por e-mail), para quem não é Pro.
- * Computador: sino, texto e o botão "Criar meu radar grátis" à direita. Celular: a linha inteira é o toque (44 px),
+ * Computador: sino, texto e o botão "Conhecer o Pro" à direita. Celular: a linha inteira é o toque (44 px),
  * com o texto quebrando em até duas linhas. Sem fechar: é curta e não ocupa a barra de baixo.
  * Quem decide se aparece é o Cabecalho (mostrarOferta, lib/planos.ts).
  */
@@ -24,7 +24,7 @@ export function FaixaOferta() {
         </Link>
       </div>
 
-      {/* Celular: a linha inteira leva ao começo do radar. */}
+      {/* Celular: a linha inteira leva aos planos. */}
       <Link
         href={OFERTA.href}
         prefetch={false}

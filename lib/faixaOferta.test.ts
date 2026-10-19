@@ -6,12 +6,12 @@ import { FaixaOferta } from '@/components/FaixaOferta';
 const html = renderToStaticMarkup(createElement(FaixaOferta)).replace(/<!-- -->/g, '');
 
 describe('faixa da oferta (abaixo do cabeçalho)', () => {
-  it('texto da oferta e o convite para criar o radar', () => {
-    expect(html).toContain('Receba no seu e-mail as licitações que combinam com o seu negócio');
-    expect(html).toContain('Criar meu radar grátis');
+  it('texto da oferta (e-mail é do Pro) e o convite para conhecer o Pro', () => {
+    expect(html).toContain('Receba no seu e-mail, toda semana, as licitações que combinam com o seu negócio');
+    expect(html).toContain('Conhecer o Pro');
   });
-  it('computador e celular levam a /radar/comecar', () => {
-    expect(html.match(/href="\/radar\/comecar"/g)).toHaveLength(2);
+  it('computador e celular levam a /planos', () => {
+    expect(html.match(/href="\/planos"/g)).toHaveLength(2);
   });
   it('sem limite do dia nem bolinhas', () => {
     expect(html).not.toMatch(/Plano grátis|Renova|de 3|Buscas|Ver planos/);

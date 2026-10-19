@@ -14,16 +14,16 @@ export type PlanoDaPagina = { plano: Plano; dono: boolean };
 /**
  * Oferta do Pro (decisão de 19/10/2026): buscar, abrir editais, link oficial, raio, órgão, parecidos e exportar são
  * grátis e sem limite; o que se vende é receber as licitações certas por e-mail (alertas, resumo semanal, Meu Radar).
- * A faixa abaixo do cabeçalho convida quem não é Pro a criar o radar (components/FaixaOferta.tsx).
+ * A faixa abaixo do cabeçalho mostra a quem não é Pro que o e-mail é do Pro e leva aos planos (components/FaixaOferta.tsx).
  */
 export const OFERTA = {
-  texto: 'Receba no seu e-mail as licitações que combinam com o seu negócio',
-  cta: 'Criar meu radar grátis',
-  href: '/radar/comecar',
+  texto: 'Receba no seu e-mail, toda semana, as licitações que combinam com o seu negócio',
+  cta: 'Conhecer o Pro',
+  href: '/planos',
 } as const;
 
-/** Páginas em que a faixa da oferta não aparece: o próprio radar, a conta e o checkout (a faixa só atrapalharia). */
-const SEM_FAIXA = ['/radar', '/entrar', '/assinar', '/assinatura', '/obrigado', '/alertas', '/oportunidades'];
+/** Páginas em que a faixa da oferta não aparece: o radar, a conta, o checkout e os planos (destino do botão). */
+const SEM_FAIXA = ['/radar', '/entrar', '/assinar', '/assinatura', '/obrigado', '/alertas', '/oportunidades', '/planos'];
 
 /** Faixa da oferta: para quem não é Pro nem o dono, fora das páginas da conta e do checkout. Plano desconhecido: sem faixa. */
 export function mostrarOferta(p: PlanoDaPagina | null | undefined, caminho: string): boolean {
