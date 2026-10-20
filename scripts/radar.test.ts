@@ -17,14 +17,12 @@ describe('página Meu Radar', () => {
     expect(pagina).not.toContain('decidirBusca');
     expect(pagina).not.toContain('registrar_uso');
   });
-  it('prévia de 5 no grátis com o cartão dos planos; páginas só fora da prévia', () => {
-    expect(pagina).toContain('vistaDoRadar(');
-    expect(pagina).toContain('<CartaoPreviaRadar');
-    expect(pagina).toMatch(/!vista\.previa \? \(\s*<PaginacaoRadar/);
-  });
-  it('a prévia usa o mesmo total do cartão (contagens, sem cache), não o total da lista em cache', () => {
-    expect(pagina).toContain('<CartaoPreviaRadar total={contagens.total} />');
-    expect(pagina).toContain('contagens.total > VISIVEIS_GRATIS');
+  it('só Pro: grátis (com ou sem conta) vê a página bloqueada, sem consultar o radar; páginas de 20', () => {
+    expect(pagina).toContain('await acessoAoPro(usuario, ctx)');
+    expect(pagina).toContain('<PaginaBloqueada recurso="radar"');
+    expect(pagina.indexOf('acessoAoPro(')).toBeLessThan(pagina.indexOf('lerRadar(usuario)'));
+    expect(pagina).toContain('<PaginacaoRadar');
+    expect(pagina).not.toContain('CartaoPreviaRadar');
   });
   it('lista com os cards da Fase 2 e a visita registrada ao sair', () => {
     expect(pagina).toContain('<CardLista');

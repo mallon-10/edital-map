@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LIMITES_CONTA } from './limitesConta';
 import { formatarReais, LINHAS_PLANOS, mostrarOferta, OFERTA, PLANOS, precoDoPlano } from './planos';
-import { VISIVEIS_GRATIS } from './radar';
 
 const linha = (recurso: string) => {
   const l = LINHAS_PLANOS.find((x) => x.recurso === recurso);
@@ -37,14 +36,14 @@ describe('tabela de planos', () => {
       expect(linha(r)).toMatchObject({ gratis: { valor: true }, pro: { valor: true } });
     }
   });
-  it('Pro = receber por e-mail: alertas, resumo semanal, Meu Radar completo e salvos', () => {
+  it('Pro = receber por e-mail: alertas, resumo semanal, Meu Radar e salvos', () => {
     expect(linha('Alertas por e-mail às 7h (busca salva)')).toEqual({
       recurso: 'Alertas por e-mail às 7h (busca salva)', gratis: { valor: false }, pro: { valor: `Até ${LIMITES_CONTA.pro.alertas}` },
     });
     expect(linha('Resumo semanal por e-mail (segunda, 7h)')).toEqual({
       recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true },
     });
-    expect(linha('Meu Radar')).toEqual({ recurso: 'Meu Radar', gratis: { valor: `Prévia (${VISIVEIS_GRATIS})` }, pro: { valor: 'Completo' } });
+    expect(linha('Meu Radar')).toEqual({ recurso: 'Meu Radar', gratis: { valor: false }, pro: { valor: true } });
     expect(linha('Editais salvos')).toEqual({ recurso: 'Editais salvos', gratis: { valor: false }, pro: { valor: 'Uso justo' } });
     expect(linha('Preço de referência, quem venceu e resumo com IA').pro.emBreve).toBe(true);
   });

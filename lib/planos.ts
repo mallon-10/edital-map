@@ -65,8 +65,7 @@ export type LinhaPlanos = { recurso: string; gratis: Celula; pro: Celula };
 export const LINHAS_PLANOS: readonly LinhaPlanos[] = [
   { recurso: 'Alertas por e-mail às 7h (busca salva)', gratis: { valor: false }, pro: { valor: 'Até 5' } },
   { recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true } },
-  // Prévia = os 5 primeiros (VISIVEIS_GRATIS em lib/radar.ts; o teste guarda o número).
-  { recurso: 'Meu Radar', gratis: { valor: 'Prévia (5)' }, pro: { valor: 'Completo' } },
+  { recurso: 'Meu Radar', gratis: { valor: false }, pro: { valor: true } },
   { recurso: 'Editais salvos', gratis: { valor: false }, pro: { valor: 'Uso justo' } },
   { recurso: 'Buscas e editais', gratis: { valor: 'Ilimitados' }, pro: { valor: 'Ilimitados' } },
   { recurso: 'Botão "Abrir edital oficial"', gratis: { valor: true }, pro: { valor: true } },

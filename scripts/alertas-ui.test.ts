@@ -57,11 +57,11 @@ describe('/alertas com conta', () => {
   describe('rodada de correções 1', () => {
     it('plano incerto: mensagem de plano indisponível em vez do convite ao Pro (lista, novo e resumo)', () => {
       for (const f of ['app/alertas/page.tsx', 'app/alertas/novo/page.tsx']) {
-        const fonte = ler(f);
-        expect(fonte, f).toContain('planoIncerto(plano)');
-        expect(fonte, f).toContain('MENSAGENS_LIMITE_CONTA.planoIndisponivel');
-        expect(fonte, f).toContain('role="status"');
+        expect(ler(f), f).toContain("incerto={acesso === 'incerto'}");
       }
+      const bloqueada = ler('components/conta/PaginaBloqueada.tsx');
+      expect(bloqueada).toContain('MENSAGENS_LIMITE_CONTA.planoIndisponivel');
+      expect(bloqueada).toContain('role="status"');
       expect(ler('components/alertas/ResumoSemanal.tsx')).toContain('MENSAGENS_LIMITE_CONTA.planoIndisponivel');
     });
     it('resumo semanal: Pro só pela conta; navegador Pro sem conta Pro mostra o aviso, não a chave', () => {
@@ -82,9 +82,9 @@ describe('/alertas com conta', () => {
       for (const t of ['aria-live="polite"', 'Alerta pausado', 'Alerta retomado', 'titulo-alertas', '.focus()']) expect(item, t).toContain(t);
       expect(pagina).toContain('id="titulo-alertas"');
     });
-    it('envio indisponível só dos alertas ativos; frase do e-mail só quando a conta pode ter alertas', () => {
+    it('envio indisponível só dos alertas ativos (a frase do e-mail é sempre do Pro: só ele chega à lista)', () => {
       expect(pagina).toContain('alertas.filter((a) => a.ativo)');
-      expect(pagina).toContain('podeTerAlertas');
+      expect(pagina).not.toContain('podeTerAlertas');
     });
     it('edital: link "Criar alerta" sem prefetch', () => {
       const edital = ler('app/edital/[slug]/page.tsx');

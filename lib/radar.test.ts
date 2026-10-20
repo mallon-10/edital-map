@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   adicionarTermos, argumentosRadar, buscaDoRadar, corpoDoRascunho, desdeDaVisita, ENTRADA_RADAR, erroDaEtapa, filtrosDoRadar, lerBuscaMunicipio,
-  lerNavegacaoRadar, lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR, MENSAGENS_RADAR, palavraValida, radarDaLinha, rascunhoDoRadar, resumoDoRadar, sugestoesTermos, textoPrevia, urlDoRadar, validarRadar,
-  VISIVEIS_GRATIS, vistaDoRadar, type Radar, type RascunhoRadar,
+  lerNavegacaoRadar, lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR, MENSAGENS_RADAR, palavraValida, radarDaLinha, rascunhoDoRadar, resumoDoRadar, sugestoesTermos, urlDoRadar, validarRadar,
+  type Radar, type RascunhoRadar,
 } from './radar';
 import { moeda } from './formato';
 import { interpretarBusca, MAX_RELACIONADOS } from './relevancia/termos';
@@ -174,15 +174,6 @@ describe('busca do radar', () => {
 });
 
 describe('plano e visita', () => {
-  it('grátis vê a prévia de 5, sempre na página 1', () => {
-    expect(VISIVEIS_GRATIS).toBe(5);
-    expect(vistaDoRadar('gratis', false, 3)).toEqual({ previa: true, pagina: 1, limite: 5 });
-  });
-  it('Basic, Pro e o navegador interno veem tudo, 20 por página', () => {
-    expect(vistaDoRadar('basic', false, 3)).toEqual({ previa: false, pagina: 3, limite: 20 });
-    expect(vistaDoRadar('pro', false, 1)).toEqual({ previa: false, pagina: 1, limite: 20 });
-    expect(vistaDoRadar('gratis', true, 2)).toEqual({ previa: false, pagina: 2, limite: 20 });
-  });
   it('novas desde a última visita; na primeira, últimas 24 horas', () => {
     const agora = new Date('2026-10-18T15:00:00Z');
     expect(desdeDaVisita('2026-10-17T10:00:00.000Z', agora)).toEqual({ desde: '2026-10-17T10:00:00.000Z', primeira: false });
@@ -314,9 +305,6 @@ describe('navegação, prévia e resumo do radar', () => {
     expect(urlDoRadar({ ordem: 'relevancia', pagina: 1 })).toBe('/radar');
     expect(urlDoRadar({ ordem: null, pagina: 2 })).toBe('/radar?pagina=2');
     expect(urlDoRadar({ ordem: 'menor_valor', pagina: 4 })).toBe('/radar?ordem=menor_valor&pagina=4');
-  });
-  it('texto da prévia', () => {
-    expect(textoPrevia(1234)).toBe('Você está vendo 5 de 1.234 oportunidades do seu perfil.');
   });
   it('resumo: produtos, área e extras', () => {
     const cidades = [{ ibge: '4209102', nome: 'Joinville', uf: 'SC' }, { ibge: '4205407', nome: 'Florianópolis', uf: 'SC' },

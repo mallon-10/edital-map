@@ -42,6 +42,14 @@ export function avisoPlanoNavegador(p: PlanoConta): string | null {
   return p.doNavegador === 'pro' && p.daConta !== 'pro' ? AVISO_PLANO_NAVEGADOR : null;
 }
 
+/** Meu Radar, Minhas Oportunidades e Alertas são só do Pro. Plano não confirmado: pedir para tentar de novo. */
+export type AcessoPro = 'liberado' | 'bloqueado' | 'incerto';
+
+export function acessoDoPlano(p: PlanoConta): AcessoPro {
+  if (p.plano === 'pro') return 'liberado';
+  return planoIncerto(p) ? 'incerto' : 'bloqueado';
+}
+
 export type Bloqueio = { codigo: 'plano' | 'limite'; mensagem: string };
 
 export const MENSAGENS_LIMITE_CONTA = {

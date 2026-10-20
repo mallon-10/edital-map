@@ -3,22 +3,22 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { after, connection } from 'next/server';
 import { Cabecalho } from '@/components/Cabecalho';
+import { PaginaBloqueada } from '@/components/conta/PaginaBloqueada';
 import { CardLista } from '@/components/inicio/CardLista';
-import { CartaoPreviaRadar } from '@/components/radar/CartaoPreviaRadar';
 import { CartoesRadar } from '@/components/radar/CartoesRadar';
 import { OrdemRadar, PaginacaoRadar } from '@/components/radar/NavegacaoRadar';
 import { RegistrarVisitaRadar } from '@/components/radar/RegistrarVisitaRadar';
 import { ResumoRadar } from '@/components/radar/ResumoRadar';
-import { ordemEfetiva } from '@/lib/filtros';
-import { desdeDaVisita, lerNavegacaoRadar, urlDoRadar, VISIVEIS_GRATIS, vistaDoRadar } from '@/lib/radar';
+import { ordemEfetiva, POR_PAGINA } from '@/lib/filtros';
+import { desdeDaVisita, lerNavegacaoRadar, urlDoRadar } from '@/lib/radar';
 import { lerRadar, perfilDaConta } from '@/lib/servidor/conta';
 import { municipiosPorIbge } from '@/lib/servidor/municipios';
 import { contarPorStatus, idsDescartados } from '@/lib/salvos';
 import { contagensDoRadar, editaisDoRadar } from '@/lib/servidor/radar';
 import { contextoDaPagina, gravarEvento } from '@/lib/servidor/registro';
 import { estadoDosSalvos } from '@/lib/servidor/salvos';
+import { acessoAoPro } from '@/lib/servidor/acessoPro';
 import { usuarioAtual } from '@/lib/servidor/sessao';
-import { acessoDeDono, planoAtual } from '@/lib/servidor/plano';
 import { paraUrlSearchParams } from '@/lib/urlBusca';
 
 /** Página da conta: fora do Google. */
@@ -28,12 +28,14 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 /**
  * Meu Radar: cartões com contagens reais, o perfil e a lista personalizada (mesmos cards, ordens e páginas da busca).
- * Exige conta; sem radar, onboarding.
- * Grátis vê os 5 primeiros e as contagens; o resto fica atrás da "Prévia do Radar".
+ * Só Pro (e o dono): o grátis, com ou sem conta, vê a página bloqueada. Exige conta; sem radar, onboarding.
  */
 export default async function MeuRadar({ searchParams }: Props) {
   await connection();
   const usuario = await usuarioAtual();
+  const ctx = await contextoDaPagina();
+  const acesso = await acessoAoPro(usuario, ctx);
+  if (acesso !== 'liberado') return <PaginaBloqueada recurso="radar" logado={usuario !== null} incerto={acesso === 'incerto'} />;
   if (!usuario) redirect('/entrar?voltar=/radar');
   const [radar, perfil, salvos] = await Promise.all([
     lerRadar(usuario),
@@ -47,22 +49,19 @@ export default async function MeuRadar({ searchParams }: Props) {
   if (!radar) redirect('/radar/comecar');
 
   const nav = lerNavegacaoRadar(paraUrlSearchParams(await searchParams));
-  const ctx = await contextoDaPagina();
-  // Plano pago pela Cakto vale por navegador (planoAtual); o da conta (perfis.plano) também. Dono confiável vê tudo.
-  const planoNavegador = await planoAtual(ctx);
-  const plano = perfil.plano !== 'gratis' ? perfil.plano : planoNavegador;
-  const vista = vistaDoRadar(plano, ctx ? acessoDeDono(ctx) : false, nav.pagina);
+  // Só o Pro (ou o dono) chega aqui.
+  const plano = 'pro';
   const agora = new Date();
   const { desde, primeira } = desdeDaVisita(perfil.ultimaVisitaRadar, agora);
   // Descartados somem do radar (lista, total e cartões); ficam na aba Descartados de Minhas Oportunidades.
   const descartados = salvos ? idsDescartados(salvos) : [];
   const [contagens, lista, cidades] = await Promise.all([
     contagensDoRadar(radar, desde, descartados),
-    editaisDoRadar(radar, { ordem: nav.ordem, pagina: vista.pagina, limite: vista.limite }, descartados),
+    editaisDoRadar(radar, { ordem: nav.ordem, pagina: nav.pagina, limite: POR_PAGINA }, descartados),
     municipiosPorIbge(radar.municipios),
   ]);
   // Página além do fim (endereço antigo ou digitado): o total vem das linhas, então volta para a primeira.
-  if (lista.editais.length === 0 && vista.pagina > 1) redirect(urlDoRadar({ ordem: nav.ordem, pagina: 1 }));
+  if (lista.editais.length === 0 && nav.pagina > 1) redirect(urlDoRadar({ ordem: nav.ordem, pagina: 1 }));
   const ordem = ordemEfetiva(nav.ordem, true);
   // Uma vez por chegada ao radar (não a cada troca de ordem ou página).
   if (ctx && nav.pagina === 1 && nav.ordem === null) {
@@ -109,11 +108,7 @@ export default async function MeuRadar({ searchParams }: Props) {
             {lista.editais.map((e) => (
               <CardLista key={e.id} edital={e} agora={agora} acoes="radar" />
             ))}
-            {/* Mesmo número do cartão "Oportunidades" (contagens, sem cache); a lista vem do cache de 5 min. */}
-            {vista.previa && contagens.total > VISIVEIS_GRATIS ? <CartaoPreviaRadar total={contagens.total} /> : null}
-            {!vista.previa ? (
-              <PaginacaoRadar ordem={ordem} pagina={vista.pagina} total={lista.total} />
-            ) : null}
+            <PaginacaoRadar ordem={ordem} pagina={nav.pagina} total={lista.total} />
           </section>
         )}
         <RegistrarVisitaRadar />

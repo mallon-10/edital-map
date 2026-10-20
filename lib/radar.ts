@@ -1,7 +1,6 @@
 import { UFS_BRASIL, type Resultado } from './eventos';
 import { lerOrdem, limiteDeValor, MAX_PAGINA, MODALIDADES, ordemEfetiva, POR_PAGINA } from './filtros';
-import { moeda, numero } from './formato';
-import type { IdPlano } from './planos';
+import { moeda } from './formato';
 import { chave, expandir, GRUPOS, gruposDigitados, LIGACOES, normalizar, SIGLAS_TERMOS, type Busca } from './relevancia/termos';
 import type { Cidade, Ordem } from './tipos';
 
@@ -34,7 +33,6 @@ export const LIMITES_RADAR = { termos: 10, excluir: 10, municipios: 50, tamanhoT
  * lista (municípios: 200, para o excesso ainda ganhar a mensagem "até 50") e 600 caracteres por item. Acima: formulário.
  */
 export const ENTRADA_RADAR = { itens: 50, municipios: 200, caracteres: 600 } as const;
-export const VISIVEIS_GRATIS = 5;
 /**
  * Teto de relacionados do radar, somando todos os produtos (a busca avulsa usa 20). Cada relacionado é uma checagem
  * por edital no banco: com 5 produtos amplos, 20 relacionados levaram 805 ms e 12 levaram 520 ms (Task 4, C7).
@@ -216,12 +214,6 @@ export function argumentosRadar(r: Radar, o: { ordem: Ordem | null; pagina: numb
   };
 }
 
-/** Grátis (e não interno): prévia dos 5 primeiros, sem páginas. Basic, Pro e interno: tudo, 20 por página. */
-export function vistaDoRadar(plano: IdPlano, interno: boolean, pagina: number): { previa: boolean; pagina: number; limite: number } {
-  if (plano === 'gratis' && !interno) return { previa: true, pagina: 1, limite: VISIVEIS_GRATIS };
-  return { previa: false, pagina, limite: POR_PAGINA };
-}
-
 /** Desde quando contar "novas": a última visita; sem visita, as últimas 24 horas. */
 export function desdeDaVisita(ultima: string | null, agora: Date): { desde: string; primeira: boolean } {
   if (ultima) return { desde: ultima, primeira: false };
@@ -368,10 +360,6 @@ export function urlDoRadar(n: NavegacaoRadar): string {
   if (n.pagina > 1) p.set('pagina', String(n.pagina));
   const s = p.toString();
   return s ? `/radar?${s}` : '/radar';
-}
-
-export function textoPrevia(total: number): string {
-  return `Você está vendo ${VISIVEIS_GRATIS} de ${numero(total)} oportunidades do seu perfil.`;
 }
 
 const listaCurta = (itens: string[], n: number) => (itens.length <= n ? itens.join(', ') : `${itens.slice(0, n).join(', ')} e mais ${itens.length - n}`);

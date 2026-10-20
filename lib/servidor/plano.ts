@@ -37,7 +37,7 @@ async function proPeloEmail(email: string): Promise<boolean> {
 /**
  * Plano de quem está na página (spec do pagamento, revisão 2, §5): Pro se for o dono confiável, se houver uma
  * assinatura válida ligada a este navegador (o da compra) ou se a conta logada (Fase 3) tiver uma assinatura válida pelo
- * e-mail. Sem nada disso, ou com o banco fora: grátis. Também usado pela Prévia do Radar e pela Fase 4.
+ * e-mail. Sem nada disso, ou com o banco fora: grátis. Também usado pelo acesso às áreas do Pro (acessoPro.ts).
  */
 export async function planoAtual(ctx: Contexto | null): Promise<Plano> {
   if (ctx?.dono) return 'pro';

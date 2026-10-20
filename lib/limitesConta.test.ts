@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AVISO_PLANO_NAVEGADOR, avisoPlanoNavegador, planoIncerto, bloqueioAlerta, bloqueioSalvar, LIMITES_CONTA, lerPlano, maiorPlano, MENSAGENS_LIMITE_CONTA,
+  acessoDoPlano, AVISO_PLANO_NAVEGADOR, avisoPlanoNavegador, planoIncerto, bloqueioAlerta, bloqueioSalvar, LIMITES_CONTA, lerPlano, maiorPlano, MENSAGENS_LIMITE_CONTA,
 } from './limitesConta';
 
 describe('limites da conta', () => {
@@ -47,5 +47,11 @@ describe('limites da conta', () => {
       salvosConvite: 'No Pro, salve os editais que interessam e acompanhe cada um com status e observação.',
       alertasConvite: 'No Pro, até 5 alertas: os editais novos chegam por e-mail às 7h, e toda segunda chega o resumo da semana.',
     });
+  });
+  it('acesso às áreas do Pro (Meu Radar, Oportunidades, Alertas): Pro libera; grátis bloqueia; consulta falhou sem Pro = incerto', () => {
+    expect(acessoDoPlano({ plano: 'pro', daConta: 'pro', doNavegador: 'gratis', falhou: false })).toBe('liberado');
+    expect(acessoDoPlano({ plano: 'pro', daConta: 'gratis', doNavegador: 'pro', falhou: true })).toBe('liberado');
+    expect(acessoDoPlano({ plano: 'gratis', daConta: 'gratis', doNavegador: 'gratis', falhou: false })).toBe('bloqueado');
+    expect(acessoDoPlano({ plano: 'gratis', daConta: 'gratis', doNavegador: 'gratis', falhou: true })).toBe('incerto');
   });
 });
