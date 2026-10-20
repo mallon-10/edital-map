@@ -105,7 +105,6 @@ export const GRUPOS: readonly Grupo[] = [
     termos: [
       'publicidade', 'propaganda', 'marketing', 'comunicação visual', 'material gráfico', 'serviço gráfico', 'impressão gráfica',
       'organização de eventos', 'produção de eventos', 'material promocional', 'brindes', 'promoção de vendas', 'banner',
-      'placa de sinalização',
     ],
   },
 ];
