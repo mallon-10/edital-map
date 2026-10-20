@@ -6,7 +6,8 @@
  *
  * Regras de cada termo (testadas): sem vírgula, ponto e vírgula, barra vertical, " e " nem " ou " (public.consulta
  * separaria em alternativas); cada palavra com 4+ caracteres, número, sigla de SIGLAS_TERMOS ou palavra de ligação.
- * A busca do banco é por prefixo do radical: palavra curta acharia de tudo ("rodo" acha "rodovia").
+ * A busca do banco é por prefixo do radical só em sigla e pedaço de palavra ("rodo" acha "rodovia"); palavra completa
+ * casa pelo radical exato, e as de radical ambíguo ("publicidade" = "pública") viram expressões (0020).
  */
 
 export type Grupo = { assunto: string; termos: readonly string[] };
@@ -103,7 +104,8 @@ export const GRUPOS: readonly Grupo[] = [
     assunto: 'publicidade e eventos',
     termos: [
       'publicidade', 'propaganda', 'marketing', 'comunicação visual', 'material gráfico', 'serviço gráfico', 'impressão gráfica',
-      'organização de eventos', 'evento', 'brindes', 'promoção de vendas', 'banner', 'placa de sinalização',
+      'organização de eventos', 'produção de eventos', 'material promocional', 'brindes', 'promoção de vendas', 'banner',
+      'placa de sinalização',
     ],
   },
 ];

@@ -778,3 +778,40 @@ describe('migração 0018 (teto de alertas por conta)', () => {
     expect(sql).not.toMatch(/drop table|alter table public\.alertas/);
   });
 });
+
+describe('migração 0020 (palavra inteira na busca e parecidos pelo assunto)', () => {
+  const sql = ler('supabase/migrations/0020_busca_precisa.sql').replace(/\r\n/g, '\n');
+  it('palavra completa casa só pelo radical exato; sigla ou pedaço de palavra continua por prefixo', () => {
+    expect(sql).toContain('create or replace function public.token_busca(p text)');
+    expect(sql).toContain("when length(p) <= 3 or r.lexema is null or r.lexema = p then p || ':*'");
+  });
+  it('palavras cujo radical colide (publicidade/pública, areia/área, mesa/mês) viram expressões', () => {
+    for (const p of ["when 'publicidade'", "when 'areia'", "when 'mesa'", "when 'colete'", "when 'calcado'", "when 'leite'"]) {
+      expect(sql).toContain(p);
+    }
+    expect(sql).toContain('create or replace function public.consulta_ambigua(p text)');
+  });
+  it('expressão: em sequência no objeto ou todas as palavras nos itens (sem posição, peso D)', () => {
+    expect(sql).toContain('create or replace function public.texto_expressao(p_tokens text[], p_itens boolean)');
+    expect(sql).toContain("string_agg(case when t like '%:*' then t || 'D' else t || ':D' end, ' & ' order by n) || ')'");
+  });
+  it('consulta e consulta_frase usam o token novo (mesma assinatura, nada mais muda)', () => {
+    expect(sql).toContain('create or replace function public.consulta(q text) returns tsquery');
+    expect(sql).toContain('create or replace function public.consulta_frase(p_termo text)');
+    expect(sql).not.toMatch(/w \|\| ':\*'|w\.p \|\| ':\*'/);
+  });
+  it('parecidos: sem o prefixo do portal, peso pela raridade, pelo menos 2 palavras em comum', () => {
+    expect(sql).toContain('create or replace function public.relacionados(p_id text, p_limite int default 6)');
+    expect(sql).toContain(String.raw`regexp_replace(coalesce(c.objeto, ''), '^\s*\[[^]]*\]\s*-?\s*', '')`);
+    expect(sql).toContain('portal compras presente licitacao licitatorio');
+    expect(sql).toContain('locacao instalacao manutencao');
+    expect(sql).toContain('k.acertos >= least(2, o.qtd)');
+    expect(sql).toContain('public.em_aberto(a.encerramento_em, a.situacao_id)');
+  });
+  it('só o servidor executa as funções novas', () => {
+    for (const f of ['token_busca(text)', 'texto_expressao(text[], boolean)', 'consulta_ambigua(text)', 'relacionados(text, int)']) {
+      expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
+    }
+  });
+});
