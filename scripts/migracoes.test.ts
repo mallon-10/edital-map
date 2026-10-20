@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { TIPOS_EVENTO, TIPOS_EVENTO_CONTA, TIPOS_EVENTO_OPORTUNIDADES, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';
+import { TIPOS_EVENTO, TIPOS_EVENTO_CONTA, TIPOS_EVENTO_NAVEGACAO, TIPOS_EVENTO_OPORTUNIDADES, TIPOS_EVENTO_SERVIDOR } from '../lib/eventos';
 import { ERRO_TETO_ALERTAS } from '../lib/alertas/regras';
 import { ORDENS } from '../lib/filtros';
 import { LIMITES_CONTA } from '../lib/limitesConta';
@@ -813,5 +813,34 @@ describe('migração 0020 (palavra inteira na busca e parecidos pelo assunto)', 
       expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
       expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
     }
+  });
+});
+
+describe('migração 0021 (painel do dono)', () => {
+  const sql = ler('supabase/migrations/0021_painel_admin.sql').replace(/\r\n/g, '\n');
+  const tipos = (texto: string) => {
+    const trecho = texto.slice(texto.indexOf('add constraint eventos_tipo_check'));
+    return [...trecho.slice(0, trecho.indexOf(';')).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  };
+  it('eventos.tipo ganha pagina_vista sem perder nenhum tipo', () => {
+    const antes = tipos(ler('supabase/migrations/0016_oportunidades_alertas.sql'));
+    const depois = tipos(sql);
+    for (const t of [...antes, ...TIPOS_EVENTO, ...TIPOS_EVENTO_NAVEGACAO, ...TIPOS_EVENTO_SERVIDOR, ...TIPOS_EVENTO_CONTA, ...TIPOS_EVENTO_OPORTUNIDADES]) {
+      expect(depois).toContain(t);
+    }
+    expect(depois).toHaveLength(antes.length + 1);
+  });
+  it('página vista sai depois de 400 dias; os outros eventos ficam', () => {
+    expect(sql).toContain("cron.schedule('retencao-eventos', '50 4 * * *'");
+    expect(sql).toContain("delete from public.eventos where tipo = 'pagina_vista' and criado_em < now() - interval '400 days'");
+  });
+  it('o painel ignora os eventos internos e a origem conta só nas entradas', () => {
+    expect(sql).toContain('where not interno and criado_em >= p_desde and criado_em < p_ate');
+    expect(sql).toContain("entradas as (select detalhe from e where tipo = 'pagina_vista' and detalhe ? 'origem')");
+    expect(sql).toContain("(criado_em at time zone 'America/Sao_Paulo')::date");
+  });
+  it('só o servidor executa', () => {
+    expect(sql).toContain('revoke execute on function public.painel_admin(timestamptz, timestamptz) from public, anon, authenticated;');
+    expect(sql).toContain('grant execute on function public.painel_admin(timestamptz, timestamptz) to service_role;');
   });
 });

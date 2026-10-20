@@ -1,7 +1,10 @@
 import { LIMITES, validarEvento } from '@/lib/eventos';
+import { ehRobo } from '@/lib/robos';
 import { contexto, dentroDoLimite, gravarEvento } from '@/lib/servidor/registro';
 
 export async function POST(request: Request) {
+  // Robô que roda JavaScript não entra nas métricas (o proxy já não lhe dá cookie).
+  if (ehRobo(request.headers.get('user-agent'))) return new Response(null, { status: 204 });
   let corpo: unknown;
   try {
     corpo = await request.json();

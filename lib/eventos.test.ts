@@ -5,13 +5,36 @@ const SLUG = '00394452000103-2026-21982';
 
 describe('validarEvento', () => {
   it('busca: limpa o termo e aceita UF e 7 dias', () => {
-    expect(validarEvento({ tipo: 'busca', detalhe: { q: '  EPI ', uf: 'SC', dias: 7 } })).toEqual({
-      ok: true, valor: { tipo: 'busca', detalhe: { q: 'EPI', uf: 'SC', dias: 7 } },
+    expect(validarEvento({ tipo: 'busca', detalhe: { q: '  EPI ', uf: 'SC', dias: 7, total: 12 } })).toEqual({
+      ok: true, valor: { tipo: 'busca', detalhe: { q: 'EPI', uf: 'SC', dias: 7, total: 12 } },
     });
   });
-  it('busca: descarta UF e dias inválidos', () => {
-    expect(validarEvento({ tipo: 'busca', detalhe: { q: '', uf: 'XX', dias: 30 } })).toEqual({
-      ok: true, valor: { tipo: 'busca', detalhe: { q: null, uf: null, dias: null } },
+  it('busca: descarta UF, dias e total inválidos', () => {
+    expect(validarEvento({ tipo: 'busca', detalhe: { q: '', uf: 'XX', dias: 30, total: -1 } })).toEqual({
+      ok: true, valor: { tipo: 'busca', detalhe: { q: null, uf: null, dias: null, total: null } },
+    });
+    expect(validarEvento({ tipo: 'busca', detalhe: { q: 'luva', total: 1.5 } })).toMatchObject({ valor: { detalhe: { total: null } } });
+    expect(validarEvento({ tipo: 'busca', detalhe: { q: 'luva', total: 0 } })).toMatchObject({ valor: { detalhe: { total: 0 } } });
+  });
+  it('pagina_vista: caminho limpo no servidor; fora da entrada, sem origem', () => {
+    expect(validarEvento({ tipo: 'pagina_vista', detalhe: { pagina: `/edital/${SLUG}`, entrada: false, site: 'www.google.com' } })).toEqual({
+      ok: true, valor: { tipo: 'pagina_vista', detalhe: { pagina: '/edital', edital: SLUG } },
+    });
+    expect(validarEvento({ tipo: 'pagina_vista', detalhe: { pagina: '/admin' } }).ok).toBe(false);
+    expect(validarEvento({ tipo: 'pagina_vista', detalhe: {} }).ok).toBe(false);
+  });
+  it('pagina_vista: na entrada, origem calculada no servidor, domínio e campanha', () => {
+    expect(validarEvento({
+      tipo: 'pagina_vista',
+      detalhe: { pagina: '/licitacoes/epi', entrada: true, site: 'WWW.Google.com.br', utm_campaign: ' epi-sul ', utm_medium: null, anuncio: false },
+    })).toEqual({
+      ok: true, valor: { tipo: 'pagina_vista', detalhe: { pagina: '/licitacoes/epi', origem: 'google', site: 'www.google.com.br', campanha: 'epi-sul' } },
+    });
+    expect(validarEvento({ tipo: 'pagina_vista', detalhe: { pagina: '/', entrada: true, anuncio: true } })).toEqual({
+      ok: true, valor: { tipo: 'pagina_vista', detalhe: { pagina: '/', origem: 'anuncio' } },
+    });
+    expect(validarEvento({ tipo: 'pagina_vista', detalhe: { pagina: '/', entrada: true, site: 'evil.com/<x>' } })).toEqual({
+      ok: true, valor: { tipo: 'pagina_vista', detalhe: { pagina: '/', origem: 'direto' } },
     });
   });
   it('eventos de edital exigem slug válido', () => {
@@ -71,6 +94,7 @@ describe('validarEvento', () => {
     // tentou_assinar é gravado só pela rota /api/assinar (que conta as tentativas por IP).
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'tentou_assinar' } }).ok).toBe(false);
     expect(LIMITES.assinaturasPorHora).toBe(10);
+    expect(LIMITES.eventosPorHora).toBe(240);
     expect(TIPOS_EVENTO).toContain('usou_recurso');
     expect(LIMITES.exportacoesPorHora).toBe(20);
   });

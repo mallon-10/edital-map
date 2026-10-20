@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Instrument_Sans, JetBrains_Mono } from 'next/font/google';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { BarraCelularGlobal } from '@/components/BarraCelular';
+import { RegistrarVisita } from '@/components/RegistrarVisita';
 import { Rodape } from '@/components/Rodape';
 import { TagGoogle } from '@/components/TagGoogle';
 import { NOME_SITE, SITE_URL } from '@/lib/seo/site';
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <Rodape />
         <BarraCelularGlobal />
         <TagGoogle />
+        <RegistrarVisita />
       </body>
     </html>
   );

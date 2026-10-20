@@ -1,5 +1,10 @@
+import { classificarOrigem, paginaDoCaminho } from './paginaVista';
+
 export const TIPOS_EVENTO = ['busca', 'abriu_edital', 'clicou_edital_oficial', 'quer_recurso', 'usou_recurso'] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
+/** Página vista (painel do dono, 0021): o navegador manda o caminho e as pistas da origem; o servidor limpa e classifica. */
+export const TIPOS_EVENTO_NAVEGACAO = ['pagina_vista'] as const;
+export type TipoEventoNavegacao = (typeof TIPOS_EVENTO_NAVEGACAO)[number];
 /** Eventos gravados só pelo servidor (o navegador não manda): pedido de alerta e o antigo limite do grátis atingido (não grava mais). */
 export const TIPOS_EVENTO_SERVIDOR = ['pediu_alerta', 'limite_atingido', 'assinou'] as const;
 export type TipoEventoServidor = (typeof TIPOS_EVENTO_SERVIDOR)[number];
@@ -30,7 +35,7 @@ export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
 ];
 export const UFS_BRASIL: readonly string[] = REGIOES.flatMap(([, ufs]) => ufs);
 
-export const LIMITES = { eventosPorHora: 120, exportacoesPorHora: 20, listaEsperaPorHora: 5, assinaturasPorHora: 10, cnpjPorHora: 20 } as const;
+export const LIMITES = { eventosPorHora: 240, exportacoesPorHora: 20, listaEsperaPorHora: 5, assinaturasPorHora: 10, cnpjPorHora: 20 } as const;
 export const SLUG_EDITAL = /^[0-9A-Z]{12}\d{2}-\d{4}-\d{1,7}$/;
 
 export type Detalhe = Record<string, string | number | null>;
@@ -42,17 +47,42 @@ function objeto(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-export function validarEvento(corpo: unknown): Resultado<{ tipo: TipoEvento; detalhe: Detalhe }> {
+const DOMINIO = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+const textoCurto = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
+
+function validarVisita(d: Record<string, unknown>): Resultado<{ tipo: TipoEventoNavegacao; detalhe: Detalhe }> {
+  const p = typeof d.pagina === 'string' ? paginaDoCaminho(d.pagina) : null;
+  if (!p) return { ok: false, erro: 'página inválida' };
+  const detalhe: Detalhe = { pagina: p.pagina };
+  if (p.edital) detalhe.edital = p.edital;
+  // Só a entrada (primeira página vinda de fora do site) leva a origem.
+  if (d.entrada === true) {
+    const host = typeof d.site === 'string' ? d.site.trim().toLowerCase() : '';
+    const site = host.length <= 100 && DOMINIO.test(host) ? host : null;
+    detalhe.origem = classificarOrigem({
+      site, utmSource: textoCurto(d.utm_source, 60), utmMedium: textoCurto(d.utm_medium, 60), anuncio: d.anuncio === true,
+    });
+    if (site) detalhe.site = site;
+    const campanha = textoCurto(d.utm_campaign, 60);
+    if (campanha) detalhe.campanha = campanha;
+  }
+  return { ok: true, valor: { tipo: 'pagina_vista', detalhe } };
+}
+
+export function validarEvento(corpo: unknown): Resultado<{ tipo: TipoEvento | TipoEventoNavegacao; detalhe: Detalhe }> {
   if (!objeto(corpo)) return { ok: false, erro: 'corpo inválido' };
   const tipo = corpo.tipo;
   const d = objeto(corpo.detalhe) ? corpo.detalhe : {};
+  if (tipo === 'pagina_vista') return validarVisita(d);
   if (typeof tipo !== 'string' || !(TIPOS_EVENTO as readonly string[]).includes(tipo)) return { ok: false, erro: 'tipo inválido' };
   const edital = typeof d.edital === 'string' && SLUG_EDITAL.test(d.edital) ? d.edital : null;
 
   if (tipo === 'busca') {
     const q = typeof d.q === 'string' ? d.q.trim().slice(0, 100) : '';
     const uf = typeof d.uf === 'string' && UFS_BRASIL.includes(d.uf) ? d.uf : null;
-    return { ok: true, valor: { tipo, detalhe: { q: q || null, uf, dias: d.dias === 7 ? 7 : null } } };
+    // Total achado (null: a busca falhou ou o navegador antigo não mandou).
+    const total = typeof d.total === 'number' && Number.isInteger(d.total) && d.total >= 0 ? d.total : null;
+    return { ok: true, valor: { tipo, detalhe: { q: q || null, uf, dias: d.dias === 7 ? 7 : null, total } } };
   }
   if (tipo === 'quer_recurso') {
     if (typeof d.recurso !== 'string' || !(RECURSOS as readonly string[]).includes(d.recurso)) return { ok: false, erro: 'recurso inválido' };

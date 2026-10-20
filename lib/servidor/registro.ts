@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
 import { ehDono, segredoDoEndereco, valorCookieDono } from '../dono';
 import type {
-  Detalhe, PedidoListaEspera, TipoEvento, TipoEventoConta, TipoEventoOportunidades, TipoEventoServidor,
+  Detalhe, PedidoListaEspera, TipoEvento, TipoEventoConta, TipoEventoNavegacao, TipoEventoOportunidades, TipoEventoServidor,
 } from '../eventos';
 import { COOKIE_DONO, COOKIE_INTERNO, COOKIE_VISITANTE, OPCOES_COOKIE, visitanteDoCookie, visitanteValido } from '../visitante';
 import { supabaseServidor } from './supabase';
@@ -96,7 +96,7 @@ export function exportacaoDentroDoLimite(ipHash: string | null, limite: number):
 
 export async function gravarEvento(
   ctx: Contexto,
-  tipo: TipoEvento | TipoEventoServidor | TipoEventoConta | TipoEventoOportunidades,
+  tipo: TipoEvento | TipoEventoNavegacao | TipoEventoServidor | TipoEventoConta | TipoEventoOportunidades,
   detalhe: Detalhe,
 ): Promise<void> {
   const { error } = await supabaseServidor()

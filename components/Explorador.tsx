@@ -62,6 +62,11 @@ async function obter<T>(url: string, padrao: string): Promise<T> {
 
 const mensagem = (e: unknown, padrao: string) => (e instanceof Error && e.message ? e.message : padrao);
 
+/** Evento "busca" com o total achado (null: a busca falhou). */
+function registrarBusca(f: FiltrosTela, total: number | null) {
+  registrar('busca', { q: f.q.trim() || null, uf: f.uf || null, dias: f.seteDias ? 7 : null, total });
+}
+
 type Props = {
   filtrosIniciais: FiltrosTela;
   /** Vista, parte do celular, página e ordem lidas do endereço. */
@@ -177,7 +182,11 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
 
   const carregarLista = useCallback(
     /** 'ok', 'erro' (falha) ou 'velho' (um pedido mais novo tomou o lugar: esta resposta não vale). */
-    async (f: FiltrosTela, lista: { pagina?: number; ordem?: Ordem | null } = {}): Promise<'ok' | 'erro' | 'velho'> => {
+    /** `aoTerminar`: total achado (null se falhou); não roda quando um pedido mais novo tomou o lugar. */
+    async (
+      f: FiltrosTela,
+      lista: { pagina?: number; ordem?: Ordem | null; aoTerminar?: (total: number | null) => void } = {},
+    ): Promise<'ok' | 'erro' | 'velho'> => {
       const id = ++pedidoLista.current;
       // Posições de uma volta do edital que ainda não foram aplicadas são da lista antiga: não valem para a nova.
       rolagemPendente.current = null;
@@ -188,6 +197,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
         const novo = await obter<ResultadoBusca>(`/api/busca?${paraParametros(f, { pagina: lista.pagina ?? 1, ordem: ordemPedida })}`, ERRO_LISTA);
         if (id !== pedidoLista.current) return 'velho';
         setResultado({ total: novo.total, editais: novo.editais });
+        lista.aoTerminar?.(novo.total);
         if (f.q.trim()) medir('buscou', { chave: 'dia' });
         setSelecionadoId(novo.editais[0]?.id ?? null);
         setAgora(new Date());
@@ -195,6 +205,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
         return 'ok';
       } catch (e) {
         if (id !== pedidoLista.current) return 'velho';
+        lista.aoTerminar?.(null);
         setErroLista(mensagem(e, ERRO_LISTA));
         // No celular o aviso aparece na lista, embaixo do mapa: a página rola até ele.
         if (ehCelular()) irPara('lista', f);
@@ -306,6 +317,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
       trocarEndereco(urlDaBusca(filtrosIniciais, estadoInicial));
       // Celular com `tela=lista` no endereço (botão Lista de outra página, link compartilhado): abre rolada até a lista.
       if (estadoInicial.tela === 'lista') rolarPara('lista', 'auto');
+      // Busca que chegou pronta no endereço (link do CNPJ, anúncio, compartilhada): conta, com o total do servidor.
+      if (filtrosIniciais.q.trim()) registrarBusca(filtrosIniciais, inicial.total);
       // A lista veio pronta do servidor; o mapa pede os pontos da mesma busca.
       void carregarMapa(filtrosIniciais);
     }
@@ -320,9 +333,9 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
         rolagemPagina: rolagemPagina.current,
       });
     };
-  }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial]);
+  }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial, inicial.total]);
 
-  /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança grava o evento "busca". */
+  /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança respondida grava o evento "busca". */
   function aplicar(pedido: FiltrosTela, opcoes: { abrirLista?: boolean } = {}) {
     // Sem município não há raio (trocar a UF ou tirar a cidade tira o raio também).
     const novo = normalizarTela(pedido);
@@ -337,9 +350,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     estadoAtual.current = { ...estadoAtual.current, pagina: 1 };
     if ((opcoes.abrirLista || cidadeNova) && ehCelular()) irPara('lista', novo);
     else trocarTela(tela, novo);
-    registrar('busca', { q: novo.q.trim() || null, uf: novo.uf || null, dias: novo.seteDias ? 7 : null });
     for (const recurso of recursosUsados(filtros, novo)) registrar('usou_recurso', { recurso });
-    void carregarLista(novo);
+    void carregarLista(novo, { aoTerminar: (total) => registrarBusca(novo, total) });
     // Repetir a busca depois de um erro do mapa tenta o mapa de novo.
     if (mudouMapa || erroMapa !== null) void carregarMapa(novo);
   }
