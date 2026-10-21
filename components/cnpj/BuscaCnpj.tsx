@@ -38,9 +38,10 @@ export function BuscaCnpj() {
             value={cnpj}
             onChange={(e) => setCnpj(e.target.value)}
             required
-            className="h-11 min-w-0 flex-1 rounded-sm border border-line-strong bg-surface px-3 text-[15px]"
+            className="h-11 min-w-[12.5rem] flex-1 rounded-sm border border-line-strong bg-surface px-3 text-[15px]"
           />
-          <button type="submit" disabled={enviando} className="h-11 rounded-sm bg-pin px-5 text-sm font-semibold text-on-pin disabled:opacity-60">
+          {/* Celular estreito: o campo fica com o CNPJ inteiro à vista e o botão desce para a linha de baixo, na largura toda. */}
+          <button type="submit" disabled={enviando} className="h-11 grow rounded-sm bg-pin px-5 text-sm font-semibold text-on-pin disabled:opacity-60 sm:grow-0">
             {enviando ? 'Consultando…' : 'Ver licitações'}
           </button>
         </div>

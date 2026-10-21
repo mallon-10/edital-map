@@ -6,7 +6,12 @@ export function FaixaCobertura({ atualizadoEm }: { atualizadoEm: string | null }
   return (
     <p className="flex shrink-0 flex-wrap gap-x-1 border-b border-line bg-sunken px-4 py-2 text-xs text-ink-muted md:px-6 md:text-[13px] md:leading-normal">
       <span>{FONTE_COBERTURA}</span>
-      {atualizadoEm ? <span className="whitespace-nowrap">· atualizado {haQuanto(atualizadoEm, new Date())}</span> : null}
+      {/* Celular: a linha quebra e "atualizado" começa a de baixo, sem o ponto solto no começo. */}
+      {atualizadoEm ? (
+        <span className="whitespace-nowrap">
+          <span aria-hidden="true" className="max-sm:hidden">· </span>atualizado {haQuanto(atualizadoEm, new Date())}
+        </span>
+      ) : null}
     </p>
   );
 }

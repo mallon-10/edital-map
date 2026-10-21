@@ -14,17 +14,18 @@ export function Relacionados({ editais, origem, agora }: Props) {
       <h2 id="parecidos-titulo" className="mb-3 text-[17px] font-bold">
         Editais parecidos abertos
       </h2>
-      <ul className="grid gap-2.5 sm:grid-cols-2">
+      {/* grid-cols-1 = minmax(0, 1fr): sem ela a coluna crescia até a linha "truncate" inteira e a página vazava no celular. */}
+      <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {editais.map((e) => {
           const et = etiqueta(e, agora);
           const valor = moedaCurta(e.valor_estimado);
           const { titulo, tipo } = assunto(e.objeto);
           return (
-            <li key={e.id} className="flex">
+            <li key={e.id} className="flex min-w-0">
               <LinkRelacionado
                 href={`/edital/${e.slug}`}
                 origem={origem}
-                className="flex w-full flex-col gap-2 rounded-md border border-line bg-raised p-3.5 transition-colors hover:border-line-strong"
+                className="flex w-full min-w-0 flex-col gap-2 rounded-md border border-line bg-raised p-3.5 transition-colors hover:border-line-strong"
               >
                 <span className="flex items-start justify-between gap-3">
                   <span className="line-clamp-3 text-[14px] font-semibold leading-5">{titulo}</span>

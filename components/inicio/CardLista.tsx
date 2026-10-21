@@ -50,7 +50,7 @@ export function CardLista({ edital: e, agora, acoes = 'salvar' }: { edital: Edit
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px] sm:grid-cols-4">
         <div>
           <dt className={ROTULO}>Valor estimado</dt>
-          <dd className="font-mono font-medium">{valor ?? 'Valor não informado'}</dd>
+          <dd className={valor ? 'font-mono font-medium' : 'text-ink-muted'}>{valor ?? 'Valor não informado'}</dd>
         </div>
         <div>
           <dt className={ROTULO}>Modalidade</dt>
@@ -58,7 +58,8 @@ export function CardLista({ edital: e, agora, acoes = 'salvar' }: { edital: Edit
         </div>
         <div>
           <dt className={ROTULO}>Propostas até</dt>
-          <dd className="font-mono">{dataHora(e.encerramento_em)}</dd>
+          {/* Celular (coluna de ~140 px): 12 px e sem quebra, para "21.10.2026 · 10h30" caber numa linha. */}
+          <dd className="whitespace-nowrap font-mono text-[12px] sm:text-[13px]">{dataHora(e.encerramento_em)}</dd>
         </div>
         <div>
           <dt className={ROTULO}>Publicado em</dt>

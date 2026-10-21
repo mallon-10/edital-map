@@ -41,7 +41,7 @@ type Props = {
   aoAplicar: (f: FiltrosTela) => void;
 };
 
-const ALTERNADOR = 'h-10 flex-1 rounded-full px-4 text-[14px] font-semibold transition-colors lg:flex-none lg:text-[15px]';
+const ALTERNADOR = 'h-10 flex-1 whitespace-nowrap rounded-full px-2 text-[13px] font-semibold transition-colors min-[400px]:text-[14px] lg:flex-none lg:px-4 lg:text-[15px]';
 
 /** Celular: o município escolhido (com o raio), com o × para tirar; no computador ele aparece nos chips. */
 function PilulaCidade({ cidade, raio, aoTirar }: { cidade: Cidade; raio: number | null; aoTirar: () => void }) {

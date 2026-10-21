@@ -129,11 +129,11 @@ export function LinhaOportunidade({ salvo: s, agora }: { salvo: SalvoDaConta; ag
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
             <div>
               <dt className={ROTULO}>Valor estimado</dt>
-              <dd className="font-mono font-medium">{moeda(e.valor_estimado) ?? 'Valor não informado'}</dd>
+              <dd className={moeda(e.valor_estimado) ? 'font-mono font-medium' : 'text-ink-muted'}>{moeda(e.valor_estimado) ?? 'Valor não informado'}</dd>
             </div>
             <div>
               <dt className={ROTULO}>Propostas até</dt>
-              <dd className="font-mono">{e.encerramento_em ? dataHora(e.encerramento_em) : 'Não informado'}</dd>
+              <dd className="whitespace-nowrap font-mono text-[12px] sm:text-[13px]">{e.encerramento_em ? dataHora(e.encerramento_em) : 'Não informado'}</dd>
             </div>
           </dl>
         </>

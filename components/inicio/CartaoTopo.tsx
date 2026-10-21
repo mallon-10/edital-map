@@ -67,7 +67,7 @@ export function CartaoTopo(p: Props) {
             <p aria-live="polite" className="mt-1.5 text-[18px] font-semibold text-mata lg:text-[22px]">
               {contagem}
             </p>
-            <p className="mt-1 font-mono text-[13px] text-ink-muted lg:text-sm">{p.resumo}</p>
+            <p className="mt-1 font-mono text-[12px] text-ink-muted min-[400px]:text-[13px] lg:text-sm">{p.resumo}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5 lg:gap-3">

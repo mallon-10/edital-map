@@ -20,15 +20,16 @@ export function ItemOrganizado({ item }: { item: ItemEdital }) {
     .filter(Boolean)
     .join(' · ');
 
+  // Atributos: no celular o nome fica em cima do valor (lado a lado, o valor virava uma tira estreita); a partir de sm, em duas colunas.
   const especificacao =
     atributos.length || obs ? (
       <div className="mt-1.5 text-[13px] text-ink-muted">
         {atributos.length ? (
-          <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-0.5">
+          <dl className="grid grid-cols-1 gap-x-3 sm:grid-cols-[max-content_minmax(0,1fr)] sm:gap-y-0.5">
             {atributos.map((a, i) => (
               <div key={i} className="contents">
-                <dt className="max-w-[40vw] break-words">{a.chave}</dt>
-                <dd className="break-words text-ink">{a.valor}</dd>
+                <dt className="break-words text-[12px] sm:max-w-[40vw] sm:text-[13px]">{a.chave}</dt>
+                <dd className="mb-1.5 break-words text-ink sm:mb-0">{a.valor}</dd>
               </div>
             ))}
           </dl>

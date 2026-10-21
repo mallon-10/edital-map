@@ -142,6 +142,8 @@ export function Mapa({ pontos, destaque, aoEscolherCidade, raio, sede, animarFoc
       const dica = new maplibregl.Popup({ closeButton: false, closeOnClick: false, anchor: 'bottom', offset: ALTURA_PILULA });
 
       m.on('load', () => {
+        // Créditos compactos começam recolhidos (o MapLibre os abre no carregamento; no celular cobriam o mapa). O "i" abre.
+        caixa.current?.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
         m.addSource('raio', { type: 'geojson', data: areaDoRaio(raioAtual.current) });
         m.addLayer({
           id: 'raio', type: 'line', source: 'raio',
