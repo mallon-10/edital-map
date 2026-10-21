@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LIMITES_CONTA } from './limitesConta';
-import { formatarReais, LINHAS_PLANOS, mostrarOferta, OFERTA, PLANOS, precoDoPlano } from './planos';
+import { formatarReais, mostrarOferta, OFERTA, PLANOS, precoDoPlano } from './planos';
 
-const linha = (recurso: string) => {
-  const l = LINHAS_PLANOS.find((x) => x.recurso === recurso);
-  if (!l) throw new Error(`linha ausente: ${recurso}`);
-  return l;
-};
 const pro = PLANOS.find((p) => p.id === 'pro')!;
 
 describe('tabela de planos', () => {
@@ -23,41 +17,6 @@ describe('tabela de planos', () => {
   it('formata reais em pt-BR', () => {
     expect(formatarReais(5)).toBe('R$ 0,05');
     expect(formatarReais(123456)).toBe('R$ 1.234,56');
-  });
-  it('Grátis: buscas e editais ilimitados, link oficial, raio/órgão, exportar e parecidos incluídos', () => {
-    expect(linha('Buscas e editais')).toMatchObject({ gratis: { valor: 'Ilimitados' }, pro: { valor: 'Ilimitados' } });
-    for (const r of [
-      'Botão "Abrir edital oficial"',
-      'Filtros (UF, município, valor, modalidade, prazo)',
-      'Filtros por raio em km e órgão comprador',
-      'Exportar a lista para planilha (CSV)',
-      'Editais parecidos abertos',
-    ]) {
-      expect(linha(r)).toMatchObject({ gratis: { valor: true }, pro: { valor: true } });
-    }
-  });
-  it('Pro = receber por e-mail: alertas, resumo semanal, Meu Radar e salvos', () => {
-    expect(linha('Alertas por e-mail às 7h (busca salva)')).toEqual({
-      recurso: 'Alertas por e-mail às 7h (busca salva)', gratis: { valor: false }, pro: { valor: `Até ${LIMITES_CONTA.pro.alertas}` },
-    });
-    expect(linha('Resumo semanal por e-mail (segunda, 7h)')).toEqual({
-      recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true },
-    });
-    expect(linha('Meu Radar')).toEqual({ recurso: 'Meu Radar', gratis: { valor: false }, pro: { valor: true } });
-    expect(linha('Editais salvos')).toEqual({ recurso: 'Editais salvos', gratis: { valor: false }, pro: { valor: 'Uso justo' } });
-    expect(linha('Preço de referência, quem venceu e resumo com IA').pro.emBreve).toBe(true);
-  });
-  it('a oferta vem primeiro na tabela (alertas e resumo semanal)', () => {
-    expect(LINHAS_PLANOS.slice(0, 2).map((l) => l.recurso)).toEqual([
-      'Alertas por e-mail às 7h (busca salva)',
-      'Resumo semanal por e-mail (segunda, 7h)',
-    ]);
-  });
-  it('nenhuma linha fala de limite por dia', () => {
-    for (const l of LINHAS_PLANOS) expect(l.recurso).not.toMatch(/por dia|limite/i);
-  });
-  it('nenhuma linha fala do Basic', () => {
-    for (const l of LINHAS_PLANOS) expect(Object.keys(l).sort()).toEqual(['gratis', 'pro', 'recurso']);
   });
 });
 

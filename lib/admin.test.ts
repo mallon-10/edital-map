@@ -54,5 +54,8 @@ describe('nomes', () => {
     expect(nomeDoRecurso('usou_recurso', 'exportou')).toBe('Exportou CSV');
     expect(nomeDoRecurso('quer_recurso', 'plano_pro')).toBe('Quero o Pro (lista de espera)');
     expect(nomeDoRecurso('usou_recurso', 'outro')).toBe('outro');
+    expect(nomeDoRecurso('usou_recurso', 'viu_precos')).toBe('Viu os preços (planos)');
+    expect(nomeDoRecurso('usou_recurso', 'escolheu_periodo')).toBe('Trocou mensal/anual (planos)');
+    expect(nomeDoRecurso('usou_recurso', 'clicou_assinar')).toBe('Clicou em Assinar o Pro (planos)');
   });
 });

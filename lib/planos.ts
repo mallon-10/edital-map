@@ -58,24 +58,6 @@ export function precoDoPlano(p: Pick<PlanoVendido, 'centavosMes' | 'centavosAno'
   };
 }
 
-/** Célula da tabela: texto, ✓ (true) ou — (false); `emBreve` marca o que ainda não existe. */
-export type Celula = { valor: string | boolean; emBreve?: boolean };
-export type LinhaPlanos = { recurso: string; gratis: Celula; pro: Celula };
-
-export const LINHAS_PLANOS: readonly LinhaPlanos[] = [
-  { recurso: 'Alertas por e-mail às 7h (busca salva)', gratis: { valor: false }, pro: { valor: 'Até 5' } },
-  { recurso: 'Resumo semanal por e-mail (segunda, 7h)', gratis: { valor: false }, pro: { valor: true } },
-  { recurso: 'Meu Radar', gratis: { valor: false }, pro: { valor: true } },
-  { recurso: 'Editais salvos', gratis: { valor: false }, pro: { valor: 'Uso justo' } },
-  { recurso: 'Buscas e editais', gratis: { valor: 'Ilimitados' }, pro: { valor: 'Ilimitados' } },
-  { recurso: 'Botão "Abrir edital oficial"', gratis: { valor: true }, pro: { valor: true } },
-  { recurso: 'Filtros (UF, município, valor, modalidade, prazo)', gratis: { valor: true }, pro: { valor: true } },
-  { recurso: 'Filtros por raio em km e órgão comprador', gratis: { valor: true }, pro: { valor: true } },
-  { recurso: 'Exportar a lista para planilha (CSV)', gratis: { valor: true }, pro: { valor: true } },
-  { recurso: 'Editais parecidos abertos', gratis: { valor: true }, pro: { valor: true } },
-  { recurso: 'Preço de referência, quem venceu e resumo com IA', gratis: { valor: false }, pro: { valor: true, emBreve: true } },
-];
-
 /** Com o pagamento desligado (lista de espera no lugar do "Assinar o Pro"). */
 export const AVISO_PLANOS =
   'Buscar, abrir editais, filtrar e exportar são grátis e sem limite. O pagamento do Pro ainda não abriu: entre na lista de espera e avisamos quando der para assinar os alertas e o resumo semanal.';

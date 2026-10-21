@@ -9,8 +9,11 @@ type Estado = { tipo: 'editando' } | { tipo: 'enviando' } | { tipo: 'erro'; mens
 
 const NOME: Record<PlanoPago, string> = { basic: 'Basic', pro: 'Pro' };
 
-/** "Quero o Basic" / "Quero o Pro": registra o interesse (quer_recurso) e abre o formulário da lista de espera. */
-export function BotaoQueroPlano({ plano, periodo = 'mensal', destaque = false }: { plano: PlanoPago; periodo?: Periodo; destaque?: boolean }) {
+/**
+ * "Quero o Basic" / "Quero o Pro": registra o interesse (quer_recurso) e abre o formulário da lista de espera.
+ * `classe` troca o visual do botão (a página de planos usa a pílula laranja).
+ */
+export function BotaoQueroPlano({ plano, periodo = 'mensal', destaque = false, classe }: { plano: PlanoPago; periodo?: Periodo; destaque?: boolean; classe?: string }) {
   const dialogo = useRef<HTMLDialogElement>(null);
   const titulo = useId();
   const campo = useId();
@@ -46,16 +49,19 @@ export function BotaoQueroPlano({ plano, periodo = 'mensal', destaque = false }:
           registrar('quer_recurso', { recurso: plano === 'basic' ? 'plano_basic' : 'plano_pro' });
           dialogo.current?.showModal();
         }}
-        className={`inline-flex h-11 items-center justify-center rounded-sm px-4 text-sm font-semibold ${
-          destaque ? 'bg-pin text-on-pin' : 'border border-line-strong bg-raised text-ink hover:bg-sunken'
-        }`}
+        className={
+          classe ??
+          `inline-flex h-11 items-center justify-center rounded-sm px-4 text-sm font-semibold ${
+            destaque ? 'bg-pin text-on-pin' : 'border border-line-strong bg-raised text-ink hover:bg-sunken'
+          }`
+        }
       >
         Quero o {NOME[plano]}
       </button>
       <dialog
         ref={dialogo}
         aria-labelledby={titulo}
-        className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[440px] overflow-y-auto rounded-lg border border-line bg-raised p-6 text-left text-ink shadow-[0_8px_32px_rgba(12,35,64,.18)] backdrop:bg-ink/40"
+        className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[440px] overflow-y-auto rounded-[22px] border border-line bg-raised p-6 text-left text-ink shadow-[0_8px_32px_rgba(12,35,64,.18)] backdrop:bg-ink/40"
       >
         <h2 id={titulo} className="text-lg font-bold">Plano {NOME[plano]}{periodo === 'anual' ? ' anual' : ''}</h2>
         {estado.tipo === 'pronto' ? (
@@ -66,7 +72,7 @@ export function BotaoQueroPlano({ plano, periodo = 'mensal', destaque = false }:
             <button
               type="button"
               onClick={() => dialogo.current?.close()}
-              className="h-11 self-start rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
+              className="h-11 self-start rounded-full border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
             >
               Fechar
             </button>
@@ -81,7 +87,7 @@ export function BotaoQueroPlano({ plano, periodo = 'mensal', destaque = false }:
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-11 rounded-sm border border-line-strong bg-raised px-3"
+              className="h-11 rounded-full border border-line-strong bg-raised px-3"
             />
             <div aria-hidden="true" className="hidden">
               <label htmlFor={`${campo}-site`}>Não preencha</label>
@@ -94,14 +100,14 @@ export function BotaoQueroPlano({ plano, periodo = 'mensal', destaque = false }:
               <button
                 type="submit"
                 disabled={estado.tipo === 'enviando'}
-                className="h-11 rounded-sm bg-pin px-4 text-sm font-semibold text-on-pin disabled:opacity-60"
+                className="h-11 rounded-full bg-pin px-4 text-sm font-semibold text-on-pin disabled:opacity-60"
               >
                 {estado.tipo === 'enviando' ? 'Enviando…' : 'Avisar quando abrir'}
               </button>
               <button
                 type="button"
                 onClick={() => dialogo.current?.close()}
-                className="h-11 rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
+                className="h-11 rounded-full border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
               >
                 Fechar
               </button>

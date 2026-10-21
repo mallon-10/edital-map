@@ -245,3 +245,38 @@ export function IconeGrade({ className }: P) {
     </Traco>
   );
 }
+
+export function IconeFiltro({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M22 3H2l8 9.46V19l4 2v-8.54z" />
+    </Traco>
+  );
+}
+
+export function IconeCalendario({ className }: P) {
+  return (
+    <Traco className={className}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </Traco>
+  );
+}
+
+export function IconeRadar({ className }: P) {
+  return (
+    <Traco className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <path d="m12 12 6.4-6.4" />
+    </Traco>
+  );
+}
+
+export function IconeCheck({ className }: P) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="m5 12 5 5L20 7" />
+    </svg>
+  );
+}

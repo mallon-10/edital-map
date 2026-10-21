@@ -9,8 +9,8 @@ import { CHAVE_CONSENTIMENTO, ID_GA4, ID_GOOGLE_ADS, lerConsentimento } from '@/
 
 /**
  * Tag do Google com Consent Mode v2: o padrão negado roda antes da tag; a escolha guardada (aceito/recusado) é aplicada
- * logo em seguida. Sem escolha, o aviso aparece no rodapé, acima da barra do celular. Fora de /alertas/sair (o token
- * de descadastro do e-mail fica no endereço). Só quando o endereço traz o parâmetro `t` o config leva page_location
+ * logo em seguida. Sem escolha, o aviso aparece no rodapé, acima da barra do celular, compacto (texto e botões numa
+ * faixa só quando cabem). Fora de /alertas/sair (o token de descadastro do e-mail fica no endereço). Só quando o endereço traz o parâmetro `t` o config leva page_location
  * sem ele; nos outros casos o config é o de sempre (um page_location fixo no config valeria para as navegações seguintes).
  */
 export const tagNaPagina = (caminho: string | null) => !caminho?.startsWith('/alertas/sair');
@@ -50,19 +50,19 @@ export function TagGoogle() {
         <div
           role="dialog"
           aria-label="Cookies"
-          className="fixed inset-x-3 bottom-[calc(var(--altura-barra,0px)+12px)] z-50 mx-auto flex max-w-[560px] flex-col gap-3 rounded-lg border border-line bg-raised p-4 text-[13px] text-ink shadow-[0_8px_32px_rgba(12,35,64,.18)] sm:flex-row sm:items-center lg:bottom-4"
+          className="fixed inset-x-3 bottom-[calc(var(--altura-barra,0px)+10px)] z-50 mx-auto flex max-w-[600px] flex-wrap items-center gap-x-3 gap-y-2 rounded-[22px] border border-line bg-raised py-2.5 pl-4 pr-2.5 text-[13px] text-ink shadow-[0_8px_32px_rgba(12,35,64,.18)] lg:bottom-4"
         >
-          <p className="flex-1">
+          <p className="min-w-0 flex-[1_1_200px] leading-snug">
             Usamos cookies do Google para medir nossos anúncios. Você escolhe.{' '}
             <Link href="/sobre#cookies" prefetch={false} className="font-semibold text-pin-strong hover:underline">
               Saiba mais
             </Link>
           </p>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => escolher('recusado')} className="h-10 flex-1 rounded-sm border border-line-strong bg-raised px-4 font-semibold hover:bg-sunken">
+          <div className="flex flex-auto gap-1.5 sm:flex-none">
+            <button type="button" onClick={() => escolher('recusado')} className="h-10 flex-1 rounded-full border border-line-strong bg-raised px-4 font-semibold hover:bg-sunken">
               Recusar
             </button>
-            <button type="button" onClick={() => escolher('aceito')} className="h-10 flex-1 rounded-sm border border-line-strong bg-raised px-4 font-semibold hover:bg-sunken">
+            <button type="button" onClick={() => escolher('aceito')} className="h-10 flex-1 rounded-full border border-line-strong bg-raised px-4 font-semibold hover:bg-sunken">
               Aceitar
             </button>
           </div>

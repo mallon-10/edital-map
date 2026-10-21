@@ -21,10 +21,18 @@ export type Recurso = (typeof RECURSOS)[number];
 const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro', 'plano_basic'];
 
 /** Uso dos recursos Pro (evento usou_recurso). */
-export const RECURSOS_USADOS = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'tentou_assinar', 'consultou_cnpj'] as const;
+export const RECURSOS_USADOS = [
+  'relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'tentou_assinar', 'consultou_cnpj',
+  'viu_precos', 'escolheu_periodo', 'clicou_assinar',
+] as const;
 export type RecursoUsado = (typeof RECURSOS_USADOS)[number];
 /** O navegador manda estes; `exportou` e `tentou_assinar` são gravados pelas próprias rotas (que contam o limite por IP). */
-const USOS_DO_NAVEGADOR: readonly string[] = ['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'baixou_documento'];
+const USOS_DO_NAVEGADOR: readonly string[] = [
+  'relacionados_clique', 'filtro_orgao', 'filtro_raio', 'baixou_documento', 'viu_precos', 'escolheu_periodo', 'clicou_assinar',
+];
+/** De onde veio o clique em "Assinar o Pro" na página de planos. */
+export const ORIGENS_ASSINAR = ['topo', 'precos', 'final'] as const;
+export type OrigemAssinar = (typeof ORIGENS_ASSINAR)[number];
 
 export const REGIOES: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['Sul', ['PR', 'RS', 'SC']],
@@ -92,6 +100,13 @@ export function validarEvento(corpo: unknown): Resultado<{ tipo: TipoEvento | Ti
   }
   if (tipo === 'usou_recurso') {
     if (typeof d.recurso !== 'string' || !USOS_DO_NAVEGADOR.includes(d.recurso)) return { ok: false, erro: 'recurso inválido' };
+    // Página de planos (spec 2026-10-21-planos-conversao-design.md): sem edital; período e origem do clique.
+    if (d.recurso === 'escolheu_periodo' || d.recurso === 'clicou_assinar') {
+      if (d.periodo !== 'mensal' && d.periodo !== 'anual') return { ok: false, erro: 'período inválido' };
+      if (d.recurso === 'escolheu_periodo') return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, periodo: d.periodo } } };
+      const origem = typeof d.origem === 'string' && (ORIGENS_ASSINAR as readonly string[]).includes(d.origem) ? d.origem : null;
+      return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, periodo: d.periodo, origem } } };
+    }
     if (d.recurso !== 'relacionados_clique' && d.recurso !== 'baixou_documento') return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso } } };
     if (!edital) return { ok: false, erro: 'edital inválido' };
     if (d.recurso === 'relacionados_clique') return { ok: true, valor: { tipo, detalhe: { recurso: d.recurso, edital } } };

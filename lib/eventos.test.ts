@@ -95,8 +95,33 @@ describe('validarEvento', () => {
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'resumo_ia', edital: SLUG } }).ok).toBe(false);
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: {} }).ok).toBe(false);
   });
-  it('os seis usos medidos e o limite de exportações por hora', () => {
-    expect(RECURSOS_USADOS).toEqual(['relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'tentou_assinar', 'consultou_cnpj']);
+  it('usou_recurso na página de planos: viu os preços, escolheu o período e clicou em assinar', () => {
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'viu_precos', edital: SLUG } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'viu_precos' } },
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'escolheu_periodo', periodo: 'anual' } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'escolheu_periodo', periodo: 'anual' } },
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'escolheu_periodo', periodo: 'semanal' } })).toEqual({
+      ok: false, erro: 'período inválido',
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'clicou_assinar', periodo: 'mensal', origem: 'topo' } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'clicou_assinar', periodo: 'mensal', origem: 'topo' } },
+    });
+    for (const origem of ['precos', 'final']) {
+      expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'clicou_assinar', periodo: 'anual', origem } }).ok).toBe(true);
+    }
+    // Origem desconhecida não derruba o evento: vai como null.
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'clicou_assinar', periodo: 'anual', origem: 'x'.repeat(50) } })).toEqual({
+      ok: true, valor: { tipo: 'usou_recurso', detalhe: { recurso: 'clicou_assinar', periodo: 'anual', origem: null } },
+    });
+    expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'clicou_assinar' } })).toEqual({ ok: false, erro: 'período inválido' });
+  });
+  it('os usos medidos e o limite de exportações por hora', () => {
+    expect(RECURSOS_USADOS).toEqual([
+      'relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'tentou_assinar', 'consultou_cnpj',
+      'viu_precos', 'escolheu_periodo', 'clicou_assinar',
+    ]);
     // tentou_assinar é gravado só pela rota /api/assinar (que conta as tentativas por IP).
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'tentou_assinar' } }).ok).toBe(false);
     expect(LIMITES.assinaturasPorHora).toBe(10);
