@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useId, type KeyboardEvent, type MouseEvent } from 'react';
+import { useId } from 'react';
 import { etiqueta, moedaCurta } from '@/lib/formato';
 import { assunto, nomeProprio } from '@/lib/texto';
 import type { EditalResumo } from '@/lib/tipos';
@@ -10,76 +10,54 @@ import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
 import { ESTILO_ETIQUETA, PONTO_ETIQUETA } from './estilos';
 import { PilulaRelevancia } from './Relevancia';
 import { TituloDestacado } from './TituloDestacado';
-import { useComputador } from './useComputador';
 
-type Props = { edital: EditalResumo; agora: Date; selecionado: boolean; aoSelecionar: () => void };
+type Props = { edital: EditalResumo; agora: Date; aoSelecionar: () => void };
 
 /**
- * Card da lista: título limpo (com os termos destacados), valor curto à direita, órgão · UF, etiqueta de prazo,
- * "Suspensa" e a relevância (com termo).
- * Computador (lg+): clicar seleciona (o resumo aparece na coluna da direita). Celular: tocar abre o edital.
- * Ctrl/⌘/Shift/Alt/botão do meio abrem em outra aba. Sem prefetch: o edital consulta o PNCP e o banco só quando abre.
- * No computador, Enter e Espaço selecionam (como o botão de antes; abrir é o "Ver edital" da coluna da direita); no celular Enter segue o link e o card escolhido é o `aria-current`.
- * O link cobre o card inteiro (::after); a pílula da relevância é um botão e fica fora do link, por cima dele:
- * tocar nela abre o aviso sem abrir nem selecionar o edital. O "Salvar" também fica fora do link, por cima dele.
+ * Card da lista da página inicial: título limpo (com os termos destacados), valor curto à direita, tipo · órgão · cidade/UF,
+ * etiqueta de prazo, "Suspensa" e a relevância (com termo). Clicar ou tocar abre o edital (Enter também); passar o mouse
+ * acende o ponto dele no mapa (aoSelecionar). Ctrl/⌘/Shift/Alt/botão do meio abrem em outra aba. Sem prefetch: o edital
+ * consulta o PNCP e o banco só quando abre. O link cobre o card inteiro (::after); a pílula da relevância e o "Salvar"
+ * ficam fora do link, por cima dele.
  */
-export function CardCompacto({ edital, agora, selecionado, aoSelecionar }: Props) {
+export function CardCompacto({ edital, agora, aoSelecionar }: Props) {
   const et = etiqueta(edital, agora);
   const valor = moedaCurta(edital.valor_estimado);
   const { titulo, tipo } = assunto(edital.objeto);
-  const computador = useComputador();
   const idPrazo = useId();
-
-  function clicar(e: MouseEvent<HTMLAnchorElement>) {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    if (window.matchMedia('(min-width: 1024px)').matches) {
-      e.preventDefault();
-      aoSelecionar();
-    }
-  }
-
-  function tecla(e: KeyboardEvent<HTMLAnchorElement>) {
-    if ((e.key !== ' ' && e.key !== 'Enter') || !computador) return;
-    e.preventDefault();
-    aoSelecionar();
-  }
+  const lugar = edital.municipio_nome ? `${nomeProprio(edital.municipio_nome)}/${edital.uf}` : edital.uf;
 
   return (
     <div
-      className={`relative flex w-full shrink-0 flex-col gap-2 rounded-md border bg-raised p-3.5 text-left transition-colors ${
-        selecionado ? 'border-line lg:border-ink lg:shadow-[0_0_0_1px_#0c2340]' : 'border-line hover:border-line-strong'
-      }`}
+      onMouseEnter={aoSelecionar}
+      className="relative flex w-full shrink-0 flex-col gap-2.5 rounded-[20px] bg-raised p-[18px] text-left transition-shadow hover:shadow-[0_0_0_1px_#847c6a] lg:rounded-[22px] lg:px-6 lg:py-5"
     >
       <Link
         href={`/edital/${edital.slug}`}
         prefetch={false}
-        onClick={clicar}
-        onKeyDown={tecla}
-        // Seleção só existe no computador; no celular tocar abre o edital.
-        aria-current={computador && selecionado ? 'true' : undefined}
         aria-describedby={idPrazo}
         // link-esticado (globals.css): o contorno do foco vai no ::after, que cobre o card inteiro.
-        className="link-esticado flex flex-col gap-2 after:absolute after:inset-0 after:rounded-md"
+        className="link-esticado flex flex-col gap-2 after:absolute after:inset-0 after:rounded-[20px] lg:after:rounded-[22px]"
       >
-        <span className="flex items-start justify-between gap-3">
-          <span className="line-clamp-3 text-[14px] font-semibold leading-5">
+        <span className="flex items-start justify-between gap-4">
+          <span className="line-clamp-3 text-[17px] font-semibold leading-[23px] lg:text-[19px] lg:leading-[26px]">
             <TituloDestacado texto={titulo} termos={edital.destaques} />
           </span>
           {valor ? (
-            <span className="shrink-0 whitespace-nowrap font-mono text-[13px] font-medium">{valor}</span>
+            <span className="shrink-0 whitespace-nowrap font-mono text-[15px] font-medium lg:text-[17px]">{valor}</span>
           ) : (
-            <span className="w-16 shrink-0 text-right text-[11px] leading-4 text-ink-muted">Valor não informado</span>
+            <span className="w-16 shrink-0 text-right text-[12px] leading-4 text-ink-muted">Valor não informado</span>
           )}
         </span>
-        <span className="truncate text-xs text-ink-muted">
-          {[tipo, nomeProprio(edital.orgao_nome), edital.uf].filter(Boolean).join(' · ')}
+        <span className="line-clamp-2 text-[14px] leading-5 text-ink-muted lg:text-[15px] lg:leading-[22px]">
+          {[tipo, nomeProprio(edital.orgao_nome), lugar].filter(Boolean).join(' · ')}
         </span>
-        {edital.onde === 'itens' ? <span className="text-xs text-rio">Encontrado nos itens</span> : null}
+        {edital.onde === 'itens' ? <span className="text-[13px] text-rio">Encontrado nos itens</span> : null}
       </Link>
       <span className="flex flex-wrap items-center gap-1.5">
         {/* Prazo e situação: fora do link (por causa da pílula ao lado), mas lidos com ele (aria-describedby). */}
         <span id={idPrazo} className="inline-flex flex-wrap items-center gap-1.5">
-          <span className={`inline-flex w-fit items-center gap-1.5 rounded-xs px-2 py-0.5 text-xs font-semibold ${ESTILO_ETIQUETA[et.tom]}`}>
+          <span className={`inline-flex h-[26px] w-fit items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold ${ESTILO_ETIQUETA[et.tom]}`}>
             <span className={`size-[7px] rounded-full ${PONTO_ETIQUETA[et.tom]}`} aria-hidden="true" />
             {et.texto}
           </span>

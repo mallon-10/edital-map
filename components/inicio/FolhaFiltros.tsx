@@ -10,8 +10,6 @@ type Props = {
   aberta: boolean;
   filtros: FiltrosTela;
   pontos: PontoMapa[];
-  atualizadoEm: string | null;
-  agora: Date;
   aoAplicar: (f: FiltrosTela) => void;
   aoFechar: () => void;
 };
@@ -27,7 +25,7 @@ export function FolhaFiltros({ aberta, ...resto }: Props) {
   return aberta ? <ConteudoFolha {...resto} /> : null;
 }
 
-function ConteudoFolha({ filtros, pontos, atualizadoEm, agora, aoAplicar, aoFechar }: Omit<Props, 'aberta'>) {
+function ConteudoFolha({ filtros, pontos, aoAplicar, aoFechar }: Omit<Props, 'aberta'>) {
   const [rascunho, setRascunho] = useState<FiltrosTela>(filtros);
   const [total, setTotal] = useState<number | null>(null);
   const folha = useRef<HTMLDivElement>(null);
@@ -111,7 +109,7 @@ function ConteudoFolha({ filtros, pontos, atualizadoEm, agora, aoAplicar, aoFech
         </button>
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-4 py-4">
-        <Chips filtros={rascunho} pontos={pontos} atualizadoEm={atualizadoEm} agora={agora} aoMudar={(f) => setRascunho(normalizarTela(f))} emFolha />
+        <Chips filtros={rascunho} pontos={pontos} aoMudar={(f) => setRascunho(normalizarTela(f))} emFolha />
         <div className="flex flex-col gap-2">
           <p className="text-[13px] font-semibold text-ink-muted">Prazo</p>
           <div className="flex gap-1 rounded-md bg-sunken p-1" role="group" aria-label="Prazo">

@@ -2,6 +2,7 @@ import 'server-only';
 import type { Metadata } from 'next';
 import { caminhoDaPagina, descricaoDaPagina, type Pagina, tituloDaPagina } from '../seo/textos';
 import type { EditalResumo, FiltrosBusca } from '../tipos';
+import { ATALHOS } from '../inicio';
 import { escolherCidades, type CidadePagina } from '../seo/municipios';
 import { OPEN_GRAPH_BASE } from '../seo/site';
 import { abertosPorUf, buscarEditais, municipiosAbertos } from './consultas';
@@ -11,6 +12,26 @@ const BASE: FiltrosBusca = {
 };
 
 export type DadosDaPagina = { total: number | null; editais: EditalResumo[]; porUf: Record<string, number> | null; cidades: CidadePagina[] };
+
+/** Espera máxima pela contagem dos atalhos: a página inicial não fica presa a ela (sem número, o atalho continua). */
+const ESPERA_ATALHOS_MS = 1500;
+
+/**
+ * Editais abertos no Brasil de cada atalho da página inicial (lib/inicio.ts), pela mesma contagem das páginas de assunto
+ * (abertosPorUf, cache de 5 min). Falhou ou demorou: null para aquele atalho.
+ */
+export async function totaisDosAtalhos(): Promise<Record<string, number | null>> {
+  const limite = new Promise<null>((r) => setTimeout(() => r(null), ESPERA_ATALHOS_MS));
+  const totais = await Promise.all(
+    ATALHOS.map((a) =>
+      Promise.race([
+        abertosPorUf(a.termo).then((porUf) => Object.values(porUf).reduce((s, n) => s + n, 0)),
+        limite,
+      ]).catch(() => null),
+    ),
+  );
+  return Object.fromEntries(ATALHOS.map((a, i) => [a.slug, totais[i]]));
+}
 
 /** Cidades com página (lib/seo/municipios.ts). Banco fora: nenhuma. */
 export async function cidadesComPagina(): Promise<CidadePagina[]> {

@@ -112,3 +112,125 @@ export function IconeMais({ className }: P) {
     </svg>
   );
 }
+
+/** Traço do Lucide (1.75), para os ícones do visual novo. */
+function Traco({ className, children }: P & { children: React.ReactNode }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+
+export function IconeEmail({ className }: P) {
+  return (
+    <Traco className={className}>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-10 5L2 7" />
+    </Traco>
+  );
+}
+
+export function IconeFechar({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </Traco>
+  );
+}
+
+export function IconeExpandir({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+    </Traco>
+  );
+}
+
+export function IconeRecolher({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" />
+    </Traco>
+  );
+}
+
+export function IconeBaixar({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M12 15V3" />
+    </Traco>
+  );
+}
+
+export function IconeGrafico({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M3 3v18h18" />
+      <path d="m7 15 4-4 3 3 5-6" />
+    </Traco>
+  );
+}
+
+export function IconeChevron({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="m9 18 6-6-6-6" />
+    </Traco>
+  );
+}
+
+export function IconeCamisa({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+    </Traco>
+  );
+}
+
+export function IconeCapacete({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M2 18a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v2z" />
+      <path d="M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5" />
+      <path d="M4 15v-3a6 6 0 0 1 6-6" />
+      <path d="M14 6a6 6 0 0 1 6 6v3" />
+    </Traco>
+  );
+}
+
+export function IconeBrilho({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z" />
+    </Traco>
+  );
+}
+
+export function IconeMonitor({ className }: P) {
+  return (
+    <Traco className={className}>
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </Traco>
+  );
+}
+
+export function IconeTalheres({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7" />
+    </Traco>
+  );
+}
+
+export function IconeCruz({ className }: P) {
+  return (
+    <Traco className={className}>
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+      <path d="M12 8v8M8 12h8" />
+    </Traco>
+  );
+}

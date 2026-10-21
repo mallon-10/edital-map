@@ -9,18 +9,20 @@ import { Logo } from './Logo';
 import { FaixaOferta } from './FaixaOferta';
 import { MenuConta } from './conta/MenuConta';
 
-const ABA = 'rounded-sm px-3 py-1.5 text-sm font-semibold';
+const ABA = 'rounded-full px-4 py-2 text-sm font-semibold';
 
 type Props = {
   /** Plano do visitante calculado no servidor (inicial, edital, licitações, planos, radar). Sem ele, pergunta a /api/plano uma vez. */
   plano?: PlanoDaPagina | null;
+  /** A página mostra a oferta do Pro em outro lugar (a inicial: embaixo do cartão do topo). */
+  semOferta?: boolean;
 };
 
 /**
  * Computador: logo, abas (Mapa, Meu Radar, Alertas, Planos), Sobre, conta e "Assinar Pro". Celular: logo, conta e "Assinar" (Mapa, Lista,
- * Alertas e Planos ficam na barra de baixo). Logo abaixo, a faixa da oferta (alertas por e-mail) para quem não é Pro nem o dono.
+ * Alertas e Planos ficam na barra de baixo). Logo abaixo, o cartão da oferta (alertas por e-mail) para quem não é Pro nem o dono.
  */
-export function Cabecalho({ plano }: Props) {
+export function Cabecalho({ plano, semOferta = false }: Props) {
   const caminho = usePathname() ?? '/';
   const daLoja = usePlano();
   useEffect(() => {
@@ -44,10 +46,10 @@ export function Cabecalho({ plano }: Props) {
   const p = plano ?? daLoja;
   const pago = Boolean(p && !p.dono && (p.plano === 'basic' || p.plano === 'pro'));
   const ativa = (href: string) => (href === '/' ? caminho === '/' : caminho === href || caminho.startsWith(href + '/'));
-  const estilo = (href: string) => `${ABA} ${ativa(href) ? 'bg-pin-soft text-pin-strong' : 'text-ink hover:bg-sunken'}`;
+  const estilo = (href: string) => `${ABA} ${ativa(href) ? 'bg-raised text-ink shadow-[0_0_0_1px_#ddd6c6]' : 'text-ink hover:bg-raised'}`;
   return (
     <>
-      <header className="flex shrink-0 items-center gap-2 border-b border-line bg-raised px-3 py-3 lg:gap-8 lg:px-6">
+      <header className="flex shrink-0 items-center gap-2 bg-surface px-4 py-3 lg:gap-8 lg:px-6 lg:py-4">
         <Link href="/" aria-label="Edital Map, página inicial" className="shrink-0">
           <Logo />
         </Link>
@@ -73,7 +75,7 @@ export function Cabecalho({ plano }: Props) {
           {pago ? (
             <Link
               href="/assinatura"
-              className="inline-flex h-9 shrink-0 items-center rounded-sm border border-line-strong bg-raised px-2.5 text-[13px] font-semibold text-ink hover:bg-sunken lg:h-10 lg:px-4 lg:text-sm"
+              className="inline-flex h-10 shrink-0 items-center rounded-full border border-line-strong bg-raised px-3.5 text-[13px] font-semibold text-ink hover:bg-sunken lg:h-11 lg:px-5 lg:text-sm"
             >
               <span className="lg:hidden">Assinatura</span>
               <span className="hidden lg:inline">Minha assinatura</span>
@@ -81,7 +83,7 @@ export function Cabecalho({ plano }: Props) {
           ) : (
             <Link
               href="/planos"
-              className="inline-flex h-9 shrink-0 items-center rounded-sm bg-pin px-2.5 text-[13px] font-semibold text-on-pin lg:h-10 lg:px-4 lg:text-sm"
+              className="inline-flex h-10 shrink-0 items-center rounded-full bg-pin px-3.5 text-[13px] font-semibold text-on-pin lg:h-11 lg:px-5 lg:text-sm"
             >
               <span className="lg:hidden">Assinar</span>
               <span className="hidden lg:inline">Assinar Pro</span>
@@ -89,7 +91,11 @@ export function Cabecalho({ plano }: Props) {
           )}
         </div>
       </header>
-      {mostrarOferta(p, caminho) ? <FaixaOferta /> : null}
+      {!semOferta && mostrarOferta(p, caminho) ? (
+        <div className="px-4 pb-1 lg:px-6">
+          <FaixaOferta className="mx-auto max-w-[1200px]" />
+        </div>
+      ) : null}
     </>
   );
 }

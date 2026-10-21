@@ -9,20 +9,25 @@ import { buscaDoCampo, filtrosAtivos, normalizarTela, ordemEfetiva, paraParametr
 import { PainelCnpj } from '@/components/cnpj/PainelCnpj';
 import { consultarCnpj, type RespostaCnpj } from '@/lib/cliente/cnpj';
 import { medir } from '@/lib/cliente/medir';
+import { moedaCurta } from '@/lib/formato';
+import { tituloDaBusca } from '@/lib/inicio';
 import { urlDosPontos } from '@/lib/pontosMapa';
 import { resumirPontos } from '@/lib/painel';
 import { temTermo } from '@/lib/relevancia/termos';
 import type { Cidade, EditalResumo, FiltrosTela, Ordem, PontoMapa, ResultadoBusca } from '@/lib/tipos';
 import { mesmaBusca, telaPelaRolagem, urlDaBusca, type EstadoTela, type Tela, type Vista } from '@/lib/urlBusca';
 import { BarraCelular } from './BarraCelular';
+import { FaixaOferta } from './FaixaOferta';
 import { Mapa } from './Mapa';
-import { AlternadorVista } from './inicio/AlternadorVista';
+import { Atalhos } from './inicio/Atalhos';
 import { BuscaPrincipal } from './inicio/BuscaPrincipal';
-import { CartaoSelecionado } from './inicio/CartaoSelecionado';
+import { CartaoTopo } from './inicio/CartaoTopo';
 import { Chips } from './inicio/Chips';
 import { ColunaLista } from './inicio/ColunaLista';
 import { FolhaFiltros } from './inicio/FolhaFiltros';
+import { IconeExpandir, IconeRecolher } from './inicio/Icones';
 import { OndeMaisCompram } from './inicio/OndeMaisCompram';
+import { ValorEmJogo } from './inicio/ValorEmJogo';
 
 const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
 const ERRO_LISTA = 'Não foi possível buscar agora. Confira a conexão e tente de novo.';
@@ -75,12 +80,16 @@ type Props = {
   inicial: ResultadoBusca;
   agoraInicial: string;
   atualizadoEm: string | null;
+  /** Cartão da oferta do Pro embaixo do cartão do topo (mostrarOferta, decidido no servidor). */
+  oferta: boolean;
+  /** Editais abertos no Brasil de cada atalho de assunto (slug → total ou null). */
+  totaisAtalhos: Record<string, number | null>;
 };
 
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
 type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'tela' | 'selecionadoId'>;
 
-export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInicial, atualizadoEm }: Props) {
+export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInicial, atualizadoEm, oferta, totaisAtalhos }: Props) {
   const [filtros, setFiltros] = useState<FiltrosTela>(filtrosIniciais);
   // Celular: a parte da página pedida por último (botão da barra, cidade escolhida ou aviso na lista), guardada
   // no endereço (`tela=lista` abre a página rolada até a lista). Só muda por ação explícita, nunca pela rolagem.
@@ -114,6 +123,10 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
   const [pontosProntos, setPontosProntos] = useState(false);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(inicial.editais[0]?.id ?? null);
   const [folhaAberta, setFolhaAberta] = useState(false);
+  // Mapa em tela cheia (botão no canto do mapa; Esc ou o mesmo botão saem).
+  const [mapaCheio, setMapaCheio] = useState(false);
+  // Erro do Exportar (o botão fica no cartão do topo, o aviso na lista); some quando a busca muda.
+  const [erroExportar, setErroExportar] = useState<string | null>(null);
   // Falso até o primeiro filtro mudado pelo usuário: o foco do mapa na abertura (link direto, volta do edital) não anima.
   const [animarFoco, setAnimarFoco] = useState(false);
   // Sede de cada município já visto no mapa: centro do círculo do raio (a cidade escolhida sempre veio de um ponto do mapa).
@@ -142,6 +155,12 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
   }, []);
 
   const painel = useMemo(() => resumirPontos(pontos), [pontos]);
+  const parametrosBusca = paraParametros(filtros, { ordem }).toString();
+  useEffect(() => setErroExportar(null), [parametrosBusca]);
+  const valorTotal = moedaCurta(painel.valorTotal);
+  const resumo = pontosProntos
+    ? `${valorTotal ? `${valorTotal} em valor estimado` : 'Valor não informado'} · ${painel.ufs} ${painel.ufs === 1 ? 'UF' : 'UFs'}`
+    : 'Carregando o resumo…';
   const selecionado = resultado.editais.find((e) => e.id === selecionadoId) ?? resultado.editais[0] ?? null;
   const comTermo = temTermo(filtros.q);
   const naLista = vista === 'lista';
@@ -275,6 +294,22 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     };
   }, []);
 
+  // Mapa em tela cheia: a página de baixo não rola e Esc sai.
+  useEffect(() => {
+    if (!mapaCheio) return;
+    const raiz = document.documentElement;
+    const overflow = raiz.style.overflow;
+    raiz.style.overflow = 'hidden';
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMapaCheio(false);
+    };
+    document.addEventListener('keydown', tecla);
+    return () => {
+      raiz.style.overflow = overflow;
+      document.removeEventListener('keydown', tecla);
+    };
+  }, [mapaCheio]);
+
   // Volta do edital: devolve a página e a lista às posições em que estavam (a lista, quando estiver visível).
   useEffect(() => {
     if (rolagemPaginaPendente.current !== null) {
@@ -364,9 +399,15 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
 
   const fecharFolha = useCallback(() => setFolhaAberta(false), []);
 
-  /** Computador: o card selecionado aparece no resumo da direita (no celular, tocar no card abre o edital). */
+  /** Mouse sobre um card (computador): o ponto dele acende no mapa. Clicar abre o edital. */
   function selecionar(e: EditalResumo) {
     setSelecionadoId(e.id);
+  }
+
+  /** "Ver os N editais" do cartão do topo: leva à lista (no celular, também acende Lista na barra). */
+  function verEditais() {
+    if (ehCelular()) irPara('lista', filtros);
+    else inicioLista.current?.scrollIntoView({ behavior: comportamento(), block: 'start' });
   }
 
   /**
@@ -387,16 +428,13 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     if (v === 'mapa' && (erroMapa !== null || !pontosProntos)) void carregarMapa(filtrosDoMapa.current);
   }
 
-  /** Barra do celular: Mapa leva à vista Mapa (no topo); Lista leva à vista Lista (no começo da lista). */
+  /** Barra do celular: Mapa leva ao topo (e liga o mapa se estava na vista Lista); Lista rola até o começo da lista. */
   function aoBarra(t: Tela) {
     if (t === 'mapa') {
       if (vista !== 'mapa') mudarVista('mapa');
       else irPara('mapa', filtros);
-    } else if (vista !== 'lista') {
-      mudarVista('lista');
     } else {
-      setAtivoBarra('lista');
-      rolarPara('lista');
+      irPara('lista', filtros);
     }
   }
 
@@ -438,7 +476,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Espaço entre a busca e os chips só a partir de lg: no celular os chips ficam escondidos (estão na folha). */}
-      <div className="shrink-0 px-4 pt-3 lg:space-y-3 lg:px-6 lg:pt-5">
+      <div className="mx-auto w-full max-w-[1200px] shrink-0 px-4 pt-1 lg:space-y-3 lg:px-6 lg:pt-2">
         <BuscaPrincipal
           q={filtros.q}
           uf={filtros.uf}
@@ -452,9 +490,9 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
         {cnpj ? (
           <div className="relative mt-3">
             {cnpj.estado === 'carregando' ? (
-              <p role="status" className="rounded-md bg-sunken p-4 text-sm text-ink-muted">Consultando o CNPJ na Receita…</p>
+              <p role="status" className="rounded-[22px] bg-raised p-5 text-sm text-ink-muted">Consultando o CNPJ na Receita…</p>
             ) : cnpj.estado === 'erro' ? (
-              <p role="alert" className="rounded-md bg-pin-soft p-4 pr-12 text-sm text-pin-strong">{cnpj.erro}</p>
+              <p role="alert" className="rounded-[22px] bg-pin-soft p-5 pr-12 text-sm text-pin-strong">{cnpj.erro}</p>
             ) : (
               <PainelCnpj
                 key={cnpj.r.empresa.razao}
@@ -469,7 +507,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
               type="button"
               onClick={() => setCnpj(null)}
               aria-label="Fechar"
-              className="absolute right-2 top-2 flex size-9 items-center justify-center rounded-sm text-lg text-ink-muted hover:bg-raised"
+              className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-full text-lg text-ink-muted hover:bg-sunken"
             >
               ×
             </button>
@@ -477,80 +515,94 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
         ) : null}
         {/* Celular: os chips ficam na folha de Filtros. */}
         <div className="hidden lg:block">
-          <Chips filtros={filtros} pontos={pontos} atualizadoEm={atualizadoEm} agora={agora} aoMudar={aplicar} />
-        </div>
-        {/* Lista | Mapa no topo dos resultados, nas duas larguras (vai no endereço). */}
-        <div className="mt-3 flex lg:mt-0 lg:justify-end">
-          <AlternadorVista vista={vista} aoMudar={mudarVista} />
+          <Chips filtros={filtros} pontos={pontos} aoMudar={aplicar} />
         </div>
       </div>
-      {/* Celular: uma página que rola, com o mapa (altura fixa) em cima e a lista embaixo, no fluxo.
-          Computador: três colunas (lista, mapa, resumo); a página rola inteira e o mapa e o resumo ficam presos na tela.
-          Vista Lista: sem o mapa; no computador, a lista larga e o resumo à direita. */}
-      <main
-        className={`flex flex-col pt-3 lg:grid lg:items-start lg:gap-5 lg:px-6 lg:pb-6 lg:pt-4 ${
-          naLista ? 'lg:grid-cols-[minmax(0,1fr)_300px]' : 'lg:grid-cols-[360px_minmax(0,1fr)_300px]'
-        }`}
-      >
-        <h1 className="sr-only">{naLista ? 'Licitações abertas no Brasil' : 'Licitações abertas no Brasil, no mapa'}</h1>
-        <section
-          aria-label="Lista de editais"
-          id="lista-editais"
-          ref={inicioLista}
-          className="flex scroll-mt-3 flex-col px-4 pb-4 pt-4 lg:p-0"
+      {/* Uma página que rola, nas duas larguras: o cartão do topo (resumo e mapa), a oferta, os assuntos e a lista.
+          Computador: a lista e, ao lado, o valor e "Onde mais compram" (presos na tela). Vista Lista: o cartão sem o mapa. */}
+      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 pb-8 pt-4 lg:gap-7 lg:px-6 lg:pt-5">
+        <CartaoTopo
+          titulo={tituloDaBusca(filtros)}
+          total={resultado.total}
+          carregando={carregandoLista}
+          resumo={resumo}
+          atualizadoEm={atualizadoEm}
+          agora={agora}
+          parametrosBusca={parametrosBusca}
+          aoErroExportar={setErroExportar}
+          aoVerEditais={verEditais}
+          aoMostrarMapa={() => mudarVista('mapa')}
         >
-          <ColunaLista
-            resultado={resultado}
-            agora={agora}
-            painel={painel}
-            painelPronto={pontosProntos}
-            vista={vista}
-            filtros={filtros}
-            selecionadoId={selecionado?.id ?? null}
-            carregandoLista={carregandoLista}
-            erro={erroLista}
-            pagina={pagina}
-            ordem={ordemEfetiva(ordem, comTermo)}
-            temTermo={comTermo}
-            parametrosBusca={paraParametros(filtros, { ordem }).toString()}
-            listaRef={listaRef}
-            aoRolar={(topo) => {
-              rolagem.current = topo;
-            }}
-            aoTirarCidade={() => aplicar({ ...filtros, cidade: null })}
-            aoSelecionar={selecionar}
-            aoMudarPrazo={(seteDias) => aplicar({ ...filtros, seteDias })}
-            aoMudarOrdem={mudarOrdem}
-            aoIrPagina={irParaPagina}
-            aoAplicar={aplicar}
-          />
-        </section>
-        {/* Vista Mapa. Celular: primeiro na página, com 58svh (pinça e um dedo mexem no mapa; fora dele, arrastar rola a página). */}
-        {naLista ? null : (
-          <section aria-label="Mapa" className="relative order-first h-[58svh] min-h-0 shrink-0 overflow-hidden bg-raised lg:sticky lg:top-4 lg:order-none lg:h-[calc(100dvh-2rem)] lg:rounded-lg lg:border lg:border-line">
-            <Mapa pontos={pontos} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} raio={raioMapa} sede={sedeMapa} animarFoco={animarFoco} />
-            {/* No celular a observação fica embaixo do mapa, no começo da lista. */}
-            <p className="pointer-events-none absolute bottom-2 left-2 z-10 hidden rounded-sm bg-raised/85 px-2 py-1 text-xs text-ink-muted lg:block">
-              O ponto é a sede do órgão, não o local de entrega.
-            </p>
-            {erroMapa ? (
-              <p role="alert" className="absolute left-3 top-3 z-10 max-w-[calc(100%-4.5rem)] rounded-sm bg-pin-soft px-3 py-2 text-xs text-pin-strong">
-                {erroMapa}
+          {/* Celular: em cima no cartão, com 46svh (pinça e um dedo mexem no mapa; fora dele, arrastar rola a página).
+              Computador: a metade direita do cartão. Tela cheia: o mapa cobre a página. */}
+          {naLista ? null : (
+            <section
+              aria-label="Mapa"
+              className={
+                mapaCheio
+                  ? 'fixed inset-0 z-50 h-dvh overflow-hidden bg-[#f8f6f0]'
+                  : 'relative order-first h-[46svh] min-h-[280px] shrink-0 overflow-hidden bg-[#f8f6f0] lg:order-last lg:h-auto lg:min-h-[460px] lg:flex-[1_1_56%]'
+              }
+            >
+              <Mapa pontos={pontos} destaque={selecionado?.codigo_ibge ?? null} aoEscolherCidade={escolherCidade} raio={raioMapa} sede={sedeMapa} animarFoco={animarFoco} />
+              <button
+                type="button"
+                onClick={() => setMapaCheio((v) => !v)}
+                aria-label={mapaCheio ? 'Sair da tela cheia' : 'Abrir o mapa em tela cheia'}
+                title={mapaCheio ? 'Sair da tela cheia (Esc)' : 'Tela cheia'}
+                className="absolute left-3 top-3 z-10 flex size-11 items-center justify-center rounded-full border border-line bg-raised text-ink hover:bg-sunken lg:left-5 lg:top-5 lg:size-[52px]"
+              >
+                {mapaCheio ? <IconeRecolher className="size-5" /> : <IconeExpandir className="size-5" />}
+              </button>
+              {/* No celular a observação fica embaixo do mapa, no começo da lista. */}
+              <p className="pointer-events-none absolute bottom-10 left-3 z-10 hidden rounded-full bg-raised/90 px-3 py-1 text-xs text-ink-muted lg:block">
+                O ponto é a sede do órgão, não o local de entrega.
               </p>
-            ) : null}
+              {erroMapa ? (
+                <p role="alert" className="absolute left-16 top-3 z-10 max-w-[calc(100%-8rem)] rounded-[14px] bg-pin-soft px-3 py-2 text-xs text-pin-strong lg:left-20 lg:top-5">
+                  {erroMapa}
+                </p>
+              ) : null}
+            </section>
+          )}
+        </CartaoTopo>
+        {oferta ? <FaixaOferta /> : null}
+        <Atalhos totais={totaisAtalhos} q={filtros.q} uf={filtros.uf} />
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
+          <section aria-label="Lista de editais" id="lista-editais" ref={inicioLista} className="flex scroll-mt-3 flex-col">
+            <ColunaLista
+              resultado={resultado}
+              agora={agora}
+              vista={vista}
+              filtros={filtros}
+              carregandoLista={carregandoLista}
+              erro={erroLista}
+              erroExportar={erroExportar}
+              pagina={pagina}
+              ordem={ordemEfetiva(ordem, comTermo)}
+              temTermo={comTermo}
+              listaRef={listaRef}
+              aoRolar={(topo) => {
+                rolagem.current = topo;
+              }}
+              aoTirarCidade={() => aplicar({ ...filtros, cidade: null })}
+              aoSelecionar={selecionar}
+              aoMudarPrazo={(seteDias) => aplicar({ ...filtros, seteDias })}
+              aoMudarOrdem={mudarOrdem}
+              aoIrPagina={irParaPagina}
+              aoAplicar={aplicar}
+            />
           </section>
-        )}
-        <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100dvh-2rem)]">
-          {!naLista && selecionado ? <CartaoSelecionado edital={selecionado} agora={agora} /> : null}
-          <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
-        </aside>
+          <aside className="hidden flex-col gap-5 lg:sticky lg:top-4 lg:flex">
+            <ValorEmJogo valor={valorTotal} total={painel.total} carregando={!pontosProntos} />
+            <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
+          </aside>
+        </div>
       </main>
       <FolhaFiltros
         aberta={folhaAberta}
         filtros={filtros}
         pontos={pontos}
-        atualizadoEm={atualizadoEm}
-        agora={agora}
         // Aplicar sem mudar nada só fecha (não refaz a busca).
         aoAplicar={(f) => {
           if (!mesmaBusca(f, filtros)) aplicar(f);

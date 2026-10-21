@@ -59,15 +59,17 @@ describe('celular', () => {
     for (const a of daInicial) expect(a).toContain('prefetch={false}');
   });
 
-  it('página inicial no celular: uma página que rola, mapa de altura fixa em cima e a lista no fluxo embaixo', () => {
-    // A página cresce com a lista em todas as larguras (no computador o mapa e o resumo ficam presos, sticky).
+  it('página inicial no celular: uma página que rola, o mapa em cima no cartão do topo e a lista no fluxo embaixo', () => {
+    // A página cresce com a lista em todas as larguras (visual novo de 21/10/2026: o mapa fica no cartão do topo).
     const pagina = ler('app/page.tsx');
     expect(pagina).toContain('className="flex flex-col"');
     expect(pagina).not.toMatch(/h-dvh/);
     const explorador = ler('components/Explorador.tsx');
-    // O mapa vem primeiro no celular, com 58svh; no computador volta à coluna do meio, na altura da grade.
-    expect(explorador).toMatch(/aria-label="Mapa" className="[^"]*\border-first\b[^"]*\blg:order-none\b/);
-    expect(explorador).toMatch(/aria-label="Mapa" className="[^"]*\bh-\[58svh\][^"]*\blg:sticky\b[^"]*\blg:h-\[calc\(100dvh-2rem\)\]/);
+    // O mapa vem primeiro no cartão no celular, com 46svh; no computador vai para a metade direita do cartão.
+    expect(explorador).toMatch(/'relative order-first h-\[46svh\][^']*\blg:order-last\b/);
+    // Tela cheia: o mapa cobre a página (Esc sai).
+    expect(explorador).toContain("'fixed inset-0 z-50 h-dvh");
+    expect(explorador).toContain("if (e.key === 'Escape') setMapaCheio(false);");
     // A lista não cobre o mapa (nada de painel fixo ou absoluto) e é o alvo do botão Lista.
     const lista = explorador.match(/<section\s+aria-label="Lista de editais"[^>]*>/)?.[0] ?? '';
     expect(lista).not.toBe('');
@@ -128,10 +130,11 @@ describe('celular', () => {
     expect(pagina).toContain('bottom-[var(--altura-barra)]');
     expect(pagina).toContain('variante="barra"');
   });
-  it('card da lista: no computador Enter e Espaço só selecionam; no celular Enter segue o link', () => {
+  it('card da lista: clicar, tocar ou Enter abre o edital em todas as larguras; o mouse por cima acende o ponto no mapa', () => {
     const card = ler('components/inicio/CardCompacto.tsx');
-    expect(card).toMatch(/e\.key !== ' ' && e\.key !== 'Enter'/);
-    expect(card).toContain('!computador');
+    expect(card).toContain('href={`/edital/${edital.slug}`}');
+    expect(card).toContain('onMouseEnter={aoSelecionar}');
+    expect(card).not.toContain('preventDefault');
   });
 
   it('margens seguras laterais (iPhone deitado): corpo e barras fixas respeitam esquerda e direita', () => {
@@ -146,19 +149,16 @@ describe('celular', () => {
     expect(ler('components/inicio/ColunaLista.tsx')).toContain('<div className="flex flex-wrap items-center gap-x-2 gap-y-2">');
   });
 
-  it('alternador Lista | Mapa no topo dos resultados; o mapa só existe na vista Mapa', () => {
+  it('o mapa fica no cartão do topo e só existe na vista Mapa; na vista Lista o cartão oferece "Mostrar o mapa"', () => {
     const explorador = ler('components/Explorador.tsx');
-    expect(explorador).toContain('<AlternadorVista vista={vista} aoMudar={mudarVista} />');
-    expect(explorador).toMatch(/\{naLista \? null : \(\s*<section aria-label="Mapa"/);
-    expect(explorador).toContain("lg:grid-cols-[minmax(0,1fr)_300px]");
-    const alternador = ler('components/inicio/AlternadorVista.tsx');
-    expect(alternador.indexOf("'lista'")).toBeLessThan(alternador.indexOf("'mapa'"));
-    expect(alternador).toContain('aria-pressed');
-    expect(alternador).toContain('h-11');
+    expect(explorador).toMatch(/\{naLista \? null : \(\s*<section\s+aria-label="Mapa"/);
+    expect(explorador).toContain("aoMostrarMapa={() => mudarVista('mapa')}");
+    expect(explorador).toContain('lg:grid-cols-[minmax(0,1fr)_320px]');
+    expect(ler('components/inicio/CartaoTopo.tsx')).toContain('aria-label="Mostrar o mapa"');
   });
 
   it('vista, página e ordem só entram no endereço por trocarEndereco', () => {
-    for (const f of ['components/Explorador.tsx', 'components/inicio/ColunaLista.tsx', 'components/inicio/AlternadorVista.tsx', 'components/inicio/Paginacao.tsx']) {
+    for (const f of ['components/Explorador.tsx', 'components/inicio/ColunaLista.tsx', 'components/inicio/CartaoTopo.tsx', 'components/inicio/Paginacao.tsx']) {
       expect(ler(f)).not.toContain('history.replaceState');
       expect(ler(f)).not.toContain('history.pushState');
     }

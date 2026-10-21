@@ -1,0 +1,59 @@
+import { NOMES_UF } from './estados';
+import { chave, separarNegativos } from './relevancia/termos';
+import { ASSUNTOS, naUf } from './seo/assuntos';
+import type { FiltrosTela } from './tipos';
+
+/** Título do cartão do topo da página inicial: o que se busca e onde ("Uniforme em Santa Catarina"). */
+export function tituloDaBusca(f: FiltrosTela): string {
+  const termo = separarNegativos(f.q).positivo.replace(/\s+/g, ' ').trim();
+  const oque = termo ? termo.charAt(0).toLocaleUpperCase('pt-BR') + termo.slice(1) : 'Licitações abertas';
+  if (f.cidade) {
+    const lugar = `${f.cidade.nome}/${f.cidade.uf}`;
+    return f.raio ? `${oque} a ${f.raio} km de ${lugar}` : `${oque} em ${lugar}`;
+  }
+  if (f.uf && NOMES_UF[f.uf]) return `${oque} ${naUf(f.uf)}`;
+  return `${oque} no Brasil`;
+}
+
+export type IconeAtalho = 'camisa' | 'capacete' | 'brilho' | 'monitor' | 'talheres' | 'cruz';
+export type Atalho = { slug: string; rotulo: string; termo: string; icone: IconeAtalho };
+
+const ROTULOS: ReadonlyArray<[slug: string, rotulo: string, icone: IconeAtalho]> = [
+  ['uniformes', 'Uniformes', 'camisa'],
+  ['epi', 'EPI', 'capacete'],
+  ['limpeza', 'Limpeza', 'brilho'],
+  ['informatica', 'Informática', 'monitor'],
+  ['alimentos', 'Alimentos', 'talheres'],
+  ['hospitalar', 'Hospitalar', 'cruz'],
+];
+
+/** Atalhos de assunto da página inicial: o termo é o mesmo da página /licitacoes/{slug}. */
+export const ATALHOS: readonly Atalho[] = ROTULOS.map(([slug, rotulo, icone]) => {
+  const assunto = ASSUNTOS.find((a) => a.slug === slug);
+  if (!assunto) throw new Error(`assunto ${slug} fora de lib/seo/assuntos.ts`);
+  return { slug, rotulo, termo: assunto.termo, icone };
+});
+
+/** Slug do atalho que é a busca atual (o termo ou o rótulo, sem acento, caixa nem plural), ou null. */
+export function atalhoAtivo(q: string): string | null {
+  const k = chave(q);
+  if (!k) return null;
+  return ATALHOS.find((a) => chave(a.termo) === k || chave(a.rotulo) === k)?.slug ?? null;
+}
+
+export function hrefDoAtalho(a: Atalho, uf: string): string {
+  const p = new URLSearchParams({ q: a.termo });
+  if (uf) p.set('uf', uf);
+  return `/?${p}`;
+}
+
+/** Fechar a oferta do Pro esconde o cartão por estes dias (localStorage `em_oferta_fechada`, com a hora em ms). */
+export const OFERTA_FECHADA_DIAS = 7;
+export const CHAVE_OFERTA_FECHADA = 'em_oferta_fechada';
+
+export function ofertaFechada(valor: string | null, agora: Date): boolean {
+  const quando = Number(valor);
+  if (!valor || !Number.isFinite(quando)) return false;
+  const passou = agora.getTime() - quando;
+  return passou >= 0 && passou < OFERTA_FECHADA_DIAS * 86_400_000;
+}

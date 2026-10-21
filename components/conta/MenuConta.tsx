@@ -65,7 +65,7 @@ export function MenuConta() {
   if (conta.carregando) return <span className="inline-block h-9 w-16" aria-hidden="true" />;
   if (!conta.email) {
     return (
-      <Link href="/entrar" prefetch={false} className="inline-flex h-9 shrink-0 items-center rounded-sm px-2.5 text-[13px] font-semibold text-ink hover:bg-sunken lg:h-10 lg:px-3 lg:text-sm">
+      <Link href="/entrar" prefetch={false} className="inline-flex h-10 shrink-0 items-center rounded-full border border-line-strong bg-raised px-3.5 text-[13px] font-semibold text-ink hover:bg-sunken lg:h-11 lg:px-5 lg:text-sm">
         Entrar
       </Link>
     );
@@ -105,7 +105,7 @@ export function MenuConta() {
         aria-expanded={aberto}
         aria-haspopup="menu"
         aria-label={`Conta ${conta.email}`}
-        className="inline-flex h-9 items-center gap-2 rounded-sm px-1.5 text-sm font-semibold hover:bg-sunken lg:h-10 lg:px-2"
+        className="inline-flex h-10 items-center gap-2 rounded-full px-1.5 text-sm font-semibold hover:bg-raised lg:h-11 lg:px-2.5"
       >
         <span aria-hidden="true" className="inline-flex size-7 items-center justify-center rounded-full bg-pin-soft font-mono text-[13px] text-pin-strong">
           {conta.email.slice(0, 1).toUpperCase()}

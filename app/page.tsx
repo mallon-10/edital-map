@@ -8,10 +8,11 @@ import { Explorador } from '@/components/Explorador';
 import { Medir } from '@/components/Medir';
 import { SobreInicio } from '@/components/inicio/SobreInicio';
 import { lerFiltros, paraParametros } from '@/lib/filtros';
+import { mostrarOferta } from '@/lib/planos';
 import { jsonLdMarca } from '@/lib/seo/marca';
 import { temBusca } from '@/lib/seo/textos';
 import { atualizadoEm, buscarEditais } from '@/lib/servidor/consultas';
-import { cidadesComPagina } from '@/lib/servidor/licitacoes';
+import { cidadesComPagina, totaisDosAtalhos } from '@/lib/servidor/licitacoes';
 import { municipioPorIbge, orgaoPorCnpj } from '@/lib/servidor/nomes';
 import { contextoDaPagina } from '@/lib/servidor/registro';
 import { planoDaPagina } from '@/lib/servidor/plano';
@@ -42,18 +43,24 @@ export default async function Inicio({ searchParams }: Props) {
   // A mesma busca que a lista pede a /api/busca: o navegador não repete o pedido da lista ao abrir (recebe `inicial`).
   const daLista = lerFiltros(paraParametros(filtros, { pagina: estado.pagina, ordem: estado.ordem }));
   const ctx = await contextoDaPagina();
-  const [inicial, atualizado, plano, cidades] = await Promise.all([buscarEditais(daLista), atualizadoEm(), planoDaPagina(ctx), cidadesComPagina()]);
+  const [inicial, atualizado, plano, cidades, totaisAtalhos] = await Promise.all([
+    buscarEditais(daLista),
+    atualizadoEm(),
+    planoDaPagina(ctx),
+    cidadesComPagina(),
+    totaisDosAtalhos(),
+  ]);
   // Página sem busca: o navegador começa a baixar os pontos do mapa junto com o HTML (vêm da CDN, URL_MAPA_BRASIL).
   if (!paraParametros(filtros).toString()) preload(URL_MAPA_BRASIL, { as: 'fetch', crossOrigin: 'anonymous' });
   const agora = new Date().toISOString();
-  // Computador: uma tela só, as colunas ocupam a altura que sobra e cada uma rola por dentro.
-  // Celular: a página rola, com o mapa em cima e a lista embaixo (a barra de baixo reserva o espaço dela no body).
+  // A página rola nas duas larguras: busca, cartão do topo (resumo e mapa), oferta, assuntos e lista (no celular a barra
+  // de baixo reserva o espaço dela no body). A oferta do Pro fica embaixo do cartão do topo, não embaixo do cabeçalho.
   // A chave muda a cada desenho do servidor: o logo ou "Mapa" (href="/") com uma busca na tela recomeça o Explorador
   // (com a mesma chave o React manteria o estado da busca anterior sob o endereço novo). Mesmo endereço: a volta restaura.
   return (
     <div className="flex flex-col">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdMarca()).replace(/</g, '\\u003c') }} />
-      <Cabecalho plano={plano} />
+      <Cabecalho plano={plano} semOferta />
       {busca.q?.trim() ? <Medir conversao="buscou" chave="dia" /> : null}
       <AtalhoRadar />
       <Explorador
@@ -63,6 +70,8 @@ export default async function Inicio({ searchParams }: Props) {
         inicial={inicial}
         agoraInicial={agora}
         atualizadoEm={atualizado}
+        oferta={mostrarOferta(plano, '/')}
+        totaisAtalhos={totaisAtalhos}
       />
       <SobreInicio cidades={cidades} />
     </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { MODALIDADES, RAIOS_KM, UFS_ORDENADAS, ufIgnoradaPeloRaio, VALORES_MINIMOS } from '@/lib/filtros';
-import { haQuanto, numero } from '@/lib/formato';
+import { numero } from '@/lib/formato';
 import type { Cidade, FiltrosTela, PontoMapa } from '@/lib/tipos';
 import { Seta } from './Icones';
 import { PainelOrgao } from './PainelOrgao';
@@ -12,8 +12,6 @@ import { chip } from './estilos';
 type Props = {
   filtros: FiltrosTela;
   pontos: PontoMapa[];
-  atualizadoEm: string | null;
-  agora: Date;
   aoMudar: (f: FiltrosTela) => void;
   /** Na folha de Filtros do celular: os chips quebram linha e a linha da fonte some. */
   emFolha?: boolean;
@@ -137,7 +135,7 @@ function PainelMunicipio({ ordenados, cidade, aoEscolher }: { ordenados: { p: Po
   );
 }
 
-export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha = false }: Props) {
+export function Chips({ filtros, pontos, aoMudar, emFolha = false }: Props) {
   // Mais editais primeiro, depois ordem alfabética; a chave normalizada é calculada uma vez por lista de pontos.
   const ordenados = useMemo(
     () =>
@@ -264,11 +262,6 @@ export function Chips({ filtros, pontos, atualizadoEm, agora, aoMudar, emFolha =
           ))}
         </ChipSelect>
       </div>
-      {emFolha ? null : (
-        <p className="hidden shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted xl:block">
-          Fonte: PNCP{atualizadoEm ? ` · atualizado ${haQuanto(atualizadoEm, agora)}` : ''}
-        </p>
-      )}
     </div>
   );
 }
