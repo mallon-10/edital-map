@@ -7,6 +7,7 @@ import { connection } from 'next/server';
 import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
 import { BotaoCompartilhar } from '@/components/edital/BotaoCompartilhar';
+import { CartaoAssessoria } from '@/components/edital/CartaoAssessoria';
 import { BotaoDescartar } from '@/components/oportunidades/BotaoDescartar';
 import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
 import { DocumentosEdital } from '@/components/edital/DocumentosEdital';
@@ -20,6 +21,7 @@ import { EtiquetaSituacao } from '@/components/EtiquetaSituacao';
 import { TAG_PRAZO, TEXTO_PRAZO } from '@/components/estilosPrazo';
 import { RegistrarAbertura } from '@/components/RegistrarAbertura';
 import { VitrineEmBreve } from '@/components/VitrineEmBreve';
+import { linkAssessoria, mostrarAssessoria, numeroWhatsapp } from '@/lib/assessoria';
 import { NOMES_UF } from '@/lib/estados';
 import { SLUG_EDITAL } from '@/lib/eventos';
 import { descricaoDoEdital, editalAberto, jsonLdMigalhas } from '@/lib/seo/textos';
@@ -111,6 +113,18 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const rotuloSit = rotuloSituacao(e.situacao_id);
   const encerradaPorSituacao = rotuloSit === 'Revogada' || rotuloSit === 'Anulada';
   const valorEstimado = moeda(e.valor_estimado);
+  // Só com 48 h ou mais de prazo e o número configurado (WHATSAPP_ASSESSORIA na Vercel).
+  const whatsapp = numeroWhatsapp(process.env.WHATSAPP_ASSESSORIA);
+  const assessoria =
+    whatsapp && mostrarAssessoria(e, agora)
+      ? linkAssessoria(whatsapp, {
+          slug: e.slug,
+          titulo: titulo.titulo,
+          orgao: nomeProprio(e.orgao_nome),
+          local,
+          encerramento_em: e.encerramento_em,
+        })
+      : null;
 
   return (
     <>
@@ -208,6 +222,8 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
         {/* Seção nova da página entra aqui (e a consulta dela, em detalhesDoEdital). */}
         <ResumoOportunidade frases={resumoOportunidade(e)} />
         <PrincipaisInformacoes edital={e} resumo={detalhes.resumo} agora={agora} />
+        {/* Assessoria: no celular antes de documentos e itens; no computador, no topo da coluna da direita. */}
+        {assessoria ? <CartaoAssessoria href={assessoria} slug={e.slug} id="assessoria" className="flex lg:hidden" /> : null}
 
         <div className="flex flex-wrap items-start gap-5 lg:gap-6">
           <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5 lg:gap-6">
@@ -243,6 +259,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             </section>
           </div>
           <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5 lg:gap-6">
+            {assessoria ? <CartaoAssessoria href={assessoria} slug={e.slug} id="assessoria-lado" className="hidden lg:flex" /> : null}
             <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} />
             <VitrineEmBreve slug={e.slug} />
             <section aria-labelledby="local" className={`${CARTAO} flex flex-col gap-3 text-[15px]`}>

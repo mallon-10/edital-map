@@ -1,0 +1,52 @@
+'use client';
+
+import { registrar } from '@/lib/cliente/registrar';
+
+const ITENS = ['Resumo do edital em linguagem simples', 'Lista dos documentos exigidos', 'Passo a passo para participar'];
+
+type Props = { href: string; slug: string; id: string; className?: string };
+
+/** "Quer participar desta licitação?": abre o WhatsApp do João com a mensagem pronta (spec 2026-10-21-assessoria-whatsapp). */
+export function CartaoAssessoria({ href, slug, id, className = '' }: Props) {
+  const medir = () => registrar('quer_recurso', { recurso: 'assessoria', edital: slug });
+  return (
+    <section aria-labelledby={id} className={`flex-col gap-4 rounded-[22px] bg-mata-soft p-5 lg:p-6 ${className}`}>
+      <p className="inline-flex h-[26px] items-center self-start rounded-full bg-raised px-2.5 text-xs font-semibold text-mata">
+        Assessoria Edital Map
+      </p>
+      <div className="flex flex-col gap-1.5">
+        <h2 id={id} className="text-[20px] font-bold leading-tight">Quer participar desta licitação?</h2>
+        <p className="text-[15px] text-ink-muted">
+          Não sabe por onde começar? A gente analisa o edital e prepara um passo a passo para a sua empresa.
+        </p>
+      </div>
+      <ul className="flex flex-col gap-2 text-[15px]">
+        {ITENS.map((item) => (
+          <li key={item} className="flex items-start gap-2.5">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="mt-px shrink-0 text-mata">
+              <circle cx="12" cy="12" r="9" />
+              <path d="m8.5 12 2.5 2.5 4.5-5" />
+            </svg>
+            {item}
+          </li>
+        ))}
+      </ul>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={medir}
+        onAuxClick={(e) => {
+          if (e.button === 1) medir();
+        }}
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-mata px-5 py-2.5 text-center text-[15px] font-semibold text-raised hover:brightness-110"
+      >
+        Receber orientação para este edital
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="shrink-0">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </a>
+      <p className="text-[13px] text-ink-muted">Serviço pago, com o valor combinado antes. Atendimento pelo WhatsApp, conforme o prazo e o escopo do edital.</p>
+    </section>
+  );
+}

@@ -7,7 +7,6 @@ import type { Recurso } from '@/lib/eventos';
 const ITENS: ReadonlyArray<{ id: Recurso; titulo: string; texto: string }> = [
   { id: 'preco_referencia', titulo: 'Preço de referência', texto: 'Quanto foi pago por itens parecidos em outras compras da região.' },
   { id: 'quem_venceu', titulo: 'Quem venceu compras parecidas', texto: 'Fornecedores que ganharam licitações do mesmo tipo.' },
-  { id: 'resumo_ia', titulo: 'Resumo do edital com IA', texto: 'Exigências, prazos de entrega e amostras em poucas linhas.' },
 ];
 
 export function VitrineEmBreve({ slug }: { slug: string }) {
