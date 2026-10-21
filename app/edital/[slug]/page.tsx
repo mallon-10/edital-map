@@ -2,6 +2,7 @@ import { OPEN_GRAPH_BASE } from '@/lib/seo/site';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 import { connection } from 'next/server';
 import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
@@ -58,11 +59,9 @@ const ETIQUETA = 'rounded-xs bg-sunken px-2 py-0.5 text-xs font-semibold text-in
 /** Resumo de reserva: se a consulta do resumo falhar, a página do edital continua de pé. */
 const RESUMO_VAZIO: ResumoItens = { total: 0, materiais: 0, servicos: 0, comBeneficio: 0, exclusivos: 0, cota: 0, criterios: [] };
 
-/** Itens, documentos, resumo e parecidos (grátis e sem limite para todos). */
-async function detalhesDoEdital(e: Edital, todos: boolean) {
-  const [itens, arquivos, resumo, parecidos] = await Promise.all([
-    itensDoEdital(e, todos ? 2000 : 50),
-    arquivosDoEdital(e),
+/** Resumo dos itens e parecidos, do nosso banco (grátis e sem limite para todos). */
+async function detalhesDoEdital(e: Edital) {
+  const [resumo, parecidos] = await Promise.all([
     resumoItens(e.id).catch(() => RESUMO_VAZIO),
     // Falha nos parecidos não derruba a página: o bloco só não aparece.
     relacionados(e.id).catch((erro: unknown): EditalRelacionado[] => {
@@ -70,8 +69,20 @@ async function detalhesDoEdital(e: Edital, todos: boolean) {
       return [];
     }),
   ]);
+  return { resumo, parecidos };
+}
+
+/** Documentos e itens vêm do PNCP na hora (lento às vezes): chegam depois do resto da página, sem segurá-la. */
+const CARREGANDO_PNCP = 'text-[15px] text-ink-muted';
+
+async function SecaoDocumentos({ e }: { e: Edital }) {
+  return <DocumentosEdital arquivos={await arquivosDoEdital(e)} slug={e.slug} />;
+}
+
+async function SecaoItens({ e, todos, totalResumo }: { e: Edital; todos: boolean; totalResumo: number }) {
+  const itens = await itensDoEdital(e, todos ? 2000 : 50);
   // O total vem do resumo gravado pelo worker; sem resumo ainda, do que o PNCP devolveu agora.
-  return { itens, arquivos, resumo, parecidos, totalItens: Math.max(resumo.total, itens?.length ?? 0) };
+  return <ListaItens itens={itens} total={Math.max(totalResumo, itens?.length ?? 0)} slug={e.slug} todos={todos} />;
 }
 
 export default async function PaginaEdital({ params, searchParams }: Props) {
@@ -84,7 +95,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
 
   const ctx = await contextoDaPagina();
   const todos = modoItens === 'todos';
-  const [atualizado, detalhes, plano] = await Promise.all([atualizadoEm(), detalhesDoEdital(e, todos), planoDaPagina(ctx)]);
+  const [atualizado, detalhes, plano] = await Promise.all([atualizadoEm(), detalhesDoEdital(e), planoDaPagina(ctx)]);
   const agora = new Date();
   const p = prazo(e.encerramento_em, agora);
   const titulo = assunto(e.objeto);
@@ -175,18 +186,22 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
         {/* Seção nova da página entra aqui (e a consulta dela, em detalhesDoEdital). */}
         <ResumoOportunidade frases={resumoOportunidade(e)} />
         <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} />
-        <PrincipaisInformacoes edital={e} resumo={{ ...detalhes.resumo, total: detalhes.totalItens }} agora={agora} />
+        <PrincipaisInformacoes edital={e} resumo={detalhes.resumo} agora={agora} />
 
         <div className="flex flex-wrap items-start gap-5">
           <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5">
             <section className="rounded-lg border border-line bg-raised p-5">
               <h2 className="mb-1 text-[17px] font-bold">Documentos do edital</h2>
               <p className="mb-2 text-[13px] text-ink-muted">Os documentos exigidos para participar estão no edital e no termo de referência.</p>
-              <DocumentosEdital arquivos={detalhes.arquivos} slug={e.slug} />
+              <Suspense fallback={<p role="status" className={CARREGANDO_PNCP}>Carregando os documentos do PNCP…</p>}>
+                <SecaoDocumentos e={e} />
+              </Suspense>
             </section>
             <section className="rounded-lg border border-line bg-raised p-5">
               <h2 className="mb-3 text-[17px] font-bold">Itens da licitação</h2>
-              <ListaItens itens={detalhes.itens} total={detalhes.totalItens} slug={e.slug} todos={todos} />
+              <Suspense fallback={<p role="status" className={CARREGANDO_PNCP}>Carregando os itens do PNCP…</p>}>
+                <SecaoItens e={e} todos={todos} totalResumo={detalhes.resumo.total} />
+              </Suspense>
             </section>
             <Relacionados editais={detalhes.parecidos} origem={e.slug} agora={agora} />
             <section className="rounded-lg border border-line bg-raised p-5">

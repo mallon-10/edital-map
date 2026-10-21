@@ -38,7 +38,10 @@
   }
 }
 
+/* Sem âncora de rolagem: na página inicial os cards que chegam ao rolar empurram o rodapé para baixo (com a âncora, o
+   navegador manteria o rodapé parado na tela e o fim da lista pediria página atrás de página). */
 body {
+  overflow-anchor: none;
   background: var(--color-surface);
   color: var(--color-ink);
   padding-bottom: var(--altura-barra);

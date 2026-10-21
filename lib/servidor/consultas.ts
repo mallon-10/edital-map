@@ -10,10 +10,13 @@ import type {
   ArquivoEdital, Edital, EditalExportado, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens,
 } from '../tipos';
 import { arquivosDoPncp } from './arquivosPncp';
+import { compartilhado } from './cacheCompartilhado';
 import { itensDoPncp } from './itensPncp';
 import { supabaseServidor } from './supabase';
 
-const cache = criarCache(5 * 60 * 1000);
+const memoria = criarCache(5 * 60 * 1000);
+/** Cache de 5 min: em memória na instância e, atrás dele, o compartilhado entre instâncias (lib/servidor/cacheCompartilhado.ts). */
+const cache = <T>(chave: string, carregar: () => Promise<T>): Promise<T> => memoria(chave, () => compartilhado(chave, 5 * 60, carregar));
 export const LIMITE_RELACIONADOS = 6;
 export const LIMITE_ORGAOS = 20;
 export type Linha = Record<string, unknown>;
@@ -287,7 +290,8 @@ export function totalEditaisAbertos(): Promise<number> {
 
 /** Slugs abertos do sitemap, de `deslocamento` até `limite` linhas, em páginas de 1.000 (o teto do PostgREST por resposta). */
 export function editaisAbertosSitemap(limite: number, deslocamento: number): Promise<Array<{ slug: string; atualizada_pncp_em: string }>> {
-  return cache(`sitemap:${limite}:${deslocamento}`, async () => {
+  // Só em memória: 40 mil linhas passam do limite de 2 MB por item do cache compartilhado.
+  return memoria(`sitemap:${limite}:${deslocamento}`, async () => {
     const editais: Array<{ slug: string; atualizada_pncp_em: string }> = [];
     for (let de = 0; de < limite; de += 1000) {
       const { data, error } = await supabaseServidor().rpc('editais_abertos_sitemap', {
@@ -303,7 +307,8 @@ export function editaisAbertosSitemap(limite: number, deslocamento: number): Pro
   });
 }
 
-const cacheHora = criarCache(60 * 60 * 1000);
+const memoriaHora = criarCache(60 * 60 * 1000);
+const cacheHora = <T>(chave: string, carregar: () => Promise<T>): Promise<T> => memoriaHora(chave, () => compartilhado(chave, 60 * 60, carregar));
 
 /** Editais abertos por município (0019), para escolher as páginas /licitacoes/{uf}/{cidade}. Cache de 1 h. */
 export function municipiosAbertos(): Promise<Array<{ codigo_ibge: string; nome: string; uf: string; total: number }>> {

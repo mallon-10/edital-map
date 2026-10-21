@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { preload } from 'react-dom';
 import { URL_MAPA_BRASIL } from '@/lib/pontosMapa';
 import { connection } from 'next/server';
@@ -11,7 +12,7 @@ import { lerFiltros, paraParametros } from '@/lib/filtros';
 import { mostrarOferta } from '@/lib/planos';
 import { jsonLdMarca } from '@/lib/seo/marca';
 import { temBusca } from '@/lib/seo/textos';
-import { atualizadoEm, buscarEditais } from '@/lib/servidor/consultas';
+import { atualizadoEm, buscarEditais, pontosDoMapa } from '@/lib/servidor/consultas';
 import { cidadesComPagina, totaisDosAtalhos } from '@/lib/servidor/licitacoes';
 import { municipioPorIbge, orgaoPorCnpj } from '@/lib/servidor/nomes';
 import { contextoDaPagina } from '@/lib/servidor/registro';
@@ -19,6 +20,11 @@ import { planoDaPagina } from '@/lib/servidor/plano';
 import { lerBuscaDaUrl, montarTela, paraUrlSearchParams, urlDaBusca } from '@/lib/urlBusca';
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+/** Links de assunto, estado e cidade embaixo da lista: as cidades (cache de 1 h) chegam depois, sem segurar a página. */
+async function SobreInicioComCidades() {
+  return <SobreInicio cidades={await cidadesComPagina()} />;
+}
 
 /** Página inicial limpa indexa; com busca no endereço, fica fora do índice (busca infinita) e aponta para /. */
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
@@ -43,15 +49,14 @@ export default async function Inicio({ searchParams }: Props) {
   // A mesma busca que a lista pede a /api/busca: o navegador não repete o pedido da lista ao abrir (recebe `inicial`).
   const daLista = lerFiltros(paraParametros(filtros, { pagina: estado.pagina, ordem: estado.ordem }));
   const ctx = await contextoDaPagina();
-  const [inicial, atualizado, plano, cidades, totaisAtalhos] = await Promise.all([
-    buscarEditais(daLista),
-    atualizadoEm(),
-    planoDaPagina(ctx),
-    cidadesComPagina(),
-    totaisDosAtalhos(),
-  ]);
+  // Sem esperar: a contagem dos atalhos e os pontos do mapa da busca vão ao navegador como promessas e chegam na mesma
+  // resposta, depois do HTML (a página não fica parada esperando por eles).
+  const totaisAtalhos = totaisDosAtalhos();
+  const comFiltros = Boolean(paraParametros(filtros).toString());
+  const pontosIniciais = comFiltros ? pontosDoMapa(lerFiltros(paraParametros(filtros))).catch(() => null) : null;
+  const [inicial, atualizado, plano] = await Promise.all([buscarEditais(daLista), atualizadoEm(), planoDaPagina(ctx)]);
   // Página sem busca: o navegador começa a baixar os pontos do mapa junto com o HTML (vêm da CDN, URL_MAPA_BRASIL).
-  if (!paraParametros(filtros).toString()) preload(URL_MAPA_BRASIL, { as: 'fetch', crossOrigin: 'anonymous' });
+  if (!comFiltros) preload(URL_MAPA_BRASIL, { as: 'fetch', crossOrigin: 'anonymous' });
   const agora = new Date().toISOString();
   // A página rola nas duas larguras: busca, cartão do topo (resumo e mapa), oferta, assuntos e lista (no celular a barra
   // de baixo reserva o espaço dela no body). A oferta do Pro fica embaixo do cartão do topo, não embaixo do cabeçalho.
@@ -72,8 +77,11 @@ export default async function Inicio({ searchParams }: Props) {
         atualizadoEm={atualizado}
         oferta={mostrarOferta(plano, '/')}
         totaisAtalhos={totaisAtalhos}
+        pontosIniciais={pontosIniciais}
       />
-      <SobreInicio cidades={cidades} />
+      <Suspense fallback={null}>
+        <SobreInicioComCidades />
+      </Suspense>
     </div>
   );
 }

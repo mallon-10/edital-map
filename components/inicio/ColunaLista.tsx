@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { FONTE_COBERTURA } from '@/lib/cobertura';
 import type { Cidade, EditalResumo, FiltrosTela, Ordem, ResultadoBusca } from '@/lib/tipos';
 import type { Vista } from '@/lib/urlBusca';
 import { CardCompacto } from './CardCompacto';
 import { EstadoVazio } from './EstadoVazio';
-import { Paginacao } from './Paginacao';
 import { SeletorOrdem } from './SeletorOrdem';
 
 type Props = {
@@ -20,7 +19,9 @@ type Props = {
   erro: string | null;
   /** Erro do Exportar (o botão fica no cartão do topo; o aviso, aqui). */
   erroExportar: string | null;
-  pagina: number;
+  /** Próxima página sendo pedida (lista que carrega ao rolar) e o erro dela. */
+  carregandoMais: boolean;
+  erroMais: string | null;
   /** Ordem que vale agora (ordemEfetiva). */
   ordem: Ordem;
   temTermo: boolean;
@@ -32,7 +33,10 @@ type Props = {
   aoSelecionar: (e: EditalResumo) => void;
   aoMudarPrazo: (seteDias: boolean) => void;
   aoMudarOrdem: (o: Ordem) => void;
-  aoIrPagina: (pagina: number) => void;
+  /** Pede a próxima página (o fim da lista apareceu na tela, ou o botão "Carregar mais"). */
+  aoCarregarMais: () => void;
+  /** Link antigo com uma página além do fim: volta ao começo da busca. */
+  aoRecomecar: () => void;
   /** Sugestão do estado vazio: outra busca. */
   aoAplicar: (f: FiltrosTela) => void;
 };
@@ -61,7 +65,45 @@ function PilulaCidade({ cidade, raio, aoTirar }: { cidade: Cidade; raio: number 
 }
 
 /**
- * "Editais" com o prazo e a ordem, os cards e a paginação. No fluxo da página (quem rola é a página); a contagem, o
+ * Fim da lista: quando chega perto da tela (800 px antes), pede a próxima página. O botão "Carregar mais" faz o mesmo
+ * (teclado, leitor de tela, ou se o observador não existir) e "Tentar de novo" aparece se o pedido falhar.
+ */
+function FimDaLista({ total, mostrados, carregando, erro, aoCarregarMais }: {
+  total: number; mostrados: number; carregando: boolean; erro: string | null; aoCarregarMais: () => void;
+}) {
+  const alvo = useRef<HTMLDivElement>(null);
+  const tem = mostrados < total;
+  useEffect(() => {
+    const el = alvo.current;
+    if (!el || !tem || erro || typeof IntersectionObserver === 'undefined') return;
+    const observador = new IntersectionObserver((itens) => {
+      if (itens.some((i) => i.isIntersecting)) aoCarregarMais();
+    }, { rootMargin: '800px 0px' });
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [tem, erro, aoCarregarMais, mostrados]);
+  if (!tem) {
+    return mostrados > 0 ? (
+      <p className="py-3 text-center text-[13px] text-ink-muted">{mostrados === 1 ? 'Esse é o único edital.' : `Esses são todos os ${mostrados.toLocaleString('pt-BR')} editais.`}</p>
+    ) : null;
+  }
+  return (
+    <div ref={alvo} className="flex flex-col items-center gap-2 py-3">
+      {erro ? <p role="alert" className="text-sm text-pin-strong">{erro}</p> : null}
+      <button
+        type="button"
+        onClick={aoCarregarMais}
+        aria-busy={carregando}
+        className="h-12 rounded-full border border-line-strong bg-raised px-6 text-[15px] font-semibold hover:bg-sunken"
+      >
+        {carregando ? 'Carregando mais editais…' : erro ? 'Tentar de novo' : `Carregar mais (${(total - mostrados).toLocaleString('pt-BR')} restantes)`}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * "Editais" com o prazo e a ordem, os cards, que vão chegando ao rolar. No fluxo da página (quem rola é a página); a contagem, o
  * valor e o Exportar ficam no cartão do topo.
  */
 export function ColunaLista(p: Props) {
@@ -106,8 +148,8 @@ export function ColunaLista(p: Props) {
           {vazia && total > 0 ? (
             <div className="flex flex-col items-start gap-2 rounded-[22px] bg-raised px-6 py-6">
               <p className="text-ink-muted">Esta página não tem editais.</p>
-              <button type="button" onClick={() => p.aoIrPagina(1)} className="h-11 rounded-full border border-line-strong bg-raised px-5 text-sm font-semibold">
-                Ir para a página 1
+              <button type="button" onClick={p.aoRecomecar} className="h-11 rounded-full border border-line-strong bg-raised px-5 text-sm font-semibold">
+                Ver do começo
               </button>
             </div>
           ) : null}
@@ -115,7 +157,9 @@ export function ColunaLista(p: Props) {
           {editais.map((e) => (
             <CardCompacto key={e.id} edital={e} agora={p.agora} aoSelecionar={() => p.aoSelecionar(e)} />
           ))}
-          <Paginacao pagina={p.pagina} total={total} carregando={p.carregandoLista} aoIr={p.aoIrPagina} />
+          {vazia ? null : (
+            <FimDaLista total={total} mostrados={editais.length} carregando={p.carregandoMais} erro={p.erroMais} aoCarregarMais={p.aoCarregarMais} />
+          )}
           <p className="shrink-0 px-1 pb-2 pt-1 text-center font-mono text-[11px] text-ink-muted">{FONTE_COBERTURA}</p>
         </div>
       </div>

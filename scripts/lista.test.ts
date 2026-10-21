@@ -12,36 +12,36 @@ function funcao(texto: string, nome: string): string {
 }
 
 describe('lista ligada ao Explorador', () => {
-  it('sem "Carregar mais": paginação numerada, ordem e estado vazio na coluna', () => {
+  it('lista que carrega ao rolar (pedido de 21/10/2026): o fim da lista pede a próxima página, com "Carregar mais" de reserva', () => {
     const coluna = ler('components/inicio/ColunaLista.tsx');
-    expect(coluna).not.toContain('Carregar mais');
-    expect(coluna).not.toContain('aoCarregarMais');
-    expect(coluna).toContain('<Paginacao');
+    expect(coluna).not.toContain('<Paginacao');
+    expect(coluna).toContain('IntersectionObserver');
+    expect(coluna).toContain('Carregar mais');
     expect(coluna).toContain('<SeletorOrdem');
     expect(coluna).toContain('<EstadoVazio');
     const explorador = ler('components/Explorador.tsx');
-    expect(explorador).not.toContain('carregarMais');
-    expect(explorador).not.toContain('POR_PAGINA');
+    expect(explorador).toContain('aoCarregarMais={carregarMais}');
+    expect(explorador).not.toContain('irParaPagina');
   });
 
-  it('mudar de página ou de ordem não grava o evento "busca", não pede o mapa e escreve o endereço', () => {
-    const explorador = ler('components/Explorador.tsx');
-    for (const nome of ['irParaPagina', 'mudarOrdem']) {
-      const corpo = funcao(explorador, nome);
-      expect(corpo, nome).not.toBe('');
-      expect(corpo, nome).toContain('carregarLista(');
-      expect(corpo, nome).toContain('escreverEndereco(');
-      expect(corpo, nome).not.toMatch(/registrar\(|carregarMapa\(|aplicar\(|trocarEndereco\(/);
-    }
+  it('carregar mais não grava o evento "busca", não pede o mapa nem escreve o endereço; junta sem repetir e descarta a resposta de uma busca velha', () => {
+    const corpo = funcao(ler('components/Explorador.tsx'), 'carregarMais');
+    expect(corpo).not.toBe('');
+    expect(corpo).not.toMatch(/registrar\(|carregarMapa\(|aplicar\(|trocarEndereco\(|escreverEndereco\(/);
+    expect(corpo).toContain('juntarEditais(');
+    expect(corpo).toContain('proximaPagina(primeiraPagina.current');
+    expect(corpo).toContain('if (pedido !== pedidoLista.current) return;');
   });
 
-  it('página ou ordem que falham voltam atrás (estado e endereço), e repetir a mesma página funciona', () => {
+  it('mudar a ordem não grava o evento "busca", não pede o mapa e escreve o endereço', () => {
+    const corpo = funcao(ler('components/Explorador.tsx'), 'mudarOrdem');
+    expect(corpo).toContain('carregarLista(');
+    expect(corpo).toContain('escreverEndereco(');
+    expect(corpo).not.toMatch(/registrar\(|carregarMapa\(|aplicar\(|trocarEndereco\(/);
+  });
+
+  it('ordem que falha volta atrás (estado e endereço)', () => {
     const explorador = ler('components/Explorador.tsx');
-    const pagina = funcao(explorador, 'irParaPagina');
-    expect(pagina).toMatch(/await carregarLista\(/);
-    expect(pagina).toMatch(/=== 'erro'/);
-    expect(pagina).toContain('setPagina(antes)');
-    expect(pagina).toContain('escreverEndereco(filtros, { pagina: antes })');
     const ordem = funcao(explorador, 'mudarOrdem');
     expect(ordem).toMatch(/await carregarLista\(/);
     expect(ordem).toMatch(/=== 'erro'/);

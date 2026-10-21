@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ATALHOS, atalhoAtivo, hrefDoAtalho, OFERTA_FECHADA_DIAS, ofertaFechada, tituloDaBusca } from './inicio';
+import { ATALHOS, atalhoAtivo, hrefDoAtalho, juntarEditais, OFERTA_FECHADA_DIAS, ofertaFechada, proximaPagina, temMais, tituloDaBusca } from './inicio';
 import { ASSUNTOS } from './seo/assuntos';
 import type { FiltrosTela } from './tipos';
 
@@ -51,5 +51,22 @@ describe('oferta fechada', () => {
     expect(ofertaFechada(null, agora)).toBe(false);
     expect(ofertaFechada('abc', agora)).toBe(false);
     expect(ofertaFechada(String(agora.getTime() + 86_400_000 * 30), agora)).toBe(false);
+  });
+});
+
+describe('lista que carrega ao rolar', () => {
+  const ed = (id: string) => ({ id }) as unknown as import('./tipos').EditalResumo;
+  it('a próxima página segue as que já estão na tela (20 por página), a partir da primeira do endereço', () => {
+    expect(proximaPagina(1, 20)).toBe(2);
+    expect(proximaPagina(1, 40)).toBe(3);
+    expect(proximaPagina(3, 20)).toBe(4);
+    expect(proximaPagina(1, 0)).toBe(1);
+  });
+  it('junta sem repetir (um edital novo pode empurrar outro para a página seguinte)', () => {
+    expect(juntarEditais([ed('a'), ed('b')], [ed('b'), ed('c')]).map((e) => e.id)).toEqual(['a', 'b', 'c']);
+  });
+  it('tem mais enquanto a tela mostra menos que o total', () => {
+    expect(temMais({ total: 41, editais: Array.from({ length: 40 }, (_, i) => ed(String(i))) })).toBe(true);
+    expect(temMais({ total: 40, editais: Array.from({ length: 40 }, (_, i) => ed(String(i))) })).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { trocarEndereco } from '@/lib/cliente/endereco';
 import { registrar } from '@/lib/cliente/registrar';
 import { guardarUltimaBusca, guardarVolta, tomarVolta, type Volta } from '@/lib/cliente/volta';
@@ -10,7 +10,7 @@ import { PainelCnpj } from '@/components/cnpj/PainelCnpj';
 import { consultarCnpj, type RespostaCnpj } from '@/lib/cliente/cnpj';
 import { medir } from '@/lib/cliente/medir';
 import { moedaCurta } from '@/lib/formato';
-import { tituloDaBusca } from '@/lib/inicio';
+import { juntarEditais, proximaPagina, temMais, tituloDaBusca } from '@/lib/inicio';
 import { urlDosPontos } from '@/lib/pontosMapa';
 import { resumirPontos } from '@/lib/painel';
 import { temTermo } from '@/lib/relevancia/termos';
@@ -19,7 +19,7 @@ import { mesmaBusca, telaPelaRolagem, urlDaBusca, type EstadoTela, type Tela, ty
 import { BarraCelular } from './BarraCelular';
 import { FaixaOferta } from './FaixaOferta';
 import { Mapa } from './Mapa';
-import { Atalhos } from './inicio/Atalhos';
+import { Atalhos, AtalhosComTotais } from './inicio/Atalhos';
 import { BuscaPrincipal } from './inicio/BuscaPrincipal';
 import { CartaoTopo } from './inicio/CartaoTopo';
 import { Chips } from './inicio/Chips';
@@ -82,21 +82,26 @@ type Props = {
   atualizadoEm: string | null;
   /** Cartão da oferta do Pro embaixo do cartão do topo (mostrarOferta, decidido no servidor). */
   oferta: boolean;
-  /** Editais abertos no Brasil de cada atalho de assunto (slug → total ou null). */
-  totaisAtalhos: Record<string, number | null>;
+  /** Editais abertos no Brasil de cada atalho de assunto (slug → total ou null), chegando depois do HTML. */
+  totaisAtalhos: Promise<Record<string, number | null>>;
+  /** Pontos do mapa da busca do endereço, chegando depois do HTML (null: sem filtros, vêm da CDN, ou falhou). */
+  pontosIniciais: Promise<PontoMapa[] | null> | null;
 };
 
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
 type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'tela' | 'selecionadoId'>;
 
-export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInicial, atualizadoEm, oferta, totaisAtalhos }: Props) {
+export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInicial, atualizadoEm, oferta, totaisAtalhos, pontosIniciais }: Props) {
   const [filtros, setFiltros] = useState<FiltrosTela>(filtrosIniciais);
   // Celular: a parte da página pedida por último (botão da barra, cidade escolhida ou aviso na lista), guardada
   // no endereço (`tela=lista` abre a página rolada até a lista). Só muda por ação explícita, nunca pela rolagem.
   const [tela, setTela] = useState<Tela>(estadoInicial.tela);
   // Lista ou Mapa (alternador no topo dos resultados), página e ordem da lista: vão no endereço e não contam como busca.
   const [vista, setVista] = useState<Vista>(estadoInicial.vista);
-  const [pagina, setPagina] = useState(estadoInicial.pagina);
+  // Lista que carrega ao rolar: a primeira página que o endereço pediu (as seguintes se juntam embaixo, fora do endereço).
+  const primeiraPagina = useRef(estadoInicial.pagina);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const [erroMais, setErroMais] = useState<string | null>(null);
   const [ordem, setOrdem] = useState<Ordem | null>(estadoInicial.ordem);
   // Item aceso na barra de baixo: segue a rolagem. Fica fora do endereço: o replaceState do Next durante uma navegação
   // pendente (tocar num card e rolar um pouco) a descartaria.
@@ -211,6 +216,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
       rolagemPendente.current = null;
       rolagemPaginaPendente.current = null;
       setCarregandoLista(true);
+      setErroMais(null);
       try {
         const ordemPedida = lista.ordem === undefined ? estadoAtual.current.ordem : lista.ordem;
         const novo = await obter<ResultadoBusca>(`/api/busca?${paraParametros(f, { pagina: lista.pagina ?? 1, ordem: ordemPedida })}`, ERRO_LISTA);
@@ -236,12 +242,22 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     [irPara],
   );
 
-  const carregarMapa = useCallback(async (f: FiltrosTela) => {
+  /** `pronto`: os pontos que o servidor já mandou com a página (sem eles, ou se falharam, pede a /api/mapa). */
+  const carregarMapa = useCallback(async (f: FiltrosTela, pronto?: Promise<PontoMapa[] | null> | null) => {
     const id = ++pedidoMapa.current;
     filtrosDoMapa.current = f;
     try {
       // Os mesmos parâmetros da lista (o servidor ignora a cidade sem raio no mapa).
-      const novos = await obter<PontoMapa[]>(urlDosPontos(paraParametros(f)), ERRO_MAPA);
+      // A promessa que vem do servidor é a do React: o `.catch()` dela não devolve outra promessa, então `await` com try.
+      let daPagina: PontoMapa[] | null = null;
+      if (pronto) {
+        try {
+          daPagina = await pronto;
+        } catch {
+          daPagina = null;
+        }
+      }
+      const novos = daPagina ?? (await obter<PontoMapa[]>(urlDosPontos(paraParametros(f)), ERRO_MAPA));
       if (id !== pedidoMapa.current) return;
       setPontos(novos);
       setCentros((anteriores) => {
@@ -263,7 +279,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
   }, [filtros, resultado, tela, selecionadoId]);
 
   // Última busca, para os links Mapa e Lista da barra do celular nas outras páginas.
-  useEffect(() => guardarUltimaBusca(urlDaBusca(filtros, { pagina, ordem })), [filtros, pagina, ordem]);
+  useEffect(() => guardarUltimaBusca(urlDaBusca(filtros, { ordem })), [filtros, ordem]);
 
   // Celular: a barra acende Mapa ou Lista conforme a parte da página que está na tela. Só o item aceso muda: nada de
   // `tela` nem de endereço (replaceState), que cancelaria uma ida ao edital ainda carregando. A volta do edital usa a
@@ -354,8 +370,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
       if (estadoInicial.tela === 'lista') rolarPara('lista', 'auto');
       // Busca que chegou pronta no endereço (link do CNPJ, anúncio, compartilhada): conta, com o total do servidor.
       if (filtrosIniciais.q.trim()) registrarBusca(filtrosIniciais, inicial.total);
-      // A lista veio pronta do servidor; o mapa pede os pontos da mesma busca.
-      void carregarMapa(filtrosIniciais);
+      // A lista veio pronta do servidor; os pontos da mesma busca vêm com a página (ou da CDN, sem filtros).
+      void carregarMapa(filtrosIniciais, pontosIniciais);
     }
     return () => {
       const atual = paraGuardar.current;
@@ -368,7 +384,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
         rolagemPagina: rolagemPagina.current,
       });
     };
-  }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial, inicial.total]);
+  }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial, inicial.total, pontosIniciais]);
 
   /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança respondida grava o evento "busca". */
   function aplicar(pedido: FiltrosTela, opcoes: { abrirLista?: boolean } = {}) {
@@ -381,7 +397,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     setFiltros(novo);
     setAnimarFoco(true);
     // Filtro novo começa na página 1 (a ordem escolhida fica).
-    setPagina(1);
+    primeiraPagina.current = 1;
     estadoAtual.current = { ...estadoAtual.current, pagina: 1 };
     if ((opcoes.abrirLista || cidadeNova) && ehCelular()) irPara('lista', novo);
     else trocarTela(tela, novo);
@@ -398,6 +414,11 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
   }
 
   const fecharFolha = useCallback(() => setFolhaAberta(false), []);
+
+  /** Atalho de assunto: busca o termo com os filtros de agora (como digitar no campo). */
+  function escolherAtalho(termo: string) {
+    aplicar({ ...filtros, q: termo });
+  }
 
   /** Mouse sobre um card (computador): o ponto dele acende no mapa. Clicar abre o edital. */
   function selecionar(e: EditalResumo) {
@@ -439,36 +460,37 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
   }
 
   /**
-   * Outra página da mesma busca: não grava o evento "busca"; o mapa não muda.
+   * Fim da lista na tela (ou "Carregar mais"): acrescenta a próxima página da mesma busca, sem repetir. Não grava o evento
+   * "busca", não muda o mapa nem o endereço (a volta do edital guarda a lista inteira). Uma busca nova no meio do caminho
+   * descarta esta resposta.
    */
-  async function irParaPagina(n: number) {
-    if (n < 1 || n === pagina || carregandoLista) return;
-    const antes = pagina;
-    setPagina(n);
-    escreverEndereco(filtros, { pagina: n });
-    // Celular: a lista rola com a página; volta ao começo dela (a barra acende Lista).
-    if (ehCelular()) {
-      setAtivoBarra('lista');
-      rolarPara('lista');
-    }
-    // Falhou: os cards continuam os da página anterior, então a paginação e o endereço voltam para ela
-    // (e pedir a mesma página de novo funciona).
-    if ((await carregarLista(filtros, { pagina: n })) === 'erro') {
-      setPagina(antes);
-      escreverEndereco(filtros, { pagina: antes });
+  async function carregarMais() {
+    if (carregandoMais || carregandoLista || !temMais(resultado)) return;
+    const pedido = pedidoLista.current;
+    setCarregandoMais(true);
+    setErroMais(null);
+    try {
+      const pagina = proximaPagina(primeiraPagina.current, resultado.editais.length);
+      const novo = await obter<ResultadoBusca>(`/api/busca?${paraParametros(filtros, { pagina, ordem: estadoAtual.current.ordem })}`, ERRO_LISTA);
+      if (pedido !== pedidoLista.current) return;
+      setResultado((r) => ({ total: novo.total, editais: juntarEditais(r.editais, novo.editais) }));
+    } catch (e) {
+      if (pedido === pedidoLista.current) setErroMais(mensagem(e, ERRO_LISTA));
+    } finally {
+      setCarregandoMais(false);
     }
   }
 
-  /** Outra ordem da mesma busca: volta à página 1; não grava o evento "busca"; o mapa não muda. */
+  /** Outra ordem da mesma busca: recomeça da página 1; não grava o evento "busca"; o mapa não muda. */
   async function mudarOrdem(o: Ordem) {
-    const antes = { ordem, pagina };
+    const antes = { ordem, pagina: primeiraPagina.current };
     setOrdem(o);
-    setPagina(1);
+    primeiraPagina.current = 1;
     escreverEndereco(filtros, { ordem: o, pagina: 1 });
-    // Falhou: a lista na tela é a da ordem anterior; o seletor, a página e o endereço voltam para ela.
+    // Falhou: a lista na tela é a da ordem anterior; o seletor e o endereço voltam para ela.
     if ((await carregarLista(filtros, { pagina: 1, ordem: o })) === 'erro') {
       setOrdem(antes.ordem);
-      setPagina(antes.pagina);
+      primeiraPagina.current = antes.pagina;
       escreverEndereco(filtros, { ordem: antes.ordem, pagina: antes.pagina });
     }
   }
@@ -567,7 +589,9 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
           )}
         </CartaoTopo>
         {oferta ? <FaixaOferta /> : null}
-        <Atalhos totais={totaisAtalhos} q={filtros.q} uf={filtros.uf} />
+        <Suspense fallback={<Atalhos totais={{}} q={filtros.q} uf={filtros.uf} aoEscolher={escolherAtalho} />}>
+          <AtalhosComTotais promessa={totaisAtalhos} q={filtros.q} uf={filtros.uf} aoEscolher={escolherAtalho} />
+        </Suspense>
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
           <section aria-label="Lista de editais" id="lista-editais" ref={inicioLista} className="flex scroll-mt-3 flex-col">
             <ColunaLista
@@ -578,7 +602,6 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
               carregandoLista={carregandoLista}
               erro={erroLista}
               erroExportar={erroExportar}
-              pagina={pagina}
               ordem={ordemEfetiva(ordem, comTermo)}
               temTermo={comTermo}
               listaRef={listaRef}
@@ -589,7 +612,10 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
               aoSelecionar={selecionar}
               aoMudarPrazo={(seteDias) => aplicar({ ...filtros, seteDias })}
               aoMudarOrdem={mudarOrdem}
-              aoIrPagina={irParaPagina}
+              carregandoMais={carregandoMais}
+              erroMais={erroMais}
+              aoCarregarMais={carregarMais}
+              aoRecomecar={() => void carregarLista(filtros, { pagina: 1 })}
               aoAplicar={aplicar}
             />
           </section>

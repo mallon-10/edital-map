@@ -1,7 +1,8 @@
 import { NOMES_UF } from './estados';
 import { chave, separarNegativos } from './relevancia/termos';
 import { ASSUNTOS, naUf } from './seo/assuntos';
-import type { FiltrosTela } from './tipos';
+import { POR_PAGINA } from './filtros';
+import type { EditalResumo, FiltrosTela, ResultadoBusca } from './tipos';
 
 /** Título do cartão do topo da página inicial: o que se busca e onde ("Uniforme em Santa Catarina"). */
 export function tituloDaBusca(f: FiltrosTela): string {
@@ -56,4 +57,22 @@ export function ofertaFechada(valor: string | null, agora: Date): boolean {
   if (!valor || !Number.isFinite(quando)) return false;
   const passou = agora.getTime() - quando;
   return passou >= 0 && passou < OFERTA_FECHADA_DIAS * 86_400_000;
+}
+
+/**
+ * Lista que carrega ao rolar: a próxima página depois das que estão na tela (20 por página), contando da primeira que o
+ * endereço pediu (um link antigo com `pagina=N` começa nela). Arredonda para cima: um repetido tirado não pede a mesma.
+ */
+export function proximaPagina(primeira: number, carregados: number): number {
+  return primeira + Math.ceil(carregados / POR_PAGINA);
+}
+
+/** Acrescenta a página nova sem repetir (um edital novo no banco empurra outro para a página seguinte). */
+export function juntarEditais(antigos: readonly EditalResumo[], novos: readonly EditalResumo[]): EditalResumo[] {
+  const vistos = new Set(antigos.map((e) => e.id));
+  return [...antigos, ...novos.filter((e) => !vistos.has(e.id))];
+}
+
+export function temMais(r: ResultadoBusca): boolean {
+  return r.editais.length < r.total;
 }
