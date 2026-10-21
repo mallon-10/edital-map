@@ -9,9 +9,9 @@ import { CONFIRMAR_REMOVER, precisaConfirmar } from '@/lib/salvos';
 import { AvisoPlano } from './AvisoPlano';
 
 const ICONE =
-  'inline-flex size-11 items-center justify-center rounded-sm text-ink-muted hover:bg-sunken aria-pressed:text-pin-strong aria-busy:opacity-60';
+  'inline-flex size-11 items-center justify-center rounded-full text-ink-muted hover:bg-sunken aria-pressed:text-pin-strong aria-busy:opacity-60';
 const BOTAO =
-  'inline-flex h-11 items-center gap-2 rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken aria-pressed:border-pin aria-pressed:bg-pin-soft aria-pressed:text-pin-strong aria-busy:opacity-60';
+  'inline-flex h-12 items-center gap-2 rounded-full border border-line-strong bg-raised px-5 text-[15px] font-semibold hover:bg-sunken aria-pressed:border-pin aria-pressed:bg-pin-soft aria-pressed:text-pin-strong aria-busy:opacity-60';
 
 type Aviso = { mensagem: string; planos: boolean };
 

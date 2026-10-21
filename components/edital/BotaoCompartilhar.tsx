@@ -45,7 +45,7 @@ export function BotaoCompartilhar({ titulo, slug }: { titulo: string; slug: stri
       <button
         type="button"
         onClick={compartilhar}
-        className="inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
+        className="inline-flex h-12 items-center rounded-full border border-line-strong bg-raised px-5 text-[15px] font-semibold hover:bg-sunken"
       >
         Compartilhar
       </button>

@@ -6,7 +6,7 @@ import type { Edital } from '@/lib/tipos';
 
 function Linha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 border-b border-line py-2.5 last:border-b-0 md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-4">
+    <div className="flex flex-col gap-0.5 border-b border-line py-2.5 last:border-b-0">
       <dt className="text-[13px] font-semibold text-ink-muted">{rotulo}</dt>
       <dd className="min-w-0 break-words text-[15px]">{children}</dd>
     </div>
@@ -21,8 +21,8 @@ export function FichaEdital({ edital: e, agora, atualizadoEm }: { edital: Edital
   const p = prazo(e.encerramento_em, agora);
   const modalidade = modalidadeCurta(e.modalidade_nome);
   return (
-    <section aria-labelledby="ficha" className="rounded-lg border border-line bg-raised p-5">
-      <h2 id="ficha" className="mb-1 text-[17px] font-bold">Informações principais</h2>
+    <section aria-labelledby="ficha" className="rounded-[22px] bg-raised p-5 lg:p-6">
+      <h2 id="ficha" className="mb-1 text-[18px] font-semibold">Ficha do edital</h2>
       <dl>
         <Linha rotulo="Objeto">{textoLimpo(e.objeto)}</Linha>
         <Linha rotulo="Órgão">

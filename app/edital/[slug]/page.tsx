@@ -18,13 +18,12 @@ import { ResumoOportunidade } from '@/components/edital/ResumoOportunidade';
 import { TextoRecolhivel } from '@/components/edital/TextoRecolhivel';
 import { EtiquetaSituacao } from '@/components/EtiquetaSituacao';
 import { TAG_PRAZO, TEXTO_PRAZO } from '@/components/estilosPrazo';
-import { FaixaCobertura } from '@/components/FaixaCobertura';
 import { RegistrarAbertura } from '@/components/RegistrarAbertura';
 import { VitrineEmBreve } from '@/components/VitrineEmBreve';
 import { NOMES_UF } from '@/lib/estados';
 import { SLUG_EDITAL } from '@/lib/eventos';
 import { descricaoDoEdital, editalAberto, jsonLdMigalhas } from '@/lib/seo/textos';
-import { linkOficial, prazo } from '@/lib/formato';
+import { dataHora, haQuanto, linkOficial, moeda, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
 import { resumoOportunidade } from '@/lib/resumoEdital';
 import { arquivosDoEdital, atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
@@ -54,7 +53,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-const ETIQUETA = 'rounded-xs bg-sunken px-2 py-0.5 text-xs font-semibold text-ink-muted';
+const ETIQUETA = 'inline-flex h-[26px] items-center rounded-full bg-sunken px-2.5 text-xs font-semibold text-ink-muted';
+/** Blocos da página (visual novo): cartão branco sem borda e título de seção. */
+const CARTAO = 'rounded-[22px] bg-raised p-5 lg:p-6';
+const TITULO = 'text-[18px] font-semibold';
 
 /** Resumo de reserva: se a consulta do resumo falhar, a página do edital continua de pé. */
 const RESUMO_VAZIO: ResumoItens = { total: 0, materiais: 0, servicos: 0, comBeneficio: 0, exclusivos: 0, cota: 0, criterios: [] };
@@ -108,11 +110,11 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   // Revogada ou anulada (link direto): só o rótulo da situação, sem a tag de prazo "Aberta".
   const rotuloSit = rotuloSituacao(e.situacao_id);
   const encerradaPorSituacao = rotuloSit === 'Revogada' || rotuloSit === 'Anulada';
+  const valorEstimado = moeda(e.valor_estimado);
 
   return (
     <>
       <Cabecalho plano={plano} />
-      <FaixaCobertura atualizadoEm={atualizado} />
       <RegistrarAbertura slug={e.slug} />
       <script
         type="application/ld+json"
@@ -128,8 +130,8 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
         }}
       />
       {/* Celular: espaço no fim para a barra fixa do "Abrir edital oficial" (a de navegação já tem o dela). */}
-      <main className="mx-auto flex max-w-[1280px] flex-col gap-6 px-4 pb-28 pt-6 md:px-6 lg:pb-6">
-        <nav aria-label="Caminho" className="flex flex-wrap gap-2 text-[13px] text-ink-muted">
+      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 pb-28 pt-2 lg:gap-6 lg:px-6 lg:pb-10 lg:pt-3">
+        <nav aria-label="Caminho" className="flex flex-wrap gap-2 px-1 text-[13px] text-ink-muted">
           <Link href="/" className="hover:underline">Início</Link>
           <span aria-hidden="true">/</span>
           <Link href={`/licitacoes/${e.uf.toLowerCase()}`} prefetch={false} className="hover:underline">{nomeUf}</Link>
@@ -137,33 +139,53 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
           <span>{local}</span>
         </nav>
 
-        <section className="flex flex-wrap items-end justify-between gap-5">
-          <div className="flex min-w-0 flex-[1_1_560px] flex-col gap-3">
+        {/* Cartão do topo (visual novo, como o da página inicial): situação, título, quem compra, valor, prazo e as ações. */}
+        <section aria-labelledby="titulo-edital" className="flex flex-col gap-5 rounded-[26px] bg-raised p-5 lg:gap-7 lg:rounded-[28px] lg:p-10">
+          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-ink-muted lg:text-xs">
+            Fonte PNCP{atualizado ? ` · atualizado ${haQuanto(atualizado, agora)}` : ''}
+          </p>
+          <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
               {encerradaPorSituacao ? null : (
-                <>
-                  <span className={`rounded-xs px-2 py-0.5 text-xs font-semibold ${TAG_PRAZO[p.tom]}`}>{p.situacao}</span>
-                  <span className={`text-[13px] ${TEXTO_PRAZO[p.tom]}`}>{p.texto}</span>
-                </>
+                <span className={`inline-flex h-[26px] items-center rounded-full px-2.5 text-xs font-semibold ${TAG_PRAZO[p.tom]}`}>{p.situacao}</span>
               )}
               <EtiquetaSituacao situacaoId={e.situacao_id} />
               {titulo.tipo ? <span className={ETIQUETA}>{titulo.tipo}</span> : null}
               {e.modalidade_nome ? <span className={ETIQUETA}>{modalidadeCurta(e.modalidade_nome)}</span> : null}
               {e.srp ? <span className={ETIQUETA}>Registro de preços</span> : null}
-              {exclusivoTotal ? <span className="rounded-xs bg-mata-soft px-2 py-0.5 text-xs font-semibold text-mata">Exclusivo ME/EPP</span> : null}
+              {exclusivoTotal ? <span className="inline-flex h-[26px] items-center rounded-full bg-mata-soft px-2.5 text-xs font-semibold text-mata">Exclusivo ME/EPP</span> : null}
             </div>
-            <h1 className="break-words text-[26px] font-bold leading-tight tracking-[-0.015em] md:text-[32px]">{titulo.titulo}</h1>
-            <p className="text-[15px] text-ink-muted">
+            <h1
+              id="titulo-edital"
+              className="break-words text-[26px] font-bold leading-[30px] tracking-[-0.015em] lg:text-[38px] lg:leading-[44px] lg:tracking-[-0.02em]"
+            >
+              {titulo.titulo}
+            </h1>
+            <p className="text-[15px] text-ink-muted lg:text-[17px]">
               {[nomeProprio(e.orgao_nome), e.unidade_nome ? nomeProprio(e.unidade_nome) : null, local].filter(Boolean).join(' · ')}
             </p>
             {aviso ? (
-              <p role="note" className="rounded-sm bg-pin-soft px-3 py-2 text-[14px] text-pin-strong">
+              <p role="note" className="rounded-[14px] bg-pin-soft px-4 py-3 text-[14px] text-pin-strong">
                 {aviso}
               </p>
             ) : null}
           </div>
-          {/* "Abrir edital oficial" e "Compartilhar" para todos; Salvar e Descartar também (a rota decide o plano). */}
-          <div className="flex flex-wrap gap-2">
+          <dl className="grid grid-cols-1 gap-4 border-t border-line pt-5 min-[420px]:grid-cols-2 lg:flex lg:gap-14">
+            <div className="flex flex-col gap-1">
+              <dt className="text-[13px] text-ink-muted">Valor estimado</dt>
+              <dd className={valorEstimado ? 'font-mono text-[20px] font-medium lg:text-[24px]' : 'text-[15px] text-ink-muted'}>
+                {valorEstimado ?? 'Valor não informado'}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-[13px] text-ink-muted">Propostas até</dt>
+              <dd className="font-mono text-[17px] font-medium lg:text-[20px]">{e.encerramento_em ? dataHora(e.encerramento_em) : 'Não informado'}</dd>
+              {encerradaPorSituacao || !e.encerramento_em ? null : <dd className={`text-[14px] font-semibold ${TEXTO_PRAZO[p.tom]}`}>{p.texto}</dd>}
+            </div>
+          </dl>
+          {/* "Abrir edital oficial" (no computador aqui; no celular, fixo embaixo) e "Compartilhar" para todos; Salvar e
+              Descartar também (a rota decide o plano). */}
+          <div className="flex flex-wrap gap-2.5 lg:gap-3">
             <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} />
             <BotaoCompartilhar titulo={titulo.titulo} slug={e.slug} />
             <BotaoSalvar id={e.id} variante="botao" />
@@ -171,41 +193,40 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             <Link
               href="/alertas"
               prefetch={false}
-              className="inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken"
+              className="inline-flex h-12 items-center rounded-full border border-line-strong bg-raised px-5 text-[15px] font-semibold hover:bg-sunken"
             >
               Criar alerta
             </Link>
           </div>
         </section>
 
-        {/* Celular: "Abrir edital oficial" fixo acima da barra de navegação (sempre, como no cabeçalho do computador). */}
+        {/* Celular: "Abrir edital oficial" fixo acima da barra de navegação (sempre, como no cartão do topo do computador). */}
         <div className="fixed inset-x-0 bottom-[var(--altura-barra)] z-30 border-t border-line bg-raised py-3 pl-[calc(16px+env(safe-area-inset-left))] pr-[calc(16px+env(safe-area-inset-right))] lg:hidden">
           <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" />
         </div>
 
         {/* Seção nova da página entra aqui (e a consulta dela, em detalhesDoEdital). */}
         <ResumoOportunidade frases={resumoOportunidade(e)} />
-        <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} />
         <PrincipaisInformacoes edital={e} resumo={detalhes.resumo} agora={agora} />
 
-        <div className="flex flex-wrap items-start gap-5">
-          <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5">
-            <section className="rounded-lg border border-line bg-raised p-5">
-              <h2 className="mb-1 text-[17px] font-bold">Documentos do edital</h2>
-              <p className="mb-2 text-[13px] text-ink-muted">Os documentos exigidos para participar estão no edital e no termo de referência.</p>
+        <div className="flex flex-wrap items-start gap-5 lg:gap-6">
+          <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5 lg:gap-6">
+            <section aria-labelledby="documentos" className={CARTAO}>
+              <h2 id="documentos" className={TITULO}>Documentos do edital</h2>
+              <p className="mb-2 mt-1 text-[14px] text-ink-muted">Os documentos exigidos para participar estão no edital e no termo de referência.</p>
               <Suspense fallback={<p role="status" className={CARREGANDO_PNCP}>Carregando os documentos do PNCP…</p>}>
                 <SecaoDocumentos e={e} />
               </Suspense>
             </section>
-            <section className="rounded-lg border border-line bg-raised p-5">
-              <h2 className="mb-3 text-[17px] font-bold">Itens da licitação</h2>
+            <section aria-labelledby="itens" className={CARTAO}>
+              <h2 id="itens" className={`${TITULO} mb-3`}>Itens da licitação</h2>
               <Suspense fallback={<p role="status" className={CARREGANDO_PNCP}>Carregando os itens do PNCP…</p>}>
                 <SecaoItens e={e} todos={todos} totalResumo={detalhes.resumo.total} />
               </Suspense>
             </section>
             <Relacionados editais={detalhes.parecidos} origem={e.slug} agora={agora} />
-            <section className="rounded-lg border border-line bg-raised p-5">
-              <h2 className="mb-2 text-[17px] font-bold">Informações complementares</h2>
+            <section aria-labelledby="complementares" className={CARTAO}>
+              <h2 id="complementares" className={`${TITULO} mb-2`}>Informações complementares</h2>
               {lotes ? (
                 <ol className="flex flex-col gap-1.5 text-[15px]">
                   {lotes.map((l) => (
@@ -221,17 +242,18 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
               )}
             </section>
           </div>
-          <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5">
+          <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5 lg:gap-6">
+            <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} />
             <VitrineEmBreve slug={e.slug} />
-            <section className="flex flex-col gap-3 rounded-lg border border-line bg-raised p-5 text-[15px]">
-              <h2 className="text-base font-bold">Local</h2>
+            <section aria-labelledby="local" className={`${CARTAO} flex flex-col gap-3 text-[15px]`}>
+              <h2 id="local" className={TITULO}>Local</h2>
               <p>
-                <span className="block text-xs text-ink-muted">Sede do órgão comprador</span>
+                <span className="block text-[13px] text-ink-muted">Sede do órgão comprador</span>
                 {local}
               </p>
               <p className="text-[13px] text-ink-muted">O local de entrega pode ser outro: confira no edital.</p>
             </section>
-            <p className="rounded-md bg-sunken p-4 text-[13px] text-ink-muted">
+            <p className="rounded-[18px] bg-sunken p-4 text-[13px] text-ink-muted">
               O Edital Map ajuda a encontrar editais. Não participa da licitação: as regras valem conforme o edital oficial.
             </p>
           </aside>

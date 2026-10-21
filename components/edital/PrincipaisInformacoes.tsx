@@ -7,7 +7,7 @@ import type { Edital, ResumoItens } from '@/lib/tipos';
 
 function Cartao({ rotulo, destaque, children }: { rotulo: string; destaque?: boolean; children: ReactNode }) {
   return (
-    <div className={`flex flex-col gap-1 rounded-md border p-4 ${destaque ? 'border-mata bg-mata-soft' : 'border-line bg-raised'}`}>
+    <div className={`flex flex-col gap-1 rounded-[20px] px-5 py-4 ${destaque ? 'bg-mata-soft shadow-[inset_0_0_0_1px_#0b6b53]' : 'bg-raised'}`}>
       <span className="text-xs font-semibold uppercase tracking-[0.06em] text-ink-muted">{rotulo}</span>
       {children}
     </div>
@@ -25,8 +25,8 @@ export function PrincipaisInformacoes({ edital: e, resumo, agora }: { edital: Ed
     : 'Prazo não informado';
   return (
     <section aria-labelledby="principais" className="flex flex-col gap-3">
-      <h2 id="principais" className="text-[17px] font-bold">Principais informações</h2>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+      <h2 id="principais" className="px-1 text-[17px] font-medium text-ink-muted lg:text-[20px]">Principais informações</h2>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 lg:gap-4">
         <Cartao rotulo="O que compram">
           <span className="text-[15px] font-semibold">{oQueCompram(resumo)}</span>
         </Cartao>

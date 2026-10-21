@@ -4,5 +4,5 @@ import { rotuloSituacao } from '@/lib/situacao';
 export function EtiquetaSituacao({ situacaoId }: { situacaoId: number | null }) {
   const rotulo = rotuloSituacao(situacaoId);
   if (!rotulo) return null;
-  return <span className="inline-flex w-fit items-center rounded-xs bg-pin-soft px-2 py-0.5 text-xs font-semibold text-pin-strong">{rotulo}</span>;
+  return <span className="inline-flex h-[26px] w-fit items-center rounded-full bg-pin-soft px-2.5 text-xs font-semibold text-pin-strong">{rotulo}</span>;
 }

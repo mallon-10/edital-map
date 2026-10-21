@@ -7,7 +7,7 @@ import { LIMITES_CONTA } from '@/lib/limitesConta';
 import { AvisoPlano } from './AvisoPlano';
 
 const CLASSE =
-  'inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken aria-pressed:bg-sunken aria-pressed:text-ink-muted aria-busy:opacity-60';
+  'inline-flex h-12 items-center rounded-full border border-line-strong bg-raised px-5 text-[15px] font-semibold hover:bg-sunken aria-pressed:bg-sunken aria-pressed:text-ink-muted aria-busy:opacity-60';
 
 const DESCARTAR_PLANO = 'Descartar editais é do plano Pro.';
 const CONFIRMAR_DESFAZER = 'Desfazer o descarte? A observação deste edital também sai.';

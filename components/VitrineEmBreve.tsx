@@ -13,7 +13,7 @@ const ITENS: ReadonlyArray<{ id: Recurso; titulo: string; texto: string }> = [
 export function VitrineEmBreve({ slug }: { slug: string }) {
   const [pedidos, setPedidos] = useState<Recurso[]>([]);
   return (
-    <section className="flex flex-col gap-3 rounded-lg bg-ink p-5 text-surface">
+    <section className="flex flex-col gap-3 rounded-[22px] bg-ink p-5 text-surface lg:p-6">
       <h2 className="text-[13px] font-bold uppercase tracking-[0.06em] text-[#a9c9c4]">Em breve no Edital Map</h2>
       {ITENS.map((item) => {
         const pedido = pedidos.includes(item.id);
@@ -28,7 +28,7 @@ export function VitrineEmBreve({ slug }: { slug: string }) {
                 registrar('quer_recurso', { recurso: item.id, edital: slug });
                 setPedidos((p) => [...p, item.id]);
               }}
-              className="h-9 self-start rounded-sm bg-pin px-3 text-[13px] font-semibold text-on-pin disabled:bg-white/20 disabled:text-surface"
+              className="h-10 self-start rounded-full bg-pin px-4 text-[13px] font-semibold text-on-pin disabled:bg-white/20 disabled:text-surface"
             >
               {pedido ? 'Anotado. Obrigado pelo interesse!' : 'Quero ser avisado'}
             </button>

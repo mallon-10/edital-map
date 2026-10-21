@@ -10,8 +10,8 @@ type Props = { editais: EditalRelacionado[]; origem: string; agora: Date };
 export function Relacionados({ editais, origem, agora }: Props) {
   if (editais.length === 0) return null;
   return (
-    <section aria-labelledby="parecidos-titulo" className="rounded-lg border border-line bg-raised p-5">
-      <h2 id="parecidos-titulo" className="mb-3 text-[17px] font-bold">
+    <section aria-labelledby="parecidos-titulo" className="rounded-[22px] bg-raised p-5 lg:p-6">
+      <h2 id="parecidos-titulo" className="mb-3 text-[18px] font-semibold">
         Editais parecidos abertos
       </h2>
       {/* grid-cols-1 = minmax(0, 1fr): sem ela a coluna crescia até a linha "truncate" inteira e a página vazava no celular. */}
@@ -25,7 +25,7 @@ export function Relacionados({ editais, origem, agora }: Props) {
               <LinkRelacionado
                 href={`/edital/${e.slug}`}
                 origem={origem}
-                className="flex w-full min-w-0 flex-col gap-2 rounded-md border border-line bg-raised p-3.5 transition-colors hover:border-line-strong"
+                className="flex w-full min-w-0 flex-col gap-2 rounded-[16px] border border-line bg-raised p-4 transition-colors hover:border-line-strong"
               >
                 <span className="flex items-start justify-between gap-3">
                   <span className="line-clamp-3 text-[14px] font-semibold leading-5">{titulo}</span>
@@ -36,7 +36,7 @@ export function Relacionados({ editais, origem, agora }: Props) {
                   )}
                 </span>
                 <span className="truncate text-xs text-ink-muted">{[tipo, nomeProprio(e.orgao_nome), e.uf].filter(Boolean).join(' · ')}</span>
-                <span className={`mt-auto inline-flex w-fit items-center gap-1.5 rounded-xs px-2 py-0.5 text-xs font-semibold ${ESTILO_ETIQUETA[et.tom]}`}>
+                <span className={`mt-auto inline-flex h-[26px] w-fit items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold ${ESTILO_ETIQUETA[et.tom]}`}>
                   <span className={`size-[7px] rounded-full ${PONTO_ETIQUETA[et.tom]}`} aria-hidden="true" />
                   {et.texto}
                 </span>
