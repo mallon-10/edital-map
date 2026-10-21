@@ -33,7 +33,9 @@ Novos dados gravados:
 ## Página
 
 - `/admin?periodo=hoje|7|30|90` (padrão 7), componente de servidor, `noindex`, sem prefetch.
-- Só com o cookie `em_dono` válido (`ehDono`); qualquer outro recebe 404 (não revela que a página existe).
+- ~~Só com o cookie `em_dono` válido~~ **Revisão de 21/10/2026: só local.** O painel não existe no site publicado:
+  `app/admin/page.local.tsx`, extensão `.local.tsx` reconhecida só no `next dev` (`lib/paginasLocais.ts`), 404 fora do
+  desenvolvimento, `npm run admin` preso ao 127.0.0.1:3100. Sem cookie; links abrem o site publicado sem Referer.
 - Dados por `lib/servidor/admin.ts` (`server-only`); formatação e montagem em `lib/admin.ts` (testada).
 - Visual do design system: cartões de números, barras horizontais nas listas (largura pelo maior), série por dia em barras.
 - Os dados antigos (15/10 em diante) aparecem; páginas vistas, origem e total da busca valem a partir da publicação.

@@ -33,6 +33,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     '/', '/edital/:path*', '/licitacoes/:path*', '/obrigado/:path*', '/assinar', '/assinatura', '/planos', '/alertas', '/alertas/:path*',
-    '/sobre', '/entrar', '/radar', '/radar/:path*', '/oportunidades', '/admin', '/api/:path*',
+    '/sobre', '/entrar', '/radar', '/radar/:path*', '/oportunidades', '/api/:path*',
   ],
 };

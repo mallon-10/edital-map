@@ -1,7 +1,10 @@
 import type { NextConfig } from 'next';
+import { extensoesDePagina } from './lib/paginasLocais';
 
 const config: NextConfig = {
   poweredByHeader: false,
+  // O painel do dono (app/admin/page.local.tsx) só existe no `npm run admin`, nunca no site publicado.
+  pageExtensions: extensoesDePagina(process.env.NODE_ENV),
   async headers() {
     return [
       {

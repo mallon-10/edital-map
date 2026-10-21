@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { largura, type Dia } from '@/lib/admin';
 import { numero } from '@/lib/formato';
 
@@ -37,7 +36,8 @@ export function ListaBarras({ itens, vazio = 'Nada no período.' }: { itens: Ite
           <div className="flex items-baseline justify-between gap-3 text-[13px]">
             <span className={`min-w-0 truncate ${i.mono ? 'font-mono text-[12px]' : ''}`} title={i.rotulo}>
               {i.href ? (
-                <Link href={i.href} prefetch={false} className="hover:underline">{i.rotulo}</Link>
+                // Abre o site publicado em outra aba, sem Referer: o 127.0.0.1 não vira "site que mandou visita".
+                <a href={i.href} target="_blank" rel="noreferrer" className="hover:underline">{i.rotulo}</a>
               ) : (
                 i.rotulo
               )}
