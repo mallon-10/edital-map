@@ -113,7 +113,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const rotuloSit = rotuloSituacao(e.situacao_id);
   const encerradaPorSituacao = rotuloSit === 'Revogada' || rotuloSit === 'Anulada';
   const valorEstimado = moeda(e.valor_estimado);
-  // Só com 48 h ou mais de prazo e o número configurado (WHATSAPP_ASSESSORIA na Vercel).
+  // Só com 24 h ou mais de prazo e o número configurado (WHATSAPP_ASSESSORIA na Vercel).
   const whatsapp = numeroWhatsapp(process.env.WHATSAPP_ASSESSORIA);
   const assessoria =
     whatsapp && mostrarAssessoria(e, agora)

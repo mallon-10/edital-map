@@ -47,9 +47,9 @@ describe('mensagemAssessoria', () => {
 
 describe('mostrarAssessoria', () => {
   const agora = new Date('2026-11-10T13:00:00.000Z');
-  it('só com 48 h ou mais até o fim das propostas', () => {
-    expect(mostrarAssessoria({ encerramento_em: '2026-11-12T13:00:00.000Z', situacao_id: 1 }, agora)).toBe(true);
-    expect(mostrarAssessoria({ encerramento_em: '2026-11-12T12:59:00.000Z', situacao_id: 1 }, agora)).toBe(false);
+  it('só com 24 h ou mais até o fim das propostas', () => {
+    expect(mostrarAssessoria({ encerramento_em: '2026-11-11T13:00:00.000Z', situacao_id: 1 }, agora)).toBe(true);
+    expect(mostrarAssessoria({ encerramento_em: '2026-11-11T12:59:00.000Z', situacao_id: 1 }, agora)).toBe(false);
     expect(mostrarAssessoria({ encerramento_em: null, situacao_id: 1 }, agora)).toBe(false);
   });
   it('revogada ou anulada não', () => {
