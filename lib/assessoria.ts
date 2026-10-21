@@ -5,13 +5,11 @@ import { url } from '@/lib/seo/site';
 export type EditalAssessoria = { slug: string; titulo: string; orgao: string; local: string; encerramento_em: string | null };
 
 const MAX_TITULO = 120;
-/** Menos que isso até o fim das propostas não dá tempo de analisar o edital e juntar os documentos. */
-const PRAZO_MINIMO_MS = 24 * 60 * 60 * 1000;
 
-/** Cartão só para edital aberto (não revogado nem anulado) com pelo menos 24 h pela frente. */
+/** Cartão em todo edital aberto (não revogado nem anulado); prazo curto o João recusa na conversa. */
 export function mostrarAssessoria(e: { encerramento_em: string | null; situacao_id: number | null }, agora: Date): boolean {
   if (!e.encerramento_em || e.situacao_id === 2 || e.situacao_id === 3) return false;
-  return Date.parse(e.encerramento_em) - agora.getTime() >= PRAZO_MINIMO_MS;
+  return Date.parse(e.encerramento_em) > agora.getTime();
 }
 
 /** Número da variável WHATSAPP_ASSESSORIA só com dígitos e 55 na frente; vazio ou fora do formato = sem cartão. */
