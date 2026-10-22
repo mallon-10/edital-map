@@ -91,6 +91,10 @@ type Props = {
   assessoria: string | null;
 };
 
+// Cartão da assessoria na página inicial (sem edital escolhido).
+const TITULO_ASSESSORIA = 'Quer participar de uma licitação?';
+const TEXTO_ASSESSORIA = 'Achou um edital e não sabe por onde começar? A gente analisa e prepara um passo a passo para a sua empresa.';
+
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
 type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'tela' | 'selecionadoId'>;
 
@@ -595,6 +599,16 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
         <Suspense fallback={<Atalhos totais={{}} q={filtros.q} uf={filtros.uf} aoEscolher={escolherAtalho} />}>
           <AtalhosComTotais promessa={totaisAtalhos} q={filtros.q} uf={filtros.uf} aoEscolher={escolherAtalho} />
         </Suspense>
+        {/* Celular: a assessoria entre os assuntos e a lista (no computador ela fica na coluna da direita). */}
+        {assessoria ? (
+          <CartaoAssessoria
+            href={assessoria}
+            id="assessoria-inicio-celular"
+            titulo={TITULO_ASSESSORIA}
+            texto={TEXTO_ASSESSORIA}
+            className="flex lg:hidden"
+          />
+        ) : null}
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
           <section aria-label="Lista de editais" id="lista-editais" ref={inicioLista} className="flex scroll-mt-3 flex-col">
             <ColunaLista
@@ -628,8 +642,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
               <CartaoAssessoria
                 href={assessoria}
                 id="assessoria-inicio"
-                titulo="Quer participar de uma licitação?"
-                texto="Achou um edital e não sabe por onde começar? A gente analisa e prepara um passo a passo para a sua empresa."
+                titulo={TITULO_ASSESSORIA}
+                texto={TEXTO_ASSESSORIA}
                 className="flex"
               />
             ) : null}
