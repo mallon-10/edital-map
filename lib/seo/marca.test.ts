@@ -36,9 +36,9 @@ describe('perguntas de /licitacoes', () => {
 
 describe('linksDaInicio', () => {
   const cidades = [
-    { ibge: '1', nome: 'Salvador', uf: 'BA', slug: 'salvador', total: 300 },
-    { ibge: '2', nome: 'Feira de Santana', uf: 'BA', slug: 'feira-de-santana', total: 40 },
-    { ibge: '3', nome: 'São Paulo', uf: 'SP', slug: 'sao-paulo', total: 900 },
+    { ibge: '1', nome: 'Salvador', uf: 'BA', slug: 'salvador', total: 300, noSitemap: true },
+    { ibge: '2', nome: 'Feira de Santana', uf: 'BA', slug: 'feira-de-santana', total: 40, noSitemap: true },
+    { ibge: '3', nome: 'São Paulo', uf: 'SP', slug: 'sao-paulo', total: 900, noSitemap: true },
   ];
 
   it('traz todos os assuntos, as 27 UFs em ordem de nome e as cidades com mais editais primeiro', () => {

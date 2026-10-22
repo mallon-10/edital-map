@@ -14,19 +14,26 @@ describe('escolherCidades', () => {
     { codigo_ibge: '4215802', nome: 'São Bento do Sul', uf: 'SC', total: MINIMO_CIDADE },
     { codigo_ibge: '4205407', nome: 'Florianópolis', uf: 'SC', total: 3 },
     { codigo_ibge: '4200051', nome: 'Abdon Batista', uf: 'SC', total: MINIMO_CIDADE - 1 },
+    { codigo_ibge: '4200101', nome: 'Abelardo Luz', uf: 'SC', total: 0 },
     { codigo_ibge: '1100015', nome: 'Alta Floresta', uf: 'RO', total: 40 },
     { codigo_ibge: '5100250', nome: 'Alta Floresta', uf: 'MT', total: 40 },
   ];
-  it('entra quem tem o mínimo de editais e toda capital com edital aberto', () => {
-    const c = escolherCidades(lista).map((x) => `${x.uf}/${x.slug}`);
-    expect(c).toEqual(['MT/alta-floresta', 'RO/alta-floresta', 'SC/florianopolis', 'SC/sao-bento-do-sul']);
+  it('mínimo de 5 editais para o sitemap e os links', () => {
+    expect(MINIMO_CIDADE).toBe(5);
   });
-  it('mesmo nome na mesma UF ganha o código do IBGE no endereço', () => {
-    const c = escolherCidades([
-      { codigo_ibge: '1', nome: 'Bom Jesus', uf: 'PI', total: 30 },
-      { codigo_ibge: '2', nome: 'Bom Jesus', uf: 'PI', total: 25 },
+  it('toda cidade com edital aberto tem rota; sitemap só com o mínimo ou capital', () => {
+    const c = escolherCidades(lista);
+    expect(c.map((x) => `${x.uf}/${x.slug}`)).toEqual([
+      'MT/alta-floresta', 'RO/alta-floresta', 'SC/abdon-batista', 'SC/florianopolis', 'SC/sao-bento-do-sul',
     ]);
-    expect(c.map((x) => x.slug)).toEqual(['bom-jesus', 'bom-jesus-2']);
+    expect(c.filter((x) => x.noSitemap).map((x) => x.slug)).toEqual(['alta-floresta', 'alta-floresta', 'florianopolis', 'sao-bento-do-sul']);
+  });
+  it('mesmo nome na mesma UF: "-2" pela ordem do código do IBGE (não muda com a contagem)', () => {
+    const c = escolherCidades([
+      { codigo_ibge: '2', nome: 'Bom Jesus', uf: 'PI', total: 30 },
+      { codigo_ibge: '1', nome: 'Bom Jesus', uf: 'PI', total: 5 },
+    ]);
+    expect(c.map((x) => [x.ibge, x.slug])).toEqual([['1', 'bom-jesus'], ['2', 'bom-jesus-2']]);
   });
   it('acha a cidade pela UF e pelo endereço', () => {
     const c = escolherCidades(lista);

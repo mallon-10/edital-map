@@ -6,6 +6,8 @@ const SIGLAS = new Set([
   'EPI', 'LED', 'PVC', 'GLP', 'ISO', 'INMETRO', 'ANVISA', 'CATMAT', 'CATSER', 'PCD', 'DML', 'PNCP', 'SRP', 'TI',
   'USB', 'HDMI', 'LCD', 'GPS', 'SAMU', 'UTI', 'APAE', 'CMEI', 'EMEF', 'EMEI', 'ESF', 'IPTU', 'ICMS', 'ISS', 'INSS',
   'FGTS', 'CNH', 'ONG', 'MDF', 'SSD', 'RAM', 'CPU', 'TV', 'DVD', 'NR', 'ABS', 'HD',
+  // Órgãos (páginas /licitacoes/orgao)
+  'FMS', 'FMAS', 'SAAE', 'DETRAN',
   // EPI e uniformes: Certificado de Aprovação e tamanhos de roupa
   'CA', 'PP', 'P', 'M', 'G', 'GG', 'XG', 'XGG', 'EG', 'EGG', 'XL', 'XXL',
   // UFs, sem SE e PE (em maiúsculas costumam ser "se" e "pé")
