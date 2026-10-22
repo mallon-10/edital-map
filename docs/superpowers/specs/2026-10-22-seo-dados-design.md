@@ -51,7 +51,9 @@ Cinco modalidades da v1, em lib/seo/modalidades.ts:
 - Lista: `buscarEditais` com `orgao: cnpj`, ordem por prazo.
 - Migalhas: Início › Licitações › {UF} › {órgão}. Vizinhos: a cidade do órgão (se tiver página), a UF e até 12 outros órgãos da mesma UF com página no sitemap.
 
-## 5. Assuntos novos (15 → cerca de 40)
+## 5. Assuntos novos (15 → 51)
+
+Medição de 22/10/2026: 36 candidatos passaram de 100 editais abertos (de 147 em dedetização a cerca de 4.800 em vigilância); ficaram fora locação de imóveis (57) e funerária (115, nicho pequeno). Termos com ruído foram tirados ("portaria", "poste", "vidraria", "bola", "vigilância" sozinha, que pega vigilância sanitária).
 
 - Novos grupos em lib/relevancia/termos.ts e assuntos em lib/seo/assuntos.ts, seguindo as regras de termo já testadas.
 - Candidatos: vigilância e segurança patrimonial; limpeza e conservação (serviço); transporte escolar; locação de veículos; pavimentação; iluminação pública; energia solar; climatização (ar-condicionado); câmeras e monitoramento; gás de cozinha e água mineral; cestas básicas; material didático e pedagógico; material esportivo; equipamentos médicos; odontologia; laboratório; extintores e combate a incêndio; dedetização e controle de pragas; gráfica e impressos; ferramentas; jardinagem e paisagismo; sinalização viária; coleta de resíduos; telefonia e internet; cursos e capacitação; manutenção de veículos; eletrodomésticos.
