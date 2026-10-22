@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 process.env.NEXT_PUBLIC_GA4_ID ??= 'G-TESTE';
-const { PADRAO, tagNaPagina } = await import('../components/TagGoogle');
+const { COMANDOS_META, PADRAO, tagNaPagina } = await import('../components/TagGoogle');
 const { default: config } = await import('../next.config');
 
 /** Roda o script inline da tag com window/location falsos e devolve o que foi para o dataLayer. */
@@ -40,6 +40,30 @@ describe('tag do Google fora do link de descadastro', () => {
     expect(padrao).toBe(0);
     expect(chamadas[0][2]).toMatchObject({ ad_storage: 'denied', analytics_storage: 'denied' });
     expect(chamadas.findIndex((c) => c[0] === 'config')).toBeGreaterThan(padrao);
+  });
+});
+
+/** Roda os comandos do Pixel da Meta com um fbq falso e devolve as chamadas. */
+function rodarMeta(escolha: string | null): unknown[][] {
+  const chamadas: unknown[][] = [];
+  const fbq = (...a: unknown[]) => void chamadas.push(a);
+  new Function('fbq', 'localStorage', COMANDOS_META)(fbq, { getItem: () => escolha });
+  return chamadas;
+}
+
+describe('Pixel da Meta', () => {
+  it('sem escolha ou recusado: consentimento revogado antes do init (nada sai até o Aceitar)', () => {
+    for (const escolha of [null, 'recusado']) {
+      const c = rodarMeta(escolha);
+      expect(c[0]).toEqual(['consent', 'revoke']);
+      expect(c.findIndex((x) => x[0] === 'init')).toBeGreaterThan(0);
+    }
+  });
+  it('aceito: consentimento liberado, init com o pixel 1437127088392129 e PageView', () => {
+    const c = rodarMeta('aceito');
+    expect(c[0]).toEqual(['consent', 'grant']);
+    expect(c).toContainEqual(['init', '1437127088392129']);
+    expect(c).toContainEqual(['track', 'PageView']);
   });
 });
 

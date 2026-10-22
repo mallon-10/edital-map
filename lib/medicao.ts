@@ -19,6 +19,33 @@ export const CONVERSOES = {
 
 export type Conversao = keyof typeof CONVERSOES;
 
+/** Pixel da Meta (Facebook/Instagram). Público, vai no HTML; segue o mesmo aviso de cookies da tag do Google. */
+export const ID_META_PIXEL = '1437127088392129';
+
+/** Evento padrão da Meta de cada conversão. O rótulo antigo do limite não vai à Meta. */
+const EVENTOS_META: Record<Conversao, string | null> = {
+  assinou: 'Purchase',
+  checkout: 'InitiateCheckout',
+  buscou: 'Search',
+  limite: null,
+};
+
+export function eventoMeta(
+  c: Conversao,
+  extra: { valorCentavos?: number; transacao?: string } = {},
+): { nome: string; dados: Record<string, unknown>; opcoes: Record<string, unknown> } | null {
+  const nome = EVENTOS_META[c];
+  if (!nome) return null;
+  const dados: Record<string, unknown> = {};
+  if (extra.valorCentavos !== undefined) {
+    dados.value = extra.valorCentavos / 100;
+    dados.currency = 'BRL';
+  }
+  // eventID: a Meta não conta a mesma compra duas vezes.
+  const opcoes: Record<string, unknown> = extra.transacao ? { eventID: extra.transacao } : {};
+  return { nome, dados, opcoes };
+}
+
 export function eventoConversao(c: Conversao, extra: { valorCentavos?: number; transacao?: string } = {}): Record<string, unknown> {
   const e: Record<string, unknown> = { send_to: CONVERSOES[c] };
   if (extra.valorCentavos !== undefined) {

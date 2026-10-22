@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONVERSOES, eventoConversao, ID_GOOGLE_ADS, jaMedido, lerConsentimento, marcarMedido } from './medicao';
+import { CONVERSOES, eventoConversao, eventoMeta, ID_GOOGLE_ADS, jaMedido, lerConsentimento, marcarMedido } from './medicao';
 
 const memoria = () => {
   const m = new Map<string, string>();
@@ -19,6 +19,21 @@ describe('conversões do Google Ads', () => {
   });
   it('as outras vão sem valor', () => {
     expect(eventoConversao('buscou')).toEqual({ send_to: CONVERSOES.buscou });
+  });
+});
+
+describe('eventos do Pixel da Meta', () => {
+  it('busca, checkout e assinatura viram eventos padrão da Meta', () => {
+    expect(eventoMeta('buscou')).toEqual({ nome: 'Search', dados: {}, opcoes: {} });
+    expect(eventoMeta('checkout')).toEqual({ nome: 'InitiateCheckout', dados: {}, opcoes: {} });
+  });
+  it('assinatura leva valor, moeda e o código da compra como eventID', () => {
+    expect(eventoMeta('assinou', { valorCentavos: 3790, transacao: 'abc' })).toEqual({
+      nome: 'Purchase', dados: { value: 37.9, currency: 'BRL' }, opcoes: { eventID: 'abc' },
+    });
+  });
+  it('o rótulo antigo do limite não vai à Meta', () => {
+    expect(eventoMeta('limite')).toBeNull();
   });
 });
 
