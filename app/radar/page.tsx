@@ -9,8 +9,10 @@ import { CartoesRadar } from '@/components/radar/CartoesRadar';
 import { OrdemRadar, PaginacaoRadar } from '@/components/radar/NavegacaoRadar';
 import { RegistrarVisitaRadar } from '@/components/radar/RegistrarVisitaRadar';
 import { ResumoRadar } from '@/components/radar/ResumoRadar';
+import { IconeCheck } from '@/components/inicio/Icones';
 import { ordemEfetiva, POR_PAGINA } from '@/lib/filtros';
 import { desdeDaVisita, lerNavegacaoRadar, urlDoRadar } from '@/lib/radar';
+import { contarAlertas } from '@/lib/servidor/alertas';
 import { lerRadar, perfilDaConta } from '@/lib/servidor/conta';
 import { municipiosPorIbge } from '@/lib/servidor/municipios';
 import { contarPorStatus, idsDescartados } from '@/lib/salvos';
@@ -37,12 +39,17 @@ export default async function MeuRadar({ searchParams }: Props) {
   const acesso = await acessoAoPro(usuario, ctx);
   if (acesso !== 'liberado') return <PaginaBloqueada recurso="radar" logado={usuario !== null} incerto={acesso === 'incerto'} />;
   if (!usuario) redirect('/entrar?voltar=/radar');
-  const [radar, perfil, salvos] = await Promise.all([
+  const [radar, perfil, salvos, alertas] = await Promise.all([
     lerRadar(usuario),
     perfilDaConta(usuario),
     // Salvos fora do ar não derrubam o radar: a lista sai com os descartados e sem o cartão "Editais salvos".
     estadoDosSalvos(usuario).catch((erro: unknown) => {
       console.error('salvos no radar:', erro);
+      return null;
+    }),
+    // Só para a faixa dos e-mails: fora do ar, a faixa some.
+    contarAlertas(usuario).catch((erro: unknown) => {
+      console.error('alertas no radar:', erro);
       return null;
     }),
   ]);
@@ -79,13 +86,16 @@ export default async function MeuRadar({ searchParams }: Props) {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-[28px] font-bold leading-tight tracking-[-0.015em]">Meu Radar</h1>
-            <p className="text-sm text-ink-muted">Editais abertos para o que sua empresa vende, atualizados a cada 3 horas.</p>
+            <p className="text-sm text-ink-muted">
+              Editais abertos que combinam com o que sua empresa vende (relevância média ou alta), atualizados a cada 3 horas.
+            </p>
           </div>
           <Link href="/radar/editar" prefetch={false} className="inline-flex h-11 items-center rounded-sm border border-line-strong bg-raised px-4 text-sm font-semibold hover:bg-sunken">
             Editar meu radar
           </Link>
         </div>
         <ResumoRadar radar={radar} cidades={cidades} />
+        {alertas === null ? null : <FaixaEmail comAlerta={alertas > 0} />}
         <CartoesRadar
           contagens={contagens}
           primeiraVisita={primeira}
@@ -114,5 +124,31 @@ export default async function MeuRadar({ searchParams }: Props) {
         <RegistrarVisitaRadar />
       </main>
     </>
+  );
+}
+
+/** Os e-mails do Pro: com alerta, quando chegam; sem alerta, o atalho para criar (o resumo de segunda vem do radar). */
+function FaixaEmail({ comAlerta }: { comAlerta: boolean }) {
+  return (
+    <section
+      aria-label="Seus e-mails"
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-md border p-4 ${comAlerta ? 'border-mata/30 bg-mata-soft' : 'border-line bg-raised'}`}
+    >
+      <p className="flex items-start gap-2 text-[15px]">
+        {comAlerta ? <IconeCheck className="mt-0.5 size-5 shrink-0 text-mata" /> : null}
+        <span>
+          {comAlerta
+            ? 'Alerta ligado: os editais novos do seu radar chegam no seu e-mail todo dia às 7h, e o resumo da semana na segunda.'
+            : 'Receba os editais novos no seu e-mail todo dia às 7h. O resumo da semana chega na segunda.'}
+        </span>
+      </p>
+      <Link
+        href={comAlerta ? '/alertas' : '/alertas/novo'}
+        prefetch={false}
+        className="inline-flex h-11 items-center text-sm font-semibold text-pin-strong underline-offset-2 hover:underline"
+      >
+        {comAlerta ? 'Gerenciar alertas' : 'Criar alerta diário'}
+      </Link>
+    </section>
   );
 }

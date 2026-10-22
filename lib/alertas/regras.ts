@@ -48,6 +48,11 @@ export function nomePadrao(termos: readonly string[]): string {
   return t.length <= MAX_NOME_ALERTA ? t : `${t.slice(0, MAX_NOME_ALERTA - 1).trimEnd()}…`.slice(0, MAX_NOME_ALERTA);
 }
 
+/** Alerta diário que o onboarding cria junto com o radar: os mesmos filtros, com o nome dos produtos. */
+export function alertaDoRadar(radar: Radar): Alerta {
+  return { ...radar, nome: nomePadrao(radar.termos) };
+}
+
 /** Corpo de criação/edição: nome + os campos do radar (validarRadar). Um user_id no corpo é ignorado. */
 export function validarAlerta(corpo: unknown): Resultado<Alerta> {
   if (!objeto(corpo)) return { ok: false, erro: MENSAGENS_ALERTA.formulario };

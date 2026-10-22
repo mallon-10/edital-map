@@ -1,4 +1,4 @@
-// Prévia dos e-mails (alertas, resumo semanal do Pro e código de acesso) com dados de exemplo inventados, para ver o
+// Prévia dos e-mails (alertas, resumo semanal do Pro, código de acesso e boas-vindas do Pro) com dados de exemplo inventados, para ver o
 // visual sem mandar nada. Nada aqui vai para o banco nem para o Resend.
 //   npx tsx scripts/previa-emails.ts <pasta> [--capturas]
 // Grava alerta.html, resumo.html e codigo.html (com {{ .Token }} trocado por 482913) e os textos puros (.txt).
@@ -9,6 +9,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { LOGO_EMAIL, montarEmail } from '../lib/alertas/email';
 import { montarResumo, type EditalDoResumo, type ResumoSemanal } from '../lib/alertas/resumo';
+import { montarBoasVindas } from '../lib/emailBoasVindas';
 
 const [pasta, ...opcoes] = process.argv.slice(2);
 if (!pasta) {
@@ -59,14 +60,16 @@ const resumoDados: ResumoSemanal = {
 };
 const resumo = montarResumo(resumoDados, 'exemplo-resumo', AGORA);
 const codigo = (await readFile('supabase/templates/codigo.html', 'utf8')).replaceAll('{{ .Token }}', '482913');
+const boasVindas = montarBoasVindas({ email: 'compras@empresa-exemplo.com.br', codigo: '482913', periodo: 'mensal' });
 
 const local = (html: string) => html.replaceAll(LOGO_EMAIL, 'logo-email.png');
 await mkdir(destino, { recursive: true });
 await copyFile('public/marca/logo-email.png', join(destino, 'logo-email.png'));
-const arquivos: [string, string][] = [['alerta', local(alerta.html)], ['resumo', local(resumo.html)], ['codigo', local(codigo)]];
+const arquivos: [string, string][] = [['alerta', local(alerta.html)], ['resumo', local(resumo.html)], ['codigo', local(codigo)], ['boas-vindas', local(boasVindas.html)]];
 for (const [nome, html] of arquivos) await writeFile(join(destino, `${nome}.html`), html);
 await writeFile(join(destino, 'alerta.txt'), `Assunto: ${alerta.assunto}\n\n${alerta.texto}\n`);
 await writeFile(join(destino, 'resumo.txt'), `Assunto: ${resumo.assunto}\n\n${resumo.texto}\n`);
+await writeFile(join(destino, 'boas-vindas.txt'), `Assunto: ${boasVindas.assunto}\n\n${boasVindas.texto}\n`);
 console.log(`Prévias em ${destino}`);
 
 if (opcoes.includes('--capturas')) {

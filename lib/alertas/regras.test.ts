@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { data, hora } from '../formato';
 import { MENSAGENS_RADAR } from '../radar';
 import {
-  alertaDaLinha, envioIndisponivel, ERRO_TETO_ALERTAS, lerIdAlerta, TetoDeAlertas, linhaDoAlerta, MENSAGENS_ALERTA, nomePadrao, textoUltimoEnvio, validarAlerta, validarMudancaAlerta,
+  alertaDaLinha, alertaDoRadar, envioIndisponivel, ERRO_TETO_ALERTAS, lerIdAlerta, TetoDeAlertas, linhaDoAlerta, MENSAGENS_ALERTA, nomePadrao, textoUltimoEnvio, validarAlerta, validarMudancaAlerta,
 } from './regras';
 
 const CORPO = { nome: '  Uniformes   no Sul ', termos: ['uniforme'], ufs: ['SC', 'PR'] };
@@ -51,6 +51,16 @@ describe('validação do alerta', () => {
     expect(nomePadrao(['uniforme', 'luva'])).toBe('uniforme, luva');
     expect(nomePadrao(['a'.repeat(40), 'b'.repeat(40)])).toHaveLength(60);
     expect(nomePadrao([])).toBe('');
+  });
+  it('alerta do onboarding: os filtros do radar e o nome dos produtos', () => {
+    const radar = {
+      termos: ['uniforme', 'jaleco'], termosExcluir: ['escolar'], ufs: ['SC'], municipios: [], valorMin: 1000, valorMax: null,
+      modalidades: [6], soMeEpp: true,
+    };
+    expect(alertaDoRadar(radar)).toEqual({ ...radar, nome: 'uniforme, jaleco' });
+    // O nome passa na validação do alerta (até 60 caracteres).
+    const longo = alertaDoRadar({ ...radar, termos: ['a'.repeat(50), 'b'.repeat(50)] });
+    expect(validarAlerta(longo).ok).toBe(true);
   });
   it('id do alerta é um uuid', () => {
     expect(lerIdAlerta('11111111-1111-4111-8111-111111111111')).toBe('11111111-1111-4111-8111-111111111111');

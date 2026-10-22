@@ -30,7 +30,10 @@ function Passo({ n, titulo, atual = false, children }: { n: number; titulo: stri
 
 type Pago = { periodo: Periodo; validoAte: string; email: string | null; entrar: string };
 
-/** Pagamento confirmado: o Pro já vale neste navegador; o próximo passo é ativar a conta com o código do e-mail. */
+/**
+ * Pagamento confirmado: o Pro já vale neste navegador. O próximo passo é o e-mail: o webhook mandou as boas-vindas com o
+ * código de ativação para o e-mail da compra (lib/emailBoasVindas.ts); o botão abre a tela do código em /entrar.
+ */
 export function CartaoPago({ periodo, validoAte, email, entrar }: Pago) {
   return (
     <section aria-labelledby="titulo-obrigado" className={CARTAO}>
@@ -42,7 +45,16 @@ export function CartaoPago({ periodo, validoAte, email, entrar }: Pago) {
         <h1 id="titulo-obrigado" className={TITULO}>
           Pronto, o Pro está ativo
         </h1>
-        <p className="max-w-[46ch] text-[16px] text-ink-muted lg:text-[17px]">Obrigado por assinar. O Pro já vale neste navegador e renova sozinho.</p>
+        <p className="max-w-[46ch] text-[16px] text-ink-muted lg:text-[17px]">Obrigado por assinar. Falta só ativar sua conta para os editais chegarem no seu e-mail.</p>
+      </div>
+
+      <div role="status" className="flex flex-col gap-2 rounded-[18px] bg-[#fffaf7] p-5 shadow-[inset_0_0_0_2px_#ff5a1f] lg:p-6">
+        <h2 className="text-[19px] font-bold tracking-[-0.01em] lg:text-[20px]">Último passo: ative sua conta pelo seu e-mail</h2>
+        <p className="text-[15.5px] text-ink lg:text-[16px]">
+          Enviamos para {email ? <strong className="break-all font-semibold">{email}</strong> : 'o e-mail da compra'} um e-mail com o código de ativação.
+          Abra o e-mail e digite o código de 6 números na próxima tela.
+        </p>
+        <p className="text-[14px] text-ink-muted">Não chegou em alguns minutos? Confira também o spam e a aba Promoções. Na tela do código dá para pedir outro.</p>
       </div>
 
       <dl className="grid grid-cols-2 gap-4 rounded-[18px] bg-surface px-5 py-[18px] sm:grid-cols-3">
@@ -63,23 +75,22 @@ export function CartaoPago({ periodo, validoAte, email, entrar }: Pago) {
       <div className="flex flex-col gap-4">
         <h2 className="text-[19px] font-bold tracking-[-0.01em] lg:text-[20px]">Agora, três passos para os editais chegarem</h2>
         <ol className="m-0 flex list-none flex-col gap-2.5 p-0">
-          <Passo n={1} titulo="Ative sua conta" atual>
-            Na próxima tela, mandamos um código de 6 dígitos para{' '}
-            {email ? <strong className="break-all font-semibold text-ink">{email}</strong> : 'o e-mail da compra'}. Com a conta, o Pro vale em
-            qualquer aparelho.
+          <Passo n={1} titulo="Ative sua conta pelo e-mail" atual>
+            Digite o código que enviamos. Com a conta, o Pro vale em qualquer aparelho, sempre com este mesmo e-mail.
           </Passo>
           <Passo n={2} titulo="Conte o que sua empresa vende">
             O Meu Radar usa isso para achar os editais certos para você.
           </Passo>
           <Passo n={3} titulo="Receba no seu e-mail">
-            Alertas todo dia às 7h e o resumo da semana na segunda.
+            O alerta diário já fica ligado: os editais novos chegam todo dia às 7h, e o resumo da semana na segunda.
           </Passo>
         </ol>
       </div>
 
       <div className="flex flex-col items-center gap-3.5">
         <Link href={entrar} prefetch={false} className={BOTAO_PAGAR}>
-          Ativar minha conta
+          {/* Sem o e-mail (outro navegador), /entrar começa pedindo o e-mail. */}
+          {email ? 'Já recebi o código' : 'Ativar minha conta'}
           <SetaDireita className="size-5" />
         </Link>
         <Link href="/" className="text-[15px] font-semibold text-pin-strong hover:underline">

@@ -131,8 +131,16 @@ describe('cabeçalho do checkout e /obrigado', () => {
     expect(html).toContain('R$ 37,90/mês');
     expect(html).toContain('22.11.2026');
     expect(html).toContain('maria@empresa.com.br');
-    expect(html).toMatch(/href="\/entrar\?x=1"[^>]*>.*Ativar minha conta/);
+    // O próximo passo é o e-mail: o código de ativação foi para o e-mail da compra.
+    expect(html).toContain('Último passo: ative sua conta pelo seu e-mail');
+    expect(html).toMatch(/Enviamos para .*maria@empresa\.com\.br.* um e-mail com o código de ativação/);
+    expect(html).toContain('Confira também o spam');
+    expect(html).toMatch(/href="\/entrar\?x=1"[^>]*>.*Já recebi o código/);
     expect(html).toContain('Ou buscar editais agora');
+  });
+  it('pago em outro navegador (sem o e-mail): fala do e-mail da compra', () => {
+    const html = sem(renderToStaticMarkup(createElement(CartaoPago, { periodo: 'anual', validoAte: '2027-10-22T15:00:00Z', email: null, entrar: '/entrar' })));
+    expect(html).toContain('Enviamos para o e-mail da compra um e-mail com o código de ativação');
   });
   it('esperando e não encontrado', () => {
     expect(sem(renderToStaticMarkup(createElement(CartaoEsperando, { codigo: 'c1' })))).toContain('Recebemos seu pedido');

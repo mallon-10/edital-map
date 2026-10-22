@@ -38,6 +38,12 @@ export const ENTRADA_RADAR = { itens: 50, municipios: 200, caracteres: 600 } as 
  * por edital no banco: com 5 produtos amplos, 20 relacionados levaram 805 ms e 12 levaram 520 ms (Task 4, C7).
  */
 export const MAX_RELACIONADOS_RADAR = 12;
+/**
+ * Relevância mínima (0–100) do Meu Radar, das contagens, dos alertas e do resumo: o produto no objeto do edital, ou
+ * vários produtos do ramo nos itens. Corta a palavra solta num item de outra compra ("uniforme" na merenda), que era a
+ * maior parte do radar (auditoria de 22/10/2026). Igual a public.nota_minima_radar() (0022, guardado em teste).
+ */
+export const NOTA_MINIMA_RADAR = 45;
 
 export const MENSAGENS_RADAR = {
   formulario: 'Formulário inválido.',
@@ -211,6 +217,7 @@ export function argumentosRadar(r: Radar, o: { ordem: Ordem | null; pagina: numb
     p_ordem: ordemEfetiva(o.ordem, true),
     p_limite: o.limite,
     p_deslocamento: (pagina - 1) * POR_PAGINA,
+    p_nota_minima: NOTA_MINIMA_RADAR,
   };
 }
 

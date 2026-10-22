@@ -7,9 +7,13 @@ const m = vi.hoisted(() => ({
   usuario: { id: 'u-sessao', email: 'dono@empresa.com.br' } as null | { id: string; email: string },
   salvarRadar: vi.fn(),
   gravarEvento: vi.fn(async (..._a: unknown[]) => undefined),
+  planoDaConta: vi.fn(),
+  contarAlertas: vi.fn(),
+  criarAlerta: vi.fn(),
 }));
 vi.mock('@/lib/servidor/sessao', () => ({ usuarioAtual: async () => m.usuario }));
-vi.mock('@/lib/servidor/conta', () => ({ salvarRadar: m.salvarRadar }));
+vi.mock('@/lib/servidor/conta', () => ({ salvarRadar: m.salvarRadar, planoDaConta: m.planoDaConta }));
+vi.mock('@/lib/servidor/alertas', () => ({ contarAlertas: m.contarAlertas, criarAlerta: m.criarAlerta }));
 vi.mock('@/lib/servidor/registro', () => ({
   contexto: async () => ({ visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, ipHash: null }),
   gravarEvento: m.gravarEvento,
@@ -29,6 +33,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.usuario = { id: 'u-sessao', email: 'dono@empresa.com.br' };
   m.salvarRadar.mockResolvedValue('criado');
+  m.planoDaConta.mockResolvedValue({ plano: 'pro', daConta: 'pro', doNavegador: 'gratis', falhou: false });
+  m.contarAlertas.mockResolvedValue(0);
+  m.criarAlerta.mockResolvedValue('alerta-1');
 });
 
 describe('POST /api/radar', () => {
@@ -52,7 +59,7 @@ describe('POST /api/radar', () => {
     const r = await enviar({ termos: ['luva'], ufs: ['SC'], user_id: 'outra-conta' });
     expect(r.status).toBe(200);
     expect(r.headers.get('cache-control')).toBe('private, no-store');
-    expect(await r.json()).toEqual({ ok: true });
+    expect(await r.json()).toEqual({ ok: true, alerta: true });
     const [usuario, radar] = m.salvarRadar.mock.calls[0] as [{ id: string }, Record<string, unknown>];
     expect(usuario.id).toBe('u-sessao');
     expect(radar).not.toHaveProperty('user_id');
@@ -75,6 +82,34 @@ describe('POST /api/radar', () => {
     m.salvarRadar.mockResolvedValue('atualizado');
     await enviar({ termos: ['luva'] });
     expect(m.gravarEvento).not.toHaveBeenCalled();
+  });
+  it('radar novo do Pro sem alertas: cria o alerta diário com os mesmos filtros', async () => {
+    const r = await enviar({ termos: ['luva', 'botina'], ufs: ['SC'] });
+    expect(await r.json()).toEqual({ ok: true, alerta: true });
+    const [usuario, alerta] = m.criarAlerta.mock.calls[0] as [{ id: string }, Record<string, unknown>];
+    expect(usuario.id).toBe('u-sessao');
+    expect(alerta).toMatchObject({ nome: 'luva, botina', termos: ['luva', 'botina'], ufs: ['SC'] });
+    expect(m.gravarEvento).toHaveBeenCalledWith(expect.anything(), 'alerta_criado', {
+      termos: 2, ufs: 1, municipios: 0, origem: 'onboarding', plano: 'pro',
+    });
+  });
+  it('sem alerta automático: edição, conta que já tem alerta, grátis ou plano incerto', async () => {
+    m.salvarRadar.mockResolvedValueOnce('atualizado');
+    expect(await (await enviar({ termos: ['luva'] })).json()).toEqual({ ok: true });
+    m.contarAlertas.mockResolvedValueOnce(1);
+    expect(await (await enviar({ termos: ['luva'] })).json()).toEqual({ ok: true });
+    m.planoDaConta.mockResolvedValueOnce({ plano: 'gratis', daConta: 'gratis', doNavegador: 'gratis', falhou: false });
+    expect(await (await enviar({ termos: ['luva'] })).json()).toEqual({ ok: true });
+    m.planoDaConta.mockResolvedValueOnce({ plano: 'gratis', daConta: 'gratis', doNavegador: 'gratis', falhou: true });
+    expect(await (await enviar({ termos: ['luva'] })).json()).toEqual({ ok: true });
+    expect(m.criarAlerta).not.toHaveBeenCalled();
+  });
+  it('falha ao criar o alerta não perde o radar: 200 sem alerta', async () => {
+    m.criarAlerta.mockRejectedValue(new Error('fora'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await enviar({ termos: ['luva'] });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ ok: true });
   });
   it('banco fora: 502', async () => {
     m.salvarRadar.mockRejectedValue(new Error('fora'));

@@ -4,6 +4,7 @@ import { TIPOS_EVENTO, TIPOS_EVENTO_CONTA, TIPOS_EVENTO_NAVEGACAO, TIPOS_EVENTO_
 import { ERRO_TETO_ALERTAS } from '../lib/alertas/regras';
 import { ORDENS } from '../lib/filtros';
 import { LIMITES_CONTA } from '../lib/limitesConta';
+import { NOTA_MINIMA_RADAR } from '../lib/radar';
 import { PESOS } from '../lib/relevancia/pontuacao';
 import { SITUACOES_FORA_DAS_ABERTAS } from '../lib/situacao';
 
@@ -842,5 +843,50 @@ describe('migração 0021 (painel do dono)', () => {
   it('só o servidor executa', () => {
     expect(sql).toContain('revoke execute on function public.painel_admin(timestamptz, timestamptz) from public, anon, authenticated;');
     expect(sql).toContain('grant execute on function public.painel_admin(timestamptz, timestamptz) to service_role;');
+  });
+});
+
+describe('migração 0022 (nota mínima do radar)', () => {
+  const sql = ler('supabase/migrations/0022_radar_nota_minima.sql').replace(/\r\n/g, '\n');
+  const corpo = (inicio: string) => {
+    const c = corpoDe(sql, inicio);
+    expect(c, inicio).not.toBe('');
+    return c;
+  };
+  const NOTA = 'a.pontuacao >= public.nota_minima_radar()';
+
+  it('uma transação curta e o PostgREST relê as funções no fim', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql.trimEnd().endsWith("notify pgrst, 'reload schema';")).toBe(true);
+  });
+  it('a nota do banco é a mesma do site (NOTA_MINIMA_RADAR)', () => {
+    expect(corpo('create function public.nota_minima_radar()')).toContain(`select ${NOTA_MINIMA_RADAR}`);
+  });
+  it('buscar_editais ganha p_nota_minima (nulo = busca livre, sem corte) nas duas ordens', () => {
+    const b = corpo('create function public.buscar_editais(');
+    expect(b).toContain('p_sem_ids text[] default null, p_nota_minima int default null)');
+    expect(b).toContain('and (p_nota_minima is null or a.pontuacao >= p_nota_minima)');
+    expect(b).toContain('and (p_nota_minima is null or v_tq is null');
+    expect(sql).toContain(
+      'drop function public.buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int, text[], text[], text[], text, text[], numeric, boolean, text[]);',
+    );
+  });
+  it('contagens, alertas e resumo usam a mesma nota', () => {
+    expect(corpo('create or replace function public.radar_contagens(')).toContain(NOTA);
+    expect(corpo('create or replace function public.editais_do_alerta(')).toContain(NOTA);
+    expect(corpo('create or replace function public.resumo_do_radar(')).toContain(NOTA);
+  });
+  it('alertas e resumo continuam sem os descartados e sem repetir edital', () => {
+    const a = corpo('create or replace function public.editais_do_alerta(');
+    expect(a).toContain('not exists (select 1 from public.alertas_enviados e where e.alerta_id = p_alerta and e.contratacao_id = u.id)');
+    expect(a).toContain("s.status = 'descartado'");
+    expect(corpo('create or replace function public.resumo_do_radar(')).toContain("s.status = 'descartado'");
+  });
+  it('só o servidor executa', () => {
+    const sig = 'buscar_editais(text, text[], text, int, numeric, int[], int, int, text, int, text[], text[], text[], text, text[], numeric, boolean, text[], int)';
+    for (const f of ['nota_minima_radar()', sig]) {
+      expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
+    }
   });
 });

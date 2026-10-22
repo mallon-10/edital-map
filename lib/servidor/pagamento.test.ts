@@ -6,6 +6,8 @@ const falso = vi.hoisted(() => ({ atual: null as ReturnType<typeof import('./sup
 vi.mock('./supabase', () => ({ supabaseServidor: () => falso.atual!.cliente }));
 const ga = vi.hoisted(() => ({ enviar: vi.fn(async (_c: unknown) => true) }));
 vi.mock('./ga4', () => ({ enviarGa4: ga.enviar }));
+const boasVindas = vi.hoisted(() => ({ enviar: vi.fn(async (..._a: unknown[]) => true) }));
+vi.mock('./emailBoasVindas', () => ({ enviarBoasVindas: boasVindas.enviar }));
 
 const { aplicarPedido, criarCheckout, estadoDoCheckout } = await import('./pagamento');
 
@@ -21,6 +23,7 @@ let f: ReturnType<typeof criarSupabaseFalso>;
 beforeEach(() => {
   f = criarSupabaseFalso();
   falso.atual = f;
+  boasVindas.enviar.mockClear();
 });
 
 describe('criarCheckout', () => {
@@ -88,6 +91,32 @@ describe('aplicarPedido (webhook)', () => {
     expect(String(nova.chave)).toMatch(/^EM-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     expect(f.operacoes.find((o) => o.alvo === 'rpc:ligar_navegador')?.valores).toEqual({ p_assinatura: 'a1', p_visitante: VISITANTE });
     expect(inserts('eventos')[0].valores).toMatchObject({ visitante: VISITANTE, tipo: 'assinou', detalhe: { plano: 'pro', periodo: 'mensal', valor: 8990 } });
+  });
+
+  it('compra aprovada: manda o e-mail de boas-vindas (ativar a conta) para o e-mail da compra', async () => {
+    f.responder('assinaturas', { data: null, error: null }, { data: { id: 'a1' }, error: null });
+    f.responder('checkouts', { data: { visitante: VISITANTE }, error: null });
+    await aplicarPedido(pedido({ ofertaId: 'iuy9gzb' }), CFG, AGORA);
+    expect(boasVindas.enviar).toHaveBeenCalledTimes(1);
+    expect(boasVindas.enviar).toHaveBeenCalledWith('fulano@exemplo.com', 'anual', 'ped-1');
+  });
+
+  it('boas-vindas só na assinatura nova: renovação, cancelamento, reembolso e compra sem e-mail não mandam', async () => {
+    const existente = { data: { id: 'a1', plano: 'pro', periodo: 'mensal', status: 'ativa', valido_ate: '2026-10-20T00:00:00.000Z' }, error: null };
+    for (const evento of ['subscription_renewed', 'subscription_canceled', 'refund']) {
+      f.responder('assinaturas', existente);
+      await aplicarPedido(pedido({ evento, pedido: `ped-${evento}`, callback: null }), CFG, AGORA);
+    }
+    f.responder('assinaturas', { data: null, error: null }, { data: { id: 'a2' }, error: null });
+    await aplicarPedido(pedido({ pedido: 'ped-sem', email: null, assinaturaCakto: 'sub_9', callback: null }), CFG, AGORA);
+    expect(boasVindas.enviar).not.toHaveBeenCalled();
+  });
+
+  it('falha no e-mail de boas-vindas não derruba o webhook', async () => {
+    boasVindas.enviar.mockRejectedValueOnce(new Error('fora'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    f.responder('assinaturas', { data: null, error: null }, { data: { id: 'a1' }, error: null });
+    expect(await aplicarPedido(pedido(), CFG, AGORA)).toBe('aplicado');
   });
 
   it('com o aceite dos cookies, a compra vai ao GA4 pelo servidor (sem aceite, não)', async () => {

@@ -40,6 +40,11 @@ export function lerEmail(v: unknown): string | null {
   return e.length <= 254 && EMAIL.test(e) ? e : null;
 }
 
+/** Tela inicial de /entrar: `etapa=codigo` (link das boas-vindas e do /obrigado) abre o código, se o e-mail for válido. */
+export function etapaInicialDoEntrar(etapa: unknown, email: string): 'email' | 'codigo' {
+  return etapa === 'codigo' && lerEmail(email) ? 'codigo' : 'email';
+}
+
 export function lerCodigo(v: unknown): string | null {
   if (typeof v !== 'string') return null;
   const c = v.replace(/\s+/g, '');

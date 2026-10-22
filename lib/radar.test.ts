@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   adicionarTermos, argumentosRadar, buscaDoRadar, corpoDoRascunho, desdeDaVisita, ENTRADA_RADAR, erroDaEtapa, filtrosDoRadar, lerBuscaMunicipio,
-  lerNavegacaoRadar, lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR, MENSAGENS_RADAR, palavraValida, radarDaLinha, rascunhoDoRadar, resumoDoRadar, sugestoesTermos, urlDoRadar, validarRadar,
+  lerNavegacaoRadar, lerValorReais, linhaDoRadar, MAX_RELACIONADOS_RADAR, MENSAGENS_RADAR, NOTA_MINIMA_RADAR, palavraValida, radarDaLinha, rascunhoDoRadar, resumoDoRadar, sugestoesTermos, urlDoRadar, validarRadar,
   type Radar, type RascunhoRadar,
 } from './radar';
 import { moeda } from './formato';
@@ -165,6 +165,13 @@ describe('busca do radar', () => {
     expect(argumentosRadar(r, { ordem: null, pagina: 1, limite: 20 })).toMatchObject({ p_ordem: 'relevancia', p_limite: 20, p_deslocamento: 0 });
     expect(argumentosRadar(r, { ordem: 'maior_valor', pagina: 3, limite: 20 })).toMatchObject({ p_ordem: 'maior_valor', p_deslocamento: 40 });
     expect(Object.keys(argumentosRadar(r, { ordem: null, pagina: 1, limite: 5 }))).not.toContain('user_id');
+  });
+  it('a lista do radar só traz relevância média ou alta (nota mínima 45, a mesma das contagens, alertas e resumo)', () => {
+    expect(NOTA_MINIMA_RADAR).toBe(45);
+    expect(argumentosRadar(r, { ordem: null, pagina: 1, limite: 20 })).toMatchObject({ p_nota_minima: NOTA_MINIMA_RADAR });
+    expect(argumentosRadar(r, { ordem: 'prazo', pagina: 1, limite: 20 })).toMatchObject({ p_nota_minima: NOTA_MINIMA_RADAR });
+    // radar_contagens não recebe o parâmetro: a nota vem de public.nota_minima_radar() (0022).
+    expect(filtrosDoRadar(r)).not.toHaveProperty('p_nota_minima');
   });
   it('página fora da faixa: entre 1 e MAX_PAGINA (1000)', () => {
     expect(argumentosRadar(r, { ordem: null, pagina: 5000, limite: 20 })).toMatchObject({ p_deslocamento: 999 * 20 });

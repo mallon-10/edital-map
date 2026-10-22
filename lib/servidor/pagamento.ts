@@ -7,6 +7,7 @@ import { type Assinatura, efeitoDoEvento, type StatusAssinatura } from '../pagam
 import { corpoCompraGa4, type DadosGa4 } from '../pagamento/ga4';
 import type { PedidoCakto } from '../pagamento/webhook';
 import { PLANOS } from '../planos';
+import { enviarBoasVindas } from './emailBoasVindas';
 import { enviarGa4 } from './ga4';
 import type { Periodo } from '../planos';
 import type { Contexto } from './registro';
@@ -162,11 +163,21 @@ async function checkoutDoPedido(callback: string | null): Promise<{ visitante: s
 /** Visitante usado no evento `assinou` quando a compra não veio de um checkout do site. */
 const VISITANTE_DESCONHECIDO = '00000000-0000-4000-8000-000000000000';
 
+/** Tarefa que pode rodar depois da resposta ao webhook (a rota passa o `after` do Next; sem ele, roda na hora). */
+export type Agendar = (tarefa: () => Promise<unknown>) => void | Promise<unknown>;
+const naHora: Agendar = (tarefa) => tarefa();
+
 /**
  * Aplica um pedido do webhook da Cakto (spec do pagamento, §4). Idempotente: o par (pedido, evento) só vale uma vez.
- * O registro do evento guarda só o pedido já lido (sem cartão, documento, telefone ou endereço).
+ * O registro do evento guarda só o pedido já lido (sem cartão, documento, telefone ou endereço). Assinatura nova com
+ * e-mail: boas-vindas com o código para ativar a conta (agendado; falhar não derruba o webhook).
  */
-export async function aplicarPedido(p: PedidoCakto, cfg: ConfigPagamento, agora: Date): Promise<'aplicado' | 'repetido' | 'ignorado'> {
+export async function aplicarPedido(
+  p: PedidoCakto,
+  cfg: ConfigPagamento,
+  agora: Date,
+  agendar: Agendar = naHora,
+): Promise<'aplicado' | 'repetido' | 'ignorado'> {
   const registro = await supabaseServidor().from('cakto_eventos').insert({ pedido: p.pedido, evento: p.evento, corpo: p });
   if (registro.error) {
     if (registro.error.code === '23505') return 'repetido';
@@ -206,6 +217,15 @@ export async function aplicarPedido(p: PedidoCakto, cfg: ConfigPagamento, agora:
           cliente: checkout.ga.cliente, sessao: checkout.ga.sessao, codigo: p.callback, periodo: efeito.periodo,
           valorCentavos: efeito.periodo === 'anual' ? pro.centavosAno : pro.centavosMes,
         }),
+      );
+    }
+    const email = p.email;
+    if (email) {
+      const periodo = efeito.periodo;
+      await agendar(() =>
+        enviarBoasVindas(email, periodo, p.pedido).catch((erro: unknown) =>
+          console.error('boas-vindas:', erro instanceof Error ? erro.message : erro),
+        ),
       );
     }
   }

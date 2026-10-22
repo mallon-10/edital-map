@@ -1,3 +1,4 @@
+import { after } from 'next/server';
 import { configPagamento } from '@/lib/pagamento/config';
 import { lerPedidos, webhookAutentico } from '@/lib/pagamento/webhook';
 import { aplicarPedido } from '@/lib/servidor/pagamento';
@@ -27,7 +28,8 @@ export async function POST(request: Request) {
   if (!autentico) return Response.json({ erro: 'Assinatura inválida.' }, { status: 401 });
   try {
     const resultados = [];
-    for (const pedido of lerPedidos(corpo)) resultados.push(await aplicarPedido(pedido, cfg, new Date()));
+    // O e-mail de boas-vindas sai depois da resposta: a Cakto recebe o 200 sem esperar o Resend.
+    for (const pedido of lerPedidos(corpo)) resultados.push(await aplicarPedido(pedido, cfg, new Date(), after));
     return Response.json({ ok: true, resultados });
   } catch (erro) {
     // Sem o corpo no log: ele traz o e-mail do comprador.

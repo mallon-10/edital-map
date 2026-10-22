@@ -22,7 +22,8 @@ const nomeDaExcecao = (e: unknown) => (e instanceof Error ? e.name : typeof e);
 
 let avisouSemChave = false;
 
-async function gerarCodigo(email: string): Promise<string | null> {
+/** Código de 6 dígitos da conta deste e-mail (cria a conta se não existir). null = não deu. Também usado nas boas-vindas do Pro. */
+export async function gerarCodigo(email: string): Promise<string | null> {
   const admin = supabaseServidor().auth.admin;
   let r = await admin.generateLink({ type: 'magiclink', email });
   if (r.error?.code === 'user_not_found') {

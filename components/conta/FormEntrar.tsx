@@ -18,9 +18,12 @@ async function postar(caminho: string, corpo: unknown): Promise<{ ok: boolean; d
 
 const erroDe = (d: Record<string, unknown>) => (typeof d.erro === 'string' ? d.erro : MENSAGENS_CONTA.falha);
 
-/** Login por código: e-mail → "Enviar código" → código de 6 números → entra. Reenvio liberado depois de 60 s. */
-export function FormEntrar({ destino, emailInicial = '' }: { destino: string; emailInicial?: string }) {
-  const [etapa, setEtapa] = useState<'email' | 'codigo'>('email');
+/**
+ * Login por código: e-mail → "Enviar código" → código de 6 números → entra. Reenvio liberado depois de 60 s. Vindo das
+ * boas-vindas do Pro (o código já foi no e-mail), começa na etapa do código, com o reenvio liberado.
+ */
+export function FormEntrar({ destino, emailInicial = '', etapaInicial = 'email' }: { destino: string; emailInicial?: string; etapaInicial?: 'email' | 'codigo' }) {
+  const [etapa, setEtapa] = useState<'email' | 'codigo'>(etapaInicial);
   // Vindo da confirmação do pagamento (/obrigado), o e-mail da compra já chega preenchido.
   const [email, setEmail] = useState(emailInicial);
   const [codigo, setCodigo] = useState('');

@@ -3,6 +3,7 @@ import { connection } from 'next/server';
 import { Cabecalho } from '@/components/Cabecalho';
 import { Medir } from '@/components/Medir';
 import { CartaoEsperando, CartaoNaoEncontrado, CartaoPago } from '@/components/pagamento/Obrigado';
+import { caminhoAtivacao } from '@/lib/emailBoasVindas';
 import { PLANOS } from '@/lib/planos';
 import { estadoDoCheckout, type EstadoCheckout } from '@/lib/servidor/pagamento';
 import { contextoDaPagina } from '@/lib/servidor/registro';
@@ -22,9 +23,8 @@ export default async function Obrigado({ params }: Props) {
     console.error('obrigado:', erro);
     return { estado: 'esperando' } as const;
   });
-  const entrar = estado.estado === 'pago' && estado.email
-    ? `/entrar?email=${encodeURIComponent(estado.email)}&voltar=${encodeURIComponent('/radar/comecar')}`
-    : `/entrar?voltar=${encodeURIComponent('/radar/comecar')}`;
+  // O código de ativação foi no e-mail de boas-vindas: com o e-mail da compra, o botão abre direto a tela do código.
+  const entrar = caminhoAtivacao(estado.estado === 'pago' ? estado.email : null);
   return (
     <>
       <Cabecalho />

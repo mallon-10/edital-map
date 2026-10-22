@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  destinoSeguro, lerCodigo, lerCodigoDoLink, lerEmail, MENSAGENS_CONTA, mensagemErroAuth, OPCOES_COOKIE_SESSAO, REENVIO_SEGUNDOS,
+  destinoSeguro, etapaInicialDoEntrar, lerCodigo, lerCodigoDoLink, lerEmail, MENSAGENS_CONTA, mensagemErroAuth, OPCOES_COOKIE_SESSAO, REENVIO_SEGUNDOS,
   rotaComSessao, segundosParaReenvio, statusErroAuth, temCookieDeSessao,
 } from './conta';
 
@@ -130,5 +130,17 @@ describe('rotaComSessao (onde o proxy renova a sessão)', () => {
                      '/oportunidadesx', '/api/salvosx', '/api/descadastro']) {
       expect(rotaComSessao(p)).toBe(false);
     }
+  });
+});
+
+describe('etapaInicialDoEntrar (vindo do e-mail de boas-vindas ou do /obrigado)', () => {
+  it('etapa=codigo com e-mail válido abre a tela do código', () => {
+    expect(etapaInicialDoEntrar('codigo', 'maria@exemplo.com')).toBe('codigo');
+  });
+  it('sem e-mail válido ou outra etapa: começa pelo e-mail', () => {
+    expect(etapaInicialDoEntrar('codigo', '')).toBe('email');
+    expect(etapaInicialDoEntrar('codigo', 'maria')).toBe('email');
+    expect(etapaInicialDoEntrar(undefined, 'maria@exemplo.com')).toBe('email');
+    expect(etapaInicialDoEntrar(['codigo'], 'maria@exemplo.com')).toBe('email');
   });
 });
