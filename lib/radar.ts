@@ -1,7 +1,7 @@
 import { UFS_BRASIL, type Resultado } from './eventos';
 import { lerOrdem, limiteDeValor, MAX_PAGINA, MODALIDADES, ordemEfetiva, POR_PAGINA } from './filtros';
 import { moeda } from './formato';
-import { chave, expandir, GRUPOS, gruposDigitados, LIGACOES, normalizar, SIGLAS_TERMOS, type Busca } from './relevancia/termos';
+import { chave, expandirPerfil, GRUPOS, gruposDigitados, LIGACOES, normalizar, SIGLAS_TERMOS, type Busca } from './relevancia/termos';
 import type { Cidade, Ordem } from './tipos';
 
 /**
@@ -188,7 +188,7 @@ export function buscaDoRadar(r: Radar): Busca {
   return {
     positivo: r.termos.join(', '),
     digitados: r.termos,
-    relacionados: expandir(r.termos, MAX_RELACIONADOS_RADAR),
+    relacionados: expandirPerfil(r.termos, MAX_RELACIONADOS_RADAR),
     excluidos: r.termosExcluir,
   };
 }

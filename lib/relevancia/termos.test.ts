@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  chave, expandir, GRUPOS, gruposDigitados, interpretarBusca, LIGACOES, MAX_RELACIONADOS, normalizar, separarNegativos,
+  chave, expandir, expandirPerfil, GRUPOS, gruposDigitados, interpretarBusca, LIGACOES, MAX_RELACIONADOS, normalizar, separarNegativos,
   SIGLAS_TERMOS, temTermo, termosParecidos,
 } from './termos';
 
@@ -85,6 +85,39 @@ describe('expandir', () => {
   });
   it('no máximo MAX_RELACIONADOS', () => {
     expect(expandir(['EPI', 'uniforme', 'merenda'])).toHaveLength(MAX_RELACIONADOS);
+  });
+});
+
+describe('expandirPerfil (Meu Radar, alertas e resumo)', () => {
+  const termos = (d: string[], max?: number) => expandirPerfil(d, max).map((r) => r.termo);
+  it('palavra de categoria vale pelo grupo todo (o caminho do CNPJ usa estas)', () => {
+    expect(termos(['EPI'])).toEqual(expandir(['EPI']).map((r) => r.termo));
+    expect(termos(['uniformes'])).toContain('jaleco');
+    expect(termos(['material de limpeza'])).toContain('detergente');
+  });
+  it('produto específico puxa só os sinônimos diretos, não o ramo inteiro', () => {
+    expect(termos(['marketing'])).toEqual(['publicidade', 'propaganda']);
+    expect(termos(['marketing'])).not.toContain('banner');
+    expect(termos(['luva'])).toEqual(['luva nitrílica', 'luva de vaqueta']);
+    expect(termos(['luva'])).not.toContain('capacete');
+    expect(termos(['camiseta'])).toEqual(['camisa polo']);
+  });
+  it('produto sem sinônimo nem grupo: nenhum relacionado', () => {
+    expect(termos(['capacete'])).toEqual([]);
+    expect(termos(['drone'])).toEqual([]);
+  });
+  it('vários produtos: intercala, sem repetir nem devolver o digitado, e respeita o teto', () => {
+    expect(termos(['marketing', 'publicidade'])).not.toContain('marketing');
+    expect(termos(['uniforme', 'EPI'], 4)).toHaveLength(4);
+    expect(new Set(expandirPerfil(['uniforme', 'EPI'], 4).map((r) => r.de))).toEqual(new Set(['uniforme', 'EPI']));
+  });
+  it('categoria e sinônimos só com termos do próprio grupo; o primeiro termo é sempre categoria', () => {
+    for (const g of GRUPOS) {
+      const doGrupo = new Set(g.termos.map(chave));
+      expect(chave(g.categoria[0]), g.assunto).toBe(chave(g.termos[0]));
+      for (const t of [...g.categoria, ...(g.sinonimos ?? []).flat()]) expect(doGrupo.has(chave(t)), `${g.assunto}: ${t}`).toBe(true);
+      for (const s of g.sinonimos ?? []) expect(s.length, `${g.assunto}: ${s.join(', ')}`).toBeGreaterThan(1);
+    }
   });
 });
 

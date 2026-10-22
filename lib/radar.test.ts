@@ -128,12 +128,15 @@ describe('linha do banco ↔ radar', () => {
 
 describe('busca do radar', () => {
   const r: Radar = { termos: ['uniforme', 'luva'], termosExcluir: ['escolar'], ufs: ['SC'], municipios: [], valorMin: 10000, valorMax: null, modalidades: [6], soMeEpp: true };
-  it('produtos = digitados (OR), cada um com seus relacionados, e os excluídos', () => {
+  it('produtos = digitados (OR), cada um com seus relacionados (categoria: o ramo; produto: só sinônimos), e os excluídos', () => {
     const b = buscaDoRadar(r);
     expect(b.digitados).toEqual(['uniforme', 'luva']);
     expect(b.excluidos).toEqual(['escolar']);
-    expect(b.relacionados.map((x) => x.termo)).toEqual(expect.arrayContaining(['fardamento', 'botina']));
+    expect(b.relacionados.map((x) => x.termo)).toEqual(expect.arrayContaining(['fardamento', 'luva nitrílica']));
+    // "luva" é produto: não puxa o resto dos EPIs (botina, capacete).
+    expect(b.relacionados.map((x) => x.termo)).not.toContain('botina');
     expect(b.relacionados.find((x) => x.termo === 'fardamento')?.de).toBe('uniforme');
+    expect(buscaDoRadar({ ...r, termos: ['marketing'] }).relacionados.map((x) => x.termo)).toEqual(['publicidade', 'propaganda']);
   });
   it('até 12 relacionados no total, intercalados entre os produtos (a busca avulsa segue com 20)', () => {
     expect(MAX_RELACIONADOS_RADAR).toBe(12);
