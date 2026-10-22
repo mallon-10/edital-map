@@ -7,9 +7,32 @@ const ITENS = ['Resumo em linguagem simples', 'Documentos exigidos', 'Passo a pa
 
 type Props = { href: string; slug: string; id: string; className?: string };
 
+const medirClique = (slug: string) => registrar('quer_recurso', { recurso: 'assessoria', edital: slug });
+
+/** Botão verde do cartão do topo do edital: a assessoria visível sem rolar (o cartão grande fica mais abaixo). */
+export function BotaoAssessoria({ href, slug }: { href: string; slug: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => medirClique(slug)}
+      onAuxClick={(e) => {
+        if (e.button === 1) medirClique(slug);
+      }}
+      className="inline-flex h-12 items-center gap-2 rounded-full bg-mata px-5 text-[15px] font-semibold text-raised hover:brightness-110"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+        <path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z" />
+      </svg>
+      Quero ajuda para participar
+    </a>
+  );
+}
+
 /** "Quer participar desta licitação?": abre o WhatsApp do João com a mensagem pronta (spec 2026-10-21-assessoria-whatsapp). */
 export function CartaoAssessoria({ href, slug, id, className = '' }: Props) {
-  const medir = () => registrar('quer_recurso', { recurso: 'assessoria', edital: slug });
+  const medir = () => medirClique(slug);
   return (
     <section aria-labelledby={id} className={`flex-col gap-4 rounded-[22px] bg-mata-soft p-5 lg:p-6 ${className}`}>
       <p className="inline-flex h-[26px] items-center self-start rounded-full bg-raised px-2.5 text-xs font-semibold text-mata">

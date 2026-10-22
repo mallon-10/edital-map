@@ -7,7 +7,7 @@ import { connection } from 'next/server';
 import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
 import { BotaoCompartilhar } from '@/components/edital/BotaoCompartilhar';
-import { CartaoAssessoria } from '@/components/edital/CartaoAssessoria';
+import { BotaoAssessoria, CartaoAssessoria } from '@/components/edital/CartaoAssessoria';
 import { BotaoDescartar } from '@/components/oportunidades/BotaoDescartar';
 import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
 import { DocumentosEdital } from '@/components/edital/DocumentosEdital';
@@ -201,6 +201,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
               Descartar também (a rota decide o plano). */}
           <div className="flex flex-wrap gap-2.5 lg:gap-3">
             <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} />
+            {assessoria ? <BotaoAssessoria href={assessoria} slug={e.slug} /> : null}
             <BotaoCompartilhar titulo={titulo.titulo} slug={e.slug} />
             <BotaoSalvar id={e.id} variante="botao" />
             <BotaoDescartar id={e.id} />
