@@ -26,6 +26,10 @@ vi.mock('@/lib/servidor/consultas', () => ({
   resumoItens: async () => ({ total: 0, materiais: 0, servicos: 0, comBeneficio: 0, exclusivos: 0, cota: 0, criterios: [] }),
   relacionados: async () => [1, 2, 3, 4, 5, 6].map(parecido),
 }));
+vi.mock('@/lib/servidor/licitacoes', () => ({
+  orgaosComPagina: async () => [],
+  cidadesComPagina: async () => [],
+}));
 vi.mock('@/lib/servidor/registro', () => ({
   contextoDaPagina: async () => ({ visitante: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b', interno: false, dono: false, ipHash: null }),
 }));

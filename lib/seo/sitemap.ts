@@ -1,4 +1,5 @@
 import type { Assunto } from './assuntos';
+import { MODALIDADES } from './modalidades';
 import { caminhoDaPagina } from './textos';
 
 /**
@@ -30,6 +31,19 @@ export function paginasFixas(contagens: Array<{ assunto: Assunto | null; porUf: 
     else if (ufs.length === 0) continue;
     else caminhos.push(caminhoDaPagina({ assunto, uf: null }));
     for (const uf of ufs) caminhos.push(caminhoDaPagina({ assunto, uf }));
+  }
+  return caminhos;
+}
+
+/** Modalidades com edital aberto: a página no Brasil e as das UFs com editais (contagem de abertos_por_modalidade, 0023). */
+export function paginasDeModalidade(porModalidade: Record<number, Record<string, number>>): string[] {
+  const caminhos: string[] = [];
+  for (const m of MODALIDADES) {
+    const porUf = porModalidade[m.id] ?? {};
+    const ufs = Object.keys(porUf).filter((uf) => porUf[uf] > 0).sort();
+    if (ufs.length === 0) continue;
+    caminhos.push(caminhoDaPagina({ assunto: null, modalidade: m, uf: null }));
+    for (const uf of ufs) caminhos.push(caminhoDaPagina({ assunto: null, modalidade: m, uf }));
   }
   return caminhos;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assuntoPorSlug } from './assuntos';
-import { arquivosDoSitemap, loteDoArquivo, paginasFixas, POR_ARQUIVO, xmlIndice, xmlUrls } from './sitemap';
+import { arquivosDoSitemap, loteDoArquivo, paginasDeModalidade, paginasFixas, POR_ARQUIVO, xmlIndice, xmlUrls } from './sitemap';
 
 describe('arquivos do sitemap', () => {
   it('um arquivo de páginas e um por 40 mil editais', () => {
@@ -29,6 +29,14 @@ describe('paginasFixas', () => {
       { assunto: assuntoPorSlug('combustiveis')!, porUf: {} },
     ]);
     expect(caminhos).toEqual(['/licitacoes', '/licitacoes/sp', '/licitacoes/epi', '/licitacoes/epi/sp']);
+  });
+});
+
+describe('paginasDeModalidade', () => {
+  it('modalidade no Brasil e nas UFs com edital aberto; sem edital, fora', () => {
+    expect(paginasDeModalidade({ 6: { SP: 10, AC: 0, BA: 2 }, 8: {} })).toEqual([
+      '/licitacoes/pregao-eletronico', '/licitacoes/pregao-eletronico/ba', '/licitacoes/pregao-eletronico/sp',
+    ]);
   });
 });
 

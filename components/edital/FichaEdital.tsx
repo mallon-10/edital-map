@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { dataHora, moeda, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
@@ -16,7 +17,15 @@ function Linha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 const Falta = () => <span className="text-ink-muted">Não informado pelo órgão</span>;
 
 /** Informações principais num bloco só; o que o PNCP não trouxe aparece como "Não informado pelo órgão". */
-export function FichaEdital({ edital: e, agora, atualizadoEm }: { edital: Edital; agora: Date; atualizadoEm: string | null }) {
+const LINK = 'text-ink underline decoration-line underline-offset-2 hover:decoration-ink';
+
+/** Texto com link para a página /licitacoes quando ela existe (edital aberto); sem página, só o texto. */
+const ComLink = ({ href, children }: { href: string | null | undefined; children: ReactNode }) =>
+  href ? <Link href={href} prefetch={false} className={LINK}>{children}</Link> : <>{children}</>;
+
+export function FichaEdital({
+  edital: e, agora, atualizadoEm, links,
+}: { edital: Edital; agora: Date; atualizadoEm: string | null; links?: { modalidade: string | null; orgao: string | null } }) {
   const valor = moeda(e.valor_estimado);
   const p = prazo(e.encerramento_em, agora);
   const modalidade = modalidadeCurta(e.modalidade_nome);
@@ -26,12 +35,12 @@ export function FichaEdital({ edital: e, agora, atualizadoEm }: { edital: Edital
       <dl>
         <Linha rotulo="Objeto">{textoLimpo(e.objeto)}</Linha>
         <Linha rotulo="Órgão">
-          {nomeProprio(e.orgao_nome)}
+          <ComLink href={links?.orgao}>{nomeProprio(e.orgao_nome)}</ComLink>
           {e.unidade_nome ? <span className="block text-[13px] text-ink-muted">{nomeProprio(e.unidade_nome)}</span> : null}
         </Linha>
         <Linha rotulo="Município/UF">{e.municipio_nome ? `${e.municipio_nome}/${e.uf}` : <>{e.uf} · <Falta /></>}</Linha>
         <Linha rotulo="Modalidade">
-          {modalidade ?? <Falta />}
+          {modalidade ? <ComLink href={links?.modalidade}>{modalidade}</ComLink> : <Falta />}
           {e.srp ? ' · Registro de preços' : ''}
         </Linha>
         <Linha rotulo="Identificador no PNCP">

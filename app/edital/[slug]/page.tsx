@@ -24,11 +24,13 @@ import { VitrineEmBreve } from '@/components/VitrineEmBreve';
 import { linkAssessoria, mostrarAssessoria, numeroWhatsapp } from '@/lib/assessoria';
 import { NOMES_UF } from '@/lib/estados';
 import { SLUG_EDITAL } from '@/lib/eventos';
+import { linksDoEdital } from '@/lib/seo/linksEdital';
 import { descricaoDoEdital, editalAberto, jsonLdMigalhas } from '@/lib/seo/textos';
 import { dataHora, haQuanto, linkOficial, moeda, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
 import { resumoOportunidade } from '@/lib/resumoEdital';
 import { arquivosDoEdital, atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
+import { cidadesComPagina, orgaosComPagina } from '@/lib/servidor/licitacoes';
 import { contextoDaPagina } from '@/lib/servidor/registro';
 import { planoDaPagina } from '@/lib/servidor/plano';
 import { avisoSituacao, rotuloSituacao } from '@/lib/situacao';
@@ -63,17 +65,25 @@ const TITULO = 'text-[18px] font-semibold';
 /** Resumo de reserva: se a consulta do resumo falhar, a página do edital continua de pé. */
 const RESUMO_VAZIO: ResumoItens = { total: 0, materiais: 0, servicos: 0, comBeneficio: 0, exclusivos: 0, cota: 0, criterios: [] };
 
-/** Resumo dos itens e parecidos, do nosso banco (grátis e sem limite para todos). */
+/** Links da ficha para as páginas /licitacoes (modalidade na UF e órgão), só com o edital aberto; falha = sem link. */
+async function linksDaFicha(e: Edital): Promise<{ modalidade: string | null; orgao: string | null }> {
+  if (!editalAberto(e, new Date())) return { modalidade: null, orgao: null };
+  const [orgaos, cidades] = await Promise.all([orgaosComPagina(), cidadesComPagina()]);
+  return linksDoEdital(e, orgaos, cidades);
+}
+
+/** Resumo dos itens, parecidos e links da ficha, do nosso banco (grátis e sem limite para todos). */
 async function detalhesDoEdital(e: Edital) {
-  const [resumo, parecidos] = await Promise.all([
+  const [resumo, parecidos, links] = await Promise.all([
     resumoItens(e.id).catch(() => RESUMO_VAZIO),
     // Falha nos parecidos não derruba a página: o bloco só não aparece.
     relacionados(e.id).catch((erro: unknown): EditalRelacionado[] => {
       console.error(`relacionados ${e.id}:`, erro);
       return [];
     }),
+    linksDaFicha(e),
   ]);
-  return { resumo, parecidos };
+  return { resumo, parecidos, links };
 }
 
 /** Documentos e itens vêm do PNCP na hora (lento às vezes): chegam depois do resto da página, sem segurá-la. */
@@ -261,7 +271,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
           </div>
           <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5 lg:gap-6">
             {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria-lado" className="hidden lg:flex" /> : null}
-            <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} />
+            <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} links={detalhes.links} />
             <VitrineEmBreve slug={e.slug} />
             <section aria-labelledby="local" className={`${CARTAO} flex flex-col gap-3 text-[15px]`}>
               <h2 id="local" className={TITULO}>Local</h2>
