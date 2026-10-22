@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
+import { ehCheckout } from '@/lib/checkout';
 import { lerUltimaBusca } from '@/lib/cliente/volta';
 import { comTela, type Tela } from '@/lib/urlBusca';
 import { IconeEstrela, IconeLista, IconeMapa, IconeSino } from './inicio/Icones';
@@ -58,10 +59,10 @@ export function BarraCelular({ ativo, aoTrocarTela }: Props) {
   );
 }
 
-/** Barra das páginas que não são a inicial (a inicial desenha a dela, que rola a própria página). */
+/** Barra das páginas que não são a inicial (a inicial desenha a dela, que rola a própria página) nem o checkout. */
 export function BarraCelularGlobal() {
   const caminho = usePathname() ?? '/';
-  if (caminho === '/') return null;
+  if (caminho === '/' || ehCheckout(caminho)) return null;
   const ativo: ItemBarra | null = caminho.startsWith('/alertas') ? 'alertas' : caminho.startsWith('/planos') ? 'planos' : null;
   return <BarraCelular ativo={ativo} />;
 }

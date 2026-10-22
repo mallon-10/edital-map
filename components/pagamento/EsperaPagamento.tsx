@@ -34,10 +34,10 @@ export function EsperaPagamento({ codigo }: { codigo: string }) {
     };
   }, [codigo, router]);
   return (
-    <p role="status" className="text-[15px] text-ink-muted">
+    <p role="status" className="max-w-[46ch] text-[16px] text-ink-muted lg:text-[17px]">
       {desistiu
         ? 'Assim que a Cakto aprovar o pagamento, o plano liga neste navegador. Pix pode levar alguns minutos: recarregue esta página depois.'
-        : 'Confirmando seu pagamento…'}
+        : 'Confirmando seu pagamento. Esta página avança sozinha.'}
     </p>
   );
 }

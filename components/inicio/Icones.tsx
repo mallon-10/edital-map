@@ -280,3 +280,75 @@ export function IconeCheck({ className }: P) {
     </svg>
   );
 }
+
+export function SetaEsquerda({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M19 12H5M11 18l-6-6 6-6" />
+    </Traco>
+  );
+}
+
+export function IconeCartao({ className }: P) {
+  return (
+    <Traco className={className}>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+    </Traco>
+  );
+}
+
+export function IconeQr({ className }: P) {
+  return (
+    <Traco className={className}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M18 21h3v-3" />
+    </Traco>
+  );
+}
+
+export function IconeEscudo({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </Traco>
+  );
+}
+
+export function IconeRaio({ className }: P) {
+  return (
+    <Traco className={className}>
+      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+    </Traco>
+  );
+}
+
+export function IconeCopiar({ className }: P) {
+  return (
+    <Traco className={className}>
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </Traco>
+  );
+}
+
+export function IconeAlerta({ className }: P) {
+  return (
+    <Traco className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4M12 16h.01" />
+    </Traco>
+  );
+}
+
+/** Giro de "esperando" (gira com animate-spin; parado com movimento reduzido). */
+export function IconeGiro({ className }: P) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" className={className} aria-hidden="true">
+      <path d="M21 12a9 9 0 1 1-6.22-8.56" />
+    </svg>
+  );
+}
