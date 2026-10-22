@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linkAssessoria, mensagemAssessoria, mostrarAssessoria, numeroWhatsapp } from './assessoria';
+import { linkAssessoria, linkAssessoriaInicio, MENSAGEM_ASSESSORIA_INICIO, mensagemAssessoria, mostrarAssessoria, numeroWhatsapp } from './assessoria';
 
 const EDITAL = {
   slug: '00394452000103-2026-21982',
@@ -63,5 +63,14 @@ describe('linkAssessoria', () => {
     const url = new URL(linkAssessoria('5511987654321', EDITAL));
     expect(url.origin + url.pathname).toBe('https://wa.me/5511987654321');
     expect(url.searchParams.get('text')).toBe(mensagemAssessoria(EDITAL));
+  });
+});
+
+describe('linkAssessoriaInicio', () => {
+  it('wa.me com a mensagem geral da página inicial (sem edital)', () => {
+    const url = new URL(linkAssessoriaInicio('5511987654321'));
+    expect(url.origin + url.pathname).toBe('https://wa.me/5511987654321');
+    expect(url.searchParams.get('text')).toBe(MENSAGEM_ASSESSORIA_INICIO);
+    expect(MENSAGEM_ASSESSORIA_INICIO).toContain('Edital Map');
   });
 });

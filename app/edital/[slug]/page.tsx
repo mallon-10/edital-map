@@ -224,7 +224,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
         <ResumoOportunidade frases={resumoOportunidade(e)} />
         <PrincipaisInformacoes edital={e} resumo={detalhes.resumo} agora={agora} />
         {/* Assessoria: no celular antes de documentos e itens; no computador, no topo da coluna da direita. */}
-        {assessoria ? <CartaoAssessoria href={assessoria} slug={e.slug} id="assessoria" className="flex lg:hidden" /> : null}
+        {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria" className="flex lg:hidden" /> : null}
 
         <div className="flex flex-wrap items-start gap-5 lg:gap-6">
           <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5 lg:gap-6">
@@ -260,7 +260,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             </section>
           </div>
           <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5 lg:gap-6">
-            {assessoria ? <CartaoAssessoria href={assessoria} slug={e.slug} id="assessoria-lado" className="hidden lg:flex" /> : null}
+            {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria-lado" className="hidden lg:flex" /> : null}
             <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} />
             <VitrineEmBreve slug={e.slug} />
             <section aria-labelledby="local" className={`${CARTAO} flex flex-col gap-3 text-[15px]`}>

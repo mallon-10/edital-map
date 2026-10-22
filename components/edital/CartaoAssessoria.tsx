@@ -5,7 +5,15 @@ import { registrar } from '@/lib/cliente/registrar';
 // Curtos para caber numa linha na coluna da direita (~290 px de texto).
 const ITENS = ['Resumo em linguagem simples', 'Documentos exigidos', 'Passo a passo para participar'];
 
-type Props = { href: string; slug: string; id: string; className?: string };
+type Props = {
+  href: string;
+  /** Slug do edital; sem ele (página inicial) o clique conta como assessoria_inicio. */
+  edital?: string;
+  id: string;
+  titulo?: string;
+  texto?: string;
+  className?: string;
+};
 
 const medirClique = (slug: string) => registrar('quer_recurso', { recurso: 'assessoria', edital: slug });
 
@@ -32,18 +40,23 @@ export function BotaoAssessoria({ href, slug }: { href: string; slug: string }) 
 }
 
 /** "Quer participar desta licitação?": abre o WhatsApp do João com a mensagem pronta (spec 2026-10-21-assessoria-whatsapp). */
-export function CartaoAssessoria({ href, slug, id, className = '' }: Props) {
-  const medir = () => medirClique(slug);
+export function CartaoAssessoria({
+  href,
+  edital,
+  id,
+  titulo = 'Quer participar desta licitação?',
+  texto = 'Não sabe por onde começar? A gente analisa o edital e prepara um passo a passo para a sua empresa.',
+  className = '',
+}: Props) {
+  const medir = () => (edital ? medirClique(edital) : registrar('quer_recurso', { recurso: 'assessoria_inicio' }));
   return (
     <section aria-labelledby={id} className={`flex-col gap-4 rounded-[22px] bg-mata-soft p-5 lg:p-6 ${className}`}>
       <p className="inline-flex h-[26px] items-center self-start rounded-full bg-raised px-2.5 text-xs font-semibold text-mata">
         Assessoria Edital Map
       </p>
       <div className="flex flex-col gap-2">
-        <h2 id={id} className="text-balance text-[20px] font-bold leading-tight">Quer participar desta licitação?</h2>
-        <p className="text-pretty text-[15px] leading-relaxed text-ink-muted">
-          Não sabe por onde começar? A gente analisa o edital e prepara um passo a passo para a sua empresa.
-        </p>
+        <h2 id={id} className="text-balance text-[20px] font-bold leading-tight">{titulo}</h2>
+        <p className="text-pretty text-[15px] leading-relaxed text-ink-muted">{texto}</p>
       </div>
       <ul className="flex flex-col gap-2 text-[15px] leading-snug">
         {ITENS.map((item) => (

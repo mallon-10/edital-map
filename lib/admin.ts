@@ -108,6 +108,7 @@ const RECURSOS: Record<string, string> = {
   'quer_recurso:quem_venceu': 'Quis saber quem venceu',
   'quer_recurso:resumo_ia': 'Quis resumo por IA',
   'quer_recurso:assessoria': 'Pediu orientação (WhatsApp)',
+  'quer_recurso:assessoria_inicio': 'Pediu orientação na inicial (WhatsApp)',
 };
 
 export function nomeDoRecurso(tipo: string, recurso: string): string {

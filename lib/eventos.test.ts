@@ -43,6 +43,11 @@ describe('validarEvento', () => {
     });
     expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'assessoria' } }).ok).toBe(false);
   });
+  it('quer_recurso assessoria_inicio (WhatsApp na página inicial) sem edital', () => {
+    expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'assessoria_inicio' } })).toEqual({
+      ok: true, valor: { tipo: 'quer_recurso', detalhe: { recurso: 'assessoria_inicio' } },
+    });
+  });
   it('eventos de edital exigem slug válido', () => {
     expect(validarEvento({ tipo: 'abriu_edital', detalhe: { edital: SLUG } })).toEqual({
       ok: true, valor: { tipo: 'abriu_edital', detalhe: { edital: SLUG } },

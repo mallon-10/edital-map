@@ -15,10 +15,10 @@ export type TipoEventoConta = (typeof TIPOS_EVENTO_CONTA)[number];
 export const TIPOS_EVENTO_OPORTUNIDADES = ['edital_salvo', 'edital_descartado', 'alerta_criado', 'alerta_enviado', 'resumo_enviado'] as const;
 export type TipoEventoOportunidades = (typeof TIPOS_EVENTO_OPORTUNIDADES)[number];
 
-export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia', 'plano_pro', 'filtros_pro', 'plano_basic', 'assessoria'] as const;
+export const RECURSOS = ['preco_referencia', 'quem_venceu', 'resumo_ia', 'plano_pro', 'filtros_pro', 'plano_basic', 'assessoria', 'assessoria_inicio'] as const;
 export type Recurso = (typeof RECURSOS)[number];
-/** Interesse em planos ("Quero o Basic" / "Quero o Pro" em /planos) e filtros Pro: sem edital. */
-const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro', 'plano_basic'];
+/** Interesse em planos ("Quero o Basic" / "Quero o Pro" em /planos), filtros Pro e assessoria da página inicial: sem edital. */
+const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro', 'plano_basic', 'assessoria_inicio'];
 
 /** Uso dos recursos Pro (evento usou_recurso). */
 export const RECURSOS_USADOS = [

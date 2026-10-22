@@ -8,6 +8,7 @@ import { Cabecalho } from '@/components/Cabecalho';
 import { Explorador } from '@/components/Explorador';
 import { Medir } from '@/components/Medir';
 import { SobreInicio } from '@/components/inicio/SobreInicio';
+import { linkAssessoriaInicio, numeroWhatsapp } from '@/lib/assessoria';
 import { lerFiltros, paraParametros } from '@/lib/filtros';
 import { mostrarOferta } from '@/lib/planos';
 import { jsonLdMarca } from '@/lib/seo/marca';
@@ -58,6 +59,8 @@ export default async function Inicio({ searchParams }: Props) {
   // Página sem busca: o navegador começa a baixar os pontos do mapa junto com o HTML (vêm da CDN, URL_MAPA_BRASIL).
   if (!comFiltros) preload(URL_MAPA_BRASIL, { as: 'fetch', crossOrigin: 'anonymous' });
   const agora = new Date().toISOString();
+  // Cartão da assessoria na coluna da direita: só com o número configurado (WHATSAPP_ASSESSORIA na Vercel).
+  const whatsapp = numeroWhatsapp(process.env.WHATSAPP_ASSESSORIA);
   // A página rola nas duas larguras: busca, cartão do topo (resumo e mapa), oferta, assuntos e lista (no celular a barra
   // de baixo reserva o espaço dela no body). A oferta do Pro fica embaixo do cartão do topo, não embaixo do cabeçalho.
   // A chave muda a cada desenho do servidor: o logo ou "Mapa" (href="/") com uma busca na tela recomeça o Explorador
@@ -78,6 +81,7 @@ export default async function Inicio({ searchParams }: Props) {
         oferta={mostrarOferta(plano, '/')}
         totaisAtalhos={totaisAtalhos}
         pontosIniciais={pontosIniciais}
+        assessoria={whatsapp ? linkAssessoriaInicio(whatsapp) : null}
       />
       <Suspense fallback={null}>
         <SobreInicioComCidades />

@@ -38,3 +38,10 @@ export function mensagemAssessoria(e: EditalAssessoria): string {
 export function linkAssessoria(numero: string, e: EditalAssessoria): string {
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensagemAssessoria(e))}`;
 }
+
+/** Texto do cartão da página inicial, sem edital escolhido (o João pergunta qual na conversa). */
+export const MENSAGEM_ASSESSORIA_INICIO = 'Olá! Vim pelo Edital Map e quero orientação para participar de uma licitação.';
+
+export function linkAssessoriaInicio(numero: string): string {
+  return `https://wa.me/${numero}?text=${encodeURIComponent(MENSAGEM_ASSESSORIA_INICIO)}`;
+}

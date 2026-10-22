@@ -19,6 +19,7 @@ import { mesmaBusca, telaPelaRolagem, urlDaBusca, type EstadoTela, type Tela, ty
 import { BarraCelular } from './BarraCelular';
 import { FaixaOferta } from './FaixaOferta';
 import { Mapa } from './Mapa';
+import { CartaoAssessoria } from './edital/CartaoAssessoria';
 import { Atalhos, AtalhosComTotais } from './inicio/Atalhos';
 import { BuscaPrincipal } from './inicio/BuscaPrincipal';
 import { CartaoTopo } from './inicio/CartaoTopo';
@@ -86,12 +87,14 @@ type Props = {
   totaisAtalhos: Promise<Record<string, number | null>>;
   /** Pontos do mapa da busca do endereço, chegando depois do HTML (null: sem filtros, vêm da CDN, ou falhou). */
   pontosIniciais: Promise<PontoMapa[] | null> | null;
+  /** Link do WhatsApp da assessoria (null: número não configurado, sem cartão). */
+  assessoria: string | null;
 };
 
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
 type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'tela' | 'selecionadoId'>;
 
-export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInicial, atualizadoEm, oferta, totaisAtalhos, pontosIniciais }: Props) {
+export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInicial, atualizadoEm, oferta, totaisAtalhos, pontosIniciais, assessoria }: Props) {
   const [filtros, setFiltros] = useState<FiltrosTela>(filtrosIniciais);
   // Celular: a parte da página pedida por último (botão da barra, cidade escolhida ou aviso na lista), guardada
   // no endereço (`tela=lista` abre a página rolada até a lista). Só muda por ação explícita, nunca pela rolagem.
@@ -619,9 +622,21 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
               aoAplicar={aplicar}
             />
           </section>
-          <aside className="hidden flex-col gap-5 lg:sticky lg:top-4 lg:flex">
-            <ValorEmJogo valor={valorTotal} total={painel.total} carregando={!pontosProntos} />
-            <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
+          {/* A assessoria rola com a página; o valor e "Onde mais compram" continuam presos (os três juntos passam da altura da tela). */}
+          <aside className="hidden flex-col gap-5 lg:flex lg:self-stretch">
+            {assessoria ? (
+              <CartaoAssessoria
+                href={assessoria}
+                id="assessoria-inicio"
+                titulo="Quer participar de uma licitação?"
+                texto="Achou um edital e não sabe por onde começar? A gente analisa e prepara um passo a passo para a sua empresa."
+                className="flex"
+              />
+            ) : null}
+            <div className="flex flex-col gap-5 lg:sticky lg:top-4">
+              <ValorEmJogo valor={valorTotal} total={painel.total} carregando={!pontosProntos} />
+              <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
+            </div>
           </aside>
         </div>
       </main>
