@@ -890,3 +890,24 @@ describe('migração 0022 (nota mínima do radar)', () => {
     }
   });
 });
+
+describe('migração 0023 (SEO: modalidades e órgãos)', () => {
+  const sql = ler('supabase/migrations/0023_seo_orgaos_modalidades.sql').replace(/\r\n/g, '\n');
+
+  it('uma transação curta e o PostgREST relê as funções no fim', () => {
+    expect(sql).toContain("set local lock_timeout = '10s';");
+    expect(sql.trimEnd().endsWith("notify pgrst, 'reload schema';")).toBe(true);
+  });
+  it('as duas contagens usam a regra única de aberta e de duplicada (abertas_unicas)', () => {
+    expect(corpoDe(sql, 'create function public.abertos_por_modalidade()')).toContain('from public.abertas_unicas(null, null) a');
+    const o = corpoDe(sql, 'create function public.orgaos_abertos_lista()');
+    expect(o).toContain('from public.abertas_unicas(null, null) a');
+    expect(o).toContain("where nullif(trim(a.orgao_nome), '') is not null");
+  });
+  it('só o servidor executa', () => {
+    for (const f of ['abertos_por_modalidade()', 'orgaos_abertos_lista()']) {
+      expect(sql).toContain(`revoke execute on function public.${f} from public, anon, authenticated;`);
+      expect(sql).toContain(`grant execute on function public.${f} to service_role;`);
+    }
+  });
+});

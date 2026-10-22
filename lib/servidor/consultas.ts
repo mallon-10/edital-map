@@ -323,3 +323,35 @@ export function municipiosAbertos(): Promise<Array<{ codigo_ibge: string; nome: 
     }
   });
 }
+
+/** Editais abertos por modalidade e UF (0023): `{ 6: { SP: 120, … }, … }`. Cache de 1 h. */
+export function abertosPorModalidade(): Promise<Record<number, Record<string, number>>> {
+  return cacheHora('abertos-por-modalidade', async () => {
+    const { data, error } = await supabaseServidor().rpc('abertos_por_modalidade', {});
+    if (error) throw new Error(`abertos_por_modalidade: ${error.message}`);
+    const saida: Record<number, Record<string, number>> = {};
+    for (const l of (data ?? []) as Linha[]) {
+      const id = Number(l.modalidade_id);
+      (saida[id] ??= {})[String(l.uf)] = Number(l.total);
+    }
+    return saida;
+  });
+}
+
+export type OrgaoLinha = { cnpj: string; nome: string; uf: string; codigo_ibge: string | null; total: number };
+
+/** Órgãos com editais abertos (0023), para as páginas /licitacoes/orgao/{slug}. Cache de 1 h. */
+export function orgaosAbertosLista(): Promise<OrgaoLinha[]> {
+  return cacheHora('orgaos-abertos-lista', async () => {
+    const lista: OrgaoLinha[] = [];
+    for (let de = 0; ; de += 1000) {
+      const { data, error } = await supabaseServidor().rpc('orgaos_abertos_lista', {}).range(de, de + 999);
+      if (error) throw new Error(`orgaos_abertos_lista: ${error.message}`);
+      const linhas = (data ?? []) as Linha[];
+      for (const l of linhas) {
+        lista.push({ cnpj: String(l.cnpj), nome: String(l.nome), uf: String(l.uf), codigo_ibge: texto(l.codigo_ibge), total: Number(l.total) });
+      }
+      if (linhas.length < 1000) return lista;
+    }
+  });
+}
