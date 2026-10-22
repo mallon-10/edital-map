@@ -8,11 +8,13 @@ import { metadadosDaPagina } from '@/lib/servidor/licitacoes';
 
 type Props = { params: Promise<{ x: string }> };
 
-/** /licitacoes/epi (assunto no Brasil) ou /licitacoes/sp (tudo na UF). */
+/** /licitacoes/epi (assunto no Brasil), /licitacoes/pregao-eletronico (modalidade no Brasil) ou /licitacoes/sp (tudo na UF). */
 function pagina(x: string): Pagina | null {
   const s = resolverSegmento(x);
   if (!s) return null;
-  return s.tipo === 'assunto' ? { assunto: s.assunto, uf: null } : { assunto: null, uf: s.uf };
+  if (s.tipo === 'assunto') return { assunto: s.assunto, uf: null };
+  if (s.tipo === 'modalidade') return { assunto: null, modalidade: s.modalidade, uf: null };
+  return { assunto: null, uf: s.uf };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

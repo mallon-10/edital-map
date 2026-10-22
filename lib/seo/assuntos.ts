@@ -1,5 +1,6 @@
 import { NOMES_UF } from '../estados';
 import { UFS_BRASIL } from '../eventos';
+import { type Modalidade, modalidadePorSlug } from './modalidades';
 
 export { SITE_URL, url } from './site';
 
@@ -38,10 +39,17 @@ export function ufPorSlug(slug: string): string | null {
   return UFS.has(uf) ? uf : null;
 }
 
-/** Segmento de /licitacoes/[x]: UF tem 2 letras, assunto nunca (teste garante). */
-export function resolverSegmento(x: string): { tipo: 'assunto'; assunto: Assunto } | { tipo: 'uf'; uf: string } | null {
+/** Rota estática /licitacoes/orgao/{slug}: nenhum assunto nem modalidade usa este slug (teste garante). */
+export const SEGMENTO_ORGAO = 'orgao';
+
+/** Segmento de /licitacoes/[x]: UF tem 2 letras, assunto e modalidade nunca (teste garante). */
+export function resolverSegmento(
+  x: string,
+): { tipo: 'assunto'; assunto: Assunto } | { tipo: 'modalidade'; modalidade: Modalidade } | { tipo: 'uf'; uf: string } | null {
   const assunto = assuntoPorSlug(x);
   if (assunto) return { tipo: 'assunto', assunto };
+  const modalidade = modalidadePorSlug(x);
+  if (modalidade) return { tipo: 'modalidade', modalidade };
   const uf = ufPorSlug(x);
   return uf ? { tipo: 'uf', uf } : null;
 }

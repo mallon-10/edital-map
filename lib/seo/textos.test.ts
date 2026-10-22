@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Edital } from '../tipos';
-import { assuntoPorSlug } from './assuntos';
+import { ASSUNTOS, assuntoPorSlug } from './assuntos';
+import { MODALIDADES, modalidadePorSlug } from './modalidades';
 import {
   buscaDaPagina, caminhoDaPagina, descricaoDaPagina, descricaoDoEdital, editalAberto, introDaPagina, jsonLdMigalhas, migalhas,
-  temBusca, tituloDaPagina, vizinhos,
+  temBusca, tituloDaPagina, tituloSeoDaPagina, vizinhos,
 } from './textos';
 
 const epi = assuntoPorSlug('epi')!;
@@ -112,16 +113,17 @@ describe('vizinhos', () => {
     expect(v).toHaveLength(27);
     expect(v[0].total).toBeNull();
   });
-  it('UF: os 15 assuntos naquela UF', () => {
+  it('UF: os assuntos e as modalidades naquela UF', () => {
     const v = vizinhos(SP, null);
-    expect(v).toHaveLength(15);
+    expect(v).toHaveLength(ASSUNTOS.length + MODALIDADES.length);
     expect(v[0].caminho).toBe('/licitacoes/epi/sp');
+    expect(v.map((x) => x.caminho)).toContain('/licitacoes/pregao-eletronico/sp');
   });
   it('assunto na UF: o assunto no Brasil e a UF com tudo', () => {
     expect(vizinhos(EPI_BA, null).map((x) => x.caminho)).toEqual(['/licitacoes/epi', '/licitacoes/ba']);
   });
-  it('Brasil: os 15 assuntos e as 27 UFs', () => {
-    expect(vizinhos(BR, null)).toHaveLength(42);
+  it('Brasil: nenhum (o índice tem as próprias seções)', () => {
+    expect(vizinhos(BR, null)).toEqual([]);
   });
 });
 
@@ -146,6 +148,63 @@ describe('página de cidade', () => {
   it('vizinhos: tudo na UF e os assuntos na UF', () => {
     const v = vizinhos(SBS, null);
     expect(v[0]).toMatchObject({ caminho: '/licitacoes/sc' });
-    expect(v).toHaveLength(16);
+    expect(v).toHaveLength(ASSUNTOS.length + 1);
+  });
+});
+
+describe('página de modalidade', () => {
+  const pe = modalidadePorSlug('pregao-eletronico')!;
+  const PE = { assunto: null, uf: null, modalidade: pe };
+  const PE_SP = { assunto: null, uf: 'SP', modalidade: pe };
+  it('caminho, título, descrição e busca no mapa', () => {
+    expect(caminhoDaPagina(PE)).toBe('/licitacoes/pregao-eletronico');
+    expect(caminhoDaPagina(PE_SP)).toBe('/licitacoes/pregao-eletronico/sp');
+    expect(tituloDaPagina(PE_SP)).toBe('Pregão eletrônico: licitações abertas em São Paulo');
+    expect(tituloDaPagina(PE)).toBe('Pregão eletrônico: licitações abertas no Brasil');
+    expect(tituloSeoDaPagina(PE_SP)).toBe(tituloDaPagina(PE_SP));
+    expect(descricaoDaPagina(PE_SP, 1234)).toMatch(/^1\.234 editais de pregão eletrônico abertos em São Paulo, direto do PNCP/);
+    expect(introDaPagina(PE_SP, 3)).toContain('mostra primeiro os que encerram antes');
+    expect(buscaDaPagina(PE_SP)).toBe('/?uf=SP&modalidades=6');
+  });
+  it('migalhas', () => {
+    expect(migalhas(PE_SP).map((m) => m.nome)).toEqual(['Início', 'Licitações', 'Pregão eletrônico', 'São Paulo']);
+    expect(migalhas(PE_SP)[2].caminho).toBe('/licitacoes/pregao-eletronico');
+  });
+  it('vizinhos: UFs com editais no Brasil; na UF, a modalidade no Brasil, tudo na UF e as outras modalidades', () => {
+    expect(vizinhos(PE, { SP: 5, AC: 0 }).map((x) => x.caminho)).toEqual(['/licitacoes/pregao-eletronico/sp']);
+    const v = vizinhos(PE_SP, null).map((x) => x.caminho);
+    expect(v.slice(0, 2)).toEqual(['/licitacoes/pregao-eletronico', '/licitacoes/sp']);
+    expect(v).toContain('/licitacoes/dispensa/sp');
+    expect(v).not.toContain('/licitacoes/pregao-eletronico/sp');
+    expect(v).toHaveLength(2 + MODALIDADES.length - 1);
+  });
+});
+
+describe('página de órgão', () => {
+  const USP = {
+    assunto: null, uf: 'SP',
+    orgao: { cnpj: '63025530000104', nome: 'Universidade de São Paulo', slug: 'universidade-de-sao-paulo-63025530000104', uf: 'SP', ibge: '3550308', cidadeNome: 'São Paulo', cidadeSlug: 'sao-paulo' },
+  };
+  it('caminho, título, descrição e busca no mapa', () => {
+    expect(caminhoDaPagina(USP)).toBe('/licitacoes/orgao/universidade-de-sao-paulo-63025530000104');
+    expect(tituloDaPagina(USP)).toBe('Licitações abertas: Universidade de São Paulo');
+    expect(descricaoDaPagina(USP, 148)).toMatch(/^Universidade de São Paulo \(São Paulo\/SP\): 148 editais abertos, direto do PNCP/);
+    expect(descricaoDaPagina(USP, 0)).toMatch(/^Universidade de São Paulo \(São Paulo\/SP\): nenhum edital aberto agora\./);
+    expect(buscaDaPagina(USP)).toBe('/?orgao=63025530000104');
+  });
+  it('migalhas passam pela UF', () => {
+    expect(migalhas(USP).map((m) => m.caminho)).toEqual(['/', '/licitacoes', '/licitacoes/sp', '/licitacoes/orgao/universidade-de-sao-paulo-63025530000104']);
+  });
+  it('vizinhos: a cidade, a UF e os outros órgãos', () => {
+    const outros = [{ nome: 'Unesp', caminho: '/licitacoes/orgao/unesp-1', total: 9 }];
+    expect(vizinhos(USP, null, outros).map((x) => x.caminho)).toEqual(['/licitacoes/sp/sao-paulo', '/licitacoes/sp', '/licitacoes/orgao/unesp-1']);
+  });
+});
+
+describe('título da cidade na aba', () => {
+  it('cita a prefeitura e os órgãos; a descrição também', () => {
+    const C = { assunto: null, uf: 'SP', cidade: { ibge: '3509502', nome: 'Campinas', slug: 'campinas' } };
+    expect(tituloSeoDaPagina(C)).toBe('Licitações abertas em Campinas (SP) · Prefeitura e órgãos');
+    expect(descricaoDaPagina(C, 40)).toContain('da Prefeitura de Campinas e de outros órgãos da cidade');
   });
 });
