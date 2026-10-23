@@ -7,6 +7,7 @@ import { UFS_BRASIL } from '@/lib/eventos';
 import { ASSUNTOS } from '@/lib/seo/assuntos';
 import { jsonLdPerguntas, PERGUNTAS_LICITACOES } from '@/lib/seo/marca';
 import { MODALIDADES } from '@/lib/seo/modalidades';
+import { GUIAS } from '@/conteudo';
 import type { PlanoDaPagina } from '@/lib/planos';
 import { buscaDaPagina, caminhoDaPagina, introDaPagina, jsonLdMigalhas, migalhas, type Pagina, tituloDaPagina, type Vizinho, vizinhos } from '@/lib/seo/textos';
 import { atualizadoEm } from '@/lib/servidor/consultas';
@@ -66,6 +67,7 @@ function SecoesDoIndice({ orgaos }: { orgaos: Vizinho[] }) {
       />
       <Secao id="por-estado" titulo="Por estado" links={ufs.map((uf) => ({ nome: NOMES_UF[uf], caminho: caminhoDaPagina({ assunto: null, uf }), total: null }))} />
       <Secao id="orgaos" titulo="Órgãos com mais licitações abertas" links={orgaos} />
+      <Secao id="aprenda" titulo="Aprenda a licitar" links={GUIAS.map((g) => ({ nome: g.titulo, caminho: `/guias/${g.slug}`, total: null }))} />
     </>
   );
 }
@@ -106,7 +108,14 @@ export function PaginaLicitacoes({ pagina, total, editais, porUf, cidades, orgao
           <p className="max-w-[72ch] text-[15px] text-ink-muted">
             {total === null ? 'Lista indisponível agora. Tente de novo em alguns minutos.' : introDaPagina(pagina, total)}
           </p>
-          {pagina.modalidade ? <p className="max-w-[72ch] text-[15px] text-ink">{pagina.modalidade.explicacao}</p> : null}
+          {pagina.modalidade ? (
+            <p className="max-w-[72ch] text-[15px] text-ink">
+              {pagina.modalidade.explicacao}{' '}
+              <Link href={pagina.modalidade.saibaMais} prefetch={false} className="font-semibold underline decoration-pin decoration-2 underline-offset-2">
+                Entenda como funciona
+              </Link>
+            </p>
+          ) : null}
           <div>
             <Link
               href={buscaDaPagina(pagina)}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ASSUNTOS, resolverSegmento, SEGMENTO_ORGAO } from './assuntos';
+import { SLUGS_GUIAS, SLUGS_TERMOS } from '../../conteudo/slugs';
 import { MODALIDADES, modalidadePorNome, modalidadePorSlug } from './modalidades';
 
 describe('MODALIDADES', () => {
@@ -17,6 +18,10 @@ describe('MODALIDADES', () => {
       expect(m.explicacao).toContain('14.133');
       expect(m.explicacao.endsWith('Confira sempre as regras no edital.')).toBe(true);
     }
+  });
+  it('"Entenda como funciona" leva a um guia ou termo que existe', () => {
+    const existentes = new Set([...SLUGS_GUIAS.map((g) => `/guias/${g}`), ...SLUGS_TERMOS.map((t) => `/glossario/${t}`)]);
+    for (const m of MODALIDADES) expect(existentes.has(m.saibaMais), m.slug).toBe(true);
   });
   it('acha pelo slug e pelo nome do PNCP', () => {
     expect(modalidadePorSlug('dispensa')?.id).toBe(8);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Guia, Termo } from '../../conteudo/tipos';
-import { caminhoFixoExiste, problemasDoGuia, problemasDoTermo } from './validar';
+import { caminhoFixoExiste, nomeDoCaminho, problemasDoGuia, problemasDoTermo } from './validar';
 
 const RESPOSTA = Array.from({ length: 45 }, (_, i) => `palavra${i}`).join(' ');
 const ctx = { guias: new Set(['sicaf', 'pregao-eletronico']), termos: new Set(['edital', 'pregao']), hoje: '2026-10-23' };
@@ -27,6 +27,15 @@ describe('caminhoFixoExiste', () => {
       expect(caminhoFixoExiste(c), c).toBe(true);
     }
     for (const c of ['/licitacoes/xx', '/licitacoes/epi/zz', '/qualquer', '/licitacoes/sp/campinas']) expect(caminhoFixoExiste(c), c).toBe(false);
+  });
+});
+
+describe('nomeDoCaminho', () => {
+  it('o H1 da página; caminho que não é /licitacoes = null', () => {
+    expect(nomeDoCaminho('/licitacoes/dispensa/ba')).toBe('Dispensa de licitação: licitações abertas na Bahia');
+    expect(nomeDoCaminho('/licitacoes/epi')).toBe('Licitações de EPI abertas no Brasil');
+    expect(nomeDoCaminho('/licitacoes')).toBe('Licitações abertas no Brasil');
+    expect(nomeDoCaminho('/planos')).toBeNull();
   });
 });
 

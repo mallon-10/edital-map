@@ -18,7 +18,7 @@ export const VALORES = {
   dispensaObras: 'R$ 130.984,20',
   /** Art. 75, II: dispensa por valor para compras e outros serviços. */
   dispensaCompras: 'R$ 65.492,11',
-  /** Art. 75, § 7º: peças de manutenção de veículos (dispensa). */
+  /** Art. 75, § 7º: serviços de manutenção de veículos do órgão, com as peças, fora da soma anual do § 1º (dispensa). */
   dispensaPecasVeiculos: 'R$ 10.478,74',
   /** Art. 95, § 2º: contrato verbal (pequenas compras de pronto pagamento). */
   contratoVerbal: 'R$ 13.098,41',

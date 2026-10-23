@@ -1,3 +1,4 @@
+import { GUIAS, TERMOS } from '@/conteudo';
 import { ASSUNTOS } from '@/lib/seo/assuntos';
 import { url } from '@/lib/seo/site';
 import { loteDoArquivo, paginasDeModalidade, paginasFixas, POR_ARQUIVO, xmlUrls } from '@/lib/seo/sitemap';
@@ -21,7 +22,9 @@ async function paginas(): Promise<Array<{ url: string }>> {
     orgaosComPagina(),
   ]);
   const caminhos = [
-    '/', '/planos', '/sobre', '/alertas', '/cnpj',
+    '/', '/planos', '/sobre', '/alertas', '/cnpj', '/guias', '/glossario',
+    ...GUIAS.map((g) => `/guias/${g.slug}`),
+    ...TERMOS.map((t) => `/glossario/${t.slug}`),
     ...paginasFixas(contagens),
     ...paginasDeModalidade(porModalidade),
     ...cidades.filter((c) => c.noSitemap).map((c) => `/licitacoes/${c.uf.toLowerCase()}/${c.slug}`),

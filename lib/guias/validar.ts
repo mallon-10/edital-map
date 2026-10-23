@@ -1,5 +1,6 @@
 import type { Bloco, Guia, Termo } from '../../conteudo/tipos';
 import { resolverSegmento, ufPorSlug } from '../seo/assuntos';
+import { type Pagina, tituloDaPagina } from '../seo/textos';
 import { ehOficial, linksDoTexto, palavras } from './texto';
 
 /**
@@ -14,15 +15,29 @@ const DATA = /^\d{4}-\d{2}-\d{2}$/;
 /** Palavras de promessa que o conteúdo não usa (spec, seção 3). */
 const PROMESSAS = /\b(garanta|garantimos|ganhe|ganhar com certeza|sucesso garantido)\b/i;
 
-/** Páginas fixas, /licitacoes/{assunto|modalidade|uf} e /licitacoes/{assunto|modalidade}/{uf}. Cidade e órgão não. */
-export function caminhoFixoExiste(caminho: string): boolean {
-  if (FIXAS.has(caminho)) return true;
+/** /licitacoes/{assunto|modalidade|uf} e /licitacoes/{assunto|modalidade}/{uf} → página (cidade e órgão não). */
+function paginaDoCaminho(caminho: string): Pagina | null {
   const partes = caminho.split('/').filter(Boolean);
-  if (partes[0] !== 'licitacoes' || partes.length < 2 || partes.length > 3) return false;
+  if (partes[0] !== 'licitacoes' || partes.length > 3) return null;
+  if (partes.length === 1) return { assunto: null, uf: null };
   const s = resolverSegmento(partes[1]);
-  if (!s) return false;
-  if (partes.length === 2) return true;
-  return s.tipo !== 'uf' && ufPorSlug(partes[2]) !== null;
+  if (!s) return null;
+  const uf = partes.length === 3 ? ufPorSlug(partes[2]) : null;
+  if (partes.length === 3 && (!uf || s.tipo === 'uf')) return null;
+  if (s.tipo === 'uf') return { assunto: null, uf: s.uf };
+  if (s.tipo === 'assunto') return { assunto: s.assunto, uf };
+  return { assunto: null, modalidade: s.modalidade, uf };
+}
+
+/** Páginas fixas e as páginas /licitacoes de assunto, modalidade e UF. */
+export function caminhoFixoExiste(caminho: string): boolean {
+  return FIXAS.has(caminho) || paginaDoCaminho(caminho) !== null;
+}
+
+/** Nome de uma página /licitacoes para os cartões "Editais abertos agora" (o mesmo H1 da página). */
+export function nomeDoCaminho(caminho: string): string | null {
+  const p = paginaDoCaminho(caminho);
+  return p ? tituloDaPagina(p) : null;
 }
 
 function caminhoExiste(c: string, ctx: Contexto): boolean {
