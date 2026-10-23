@@ -75,7 +75,7 @@ export const termos: Termo[] = [
       'A proposta é desclassificada quando tem erro que não pode ser corrigido, não segue as especificações do edital, traz preço acima do orçamento estimado ou com sinais de [inexequibilidade](/glossario/inexequibilidade). Por isso, antes de enviar, confira o [termo de referência](/glossario/termo-de-referencia) item por item e faça a conta dos custos. No [pregão eletrônico](/licitacoes/pregao-eletronico), o valor inicial da proposta ainda pode cair durante a fase de [lances](/glossario/lance).',
     artigo: 'Lei 14.133/2021, art. 59',
     relacionados: ['lance', 'inexequibilidade', 'habilitacao', 'edital'],
-    guia: 'como-participar-de-licitacao',
+    guia: 'proposta-de-precos',
   },
   {
     slug: 'lance',
@@ -108,7 +108,7 @@ export const termos: Termo[] = [
       'O mesmo prazo vale para o pedido de esclarecimento, usado quando a dúvida é só de entendimento. O órgão tem até 3 dias úteis para responder, limitado ao último dia útil antes da abertura, e publica a resposta no site oficial. Se o edital for alterado de um jeito que mude as propostas, o prazo de divulgação costuma ser reaberto. Impugnar é diferente de [recorrer](/glossario/recurso-administrativo): a impugnação questiona o [edital](/glossario/edital) antes da disputa; o recurso questiona decisões tomadas depois.',
     artigo: 'Lei 14.133/2021, art. 164',
     relacionados: ['edital', 'recurso-administrativo', 'licitante'],
-    guia: 'como-participar-de-licitacao',
+    guia: 'impugnacao-e-recurso',
   },
   {
     slug: 'recurso-administrativo',
@@ -119,7 +119,7 @@ export const termos: Termo[] = [
       'No julgamento das propostas e na [habilitação](/glossario/habilitacao), a empresa precisa manifestar a intenção de recorrer logo, na própria [sessão pública](/glossario/sessao-publica), senão perde o direito. Os demais participantes podem apresentar contrarrazões no mesmo prazo. O recurso vai a quem tomou a decisão, que pode reconsiderar em 3 dias úteis; se não reconsiderar, a autoridade superior decide em até 10 dias úteis. Enquanto isso, a decisão recorrida fica suspensa.',
     artigo: 'Lei 14.133/2021, arts. 165 e 168',
     relacionados: ['impugnacao', 'habilitacao', 'sessao-publica', 'homologacao'],
-    guia: 'como-participar-de-licitacao',
+    guia: 'impugnacao-e-recurso',
   },
   {
     slug: 'licitacao-deserta',
@@ -234,7 +234,7 @@ export const termos: Termo[] = [
       'Se a proposta da ME ou EPP ficar até 10% acima da melhor, ou até 5% no [pregão](/glossario/pregao), ela pode cobrir a oferta e ficar com o contrato. Com certidão fiscal ou trabalhista vencida, tem 5 dias úteis, prorrogáveis, para regularizar depois de vencer. Há ainda itens só para ME e EPP e a [cota reservada](/glossario/cota-reservada). Os benefícios não valem para itens acima do limite de faturamento de EPP. A Lei Complementar 238/2026 muda o valor das disputas exclusivas a partir de 2027.',
     artigo: 'Lei Complementar 123/2006, art. 3º e arts. 42 a 49; Lei 14.133/2021, art. 4º',
     relacionados: ['cota-reservada', 'margem-de-preferencia', 'certidao-negativa', 'licitante'],
-    guia: 'como-participar-de-licitacao',
+    guia: 'me-epp-e-mei',
   },
   {
     slug: 'margem-de-preferencia',
@@ -255,7 +255,7 @@ export const termos: Termo[] = [
       'No edital, a cota costuma aparecer como um item separado, com a mesma descrição do item principal e uma quantidade menor, que só [ME e EPP](/glossario/me-epp) podem disputar. A regra pode deixar de ser aplicada, por exemplo, quando não houver pelo menos 3 fornecedores competitivos desse porte na região ou quando o tratamento diferenciado não for vantajoso para a Administração. Confira no [edital](/glossario/edital) quais itens têm cota.',
     artigo: 'Lei Complementar 123/2006, art. 48, III, e art. 49',
     relacionados: ['me-epp', 'edital', 'licitante'],
-    guia: 'como-participar-de-licitacao',
+    guia: 'me-epp-e-mei',
   },
   {
     slug: 'plano-de-contratacoes-anual',

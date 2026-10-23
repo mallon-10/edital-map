@@ -2,6 +2,8 @@
 export const SLUGS_GUIAS = [
   'como-participar-de-licitacao', 'o-que-e-licitacao', 'nova-lei-de-licitacoes', 'sicaf', 'pregao-eletronico', 'dispensa-de-licitacao',
   'inexigibilidade-de-licitacao', 'ata-de-registro-de-precos', 'documentos-para-licitacao', 'atestado-de-capacidade-tecnica', 'pncp', 'empenho',
+  // Segundo lote (23/10/2026)
+  'compras-gov-br', 'licitacao-de-prefeitura', 'me-epp-e-mei', 'impugnacao-e-recurso', 'proposta-de-precos',
 ] as const;
 
 export const SLUGS_TERMOS = [

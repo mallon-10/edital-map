@@ -19,7 +19,7 @@ type Props = {
 };
 
 /**
- * Computador: logo, abas (Mapa, Meu Radar, Alertas, Planos), Sobre, conta e "Assinar Pro". Celular: logo, conta e "Assinar" (Mapa, Lista,
+ * Computador: logo, abas (Mapa, Meu Radar, Alertas, Planos, Guias), Sobre, conta e "Assinar Pro". Celular: logo, conta e "Assinar" (Mapa, Lista,
  * Alertas e Planos ficam na barra de baixo). Logo abaixo, o cartão da oferta (alertas por e-mail) para quem não é Pro nem o dono.
  */
 export function Cabecalho({ plano, semOferta = false }: Props) {
@@ -65,6 +65,15 @@ export function Cabecalho({ plano, semOferta = false }: Props) {
           </Link>
           <Link href="/planos" aria-current={ativa('/planos') ? 'page' : undefined} className={estilo('/planos')}>
             Planos
+          </Link>
+          {/* Guias acende também no glossário (a mesma área de conteúdo). */}
+          <Link
+            href="/guias"
+            prefetch={false}
+            aria-current={ativa('/guias') || ativa('/glossario') ? 'page' : undefined}
+            className={`${ABA} ${ativa('/guias') || ativa('/glossario') ? 'bg-raised text-ink shadow-[0_0_0_1px_#ddd6c6]' : 'text-ink hover:bg-raised'}`}
+          >
+            Guias
           </Link>
         </nav>
         <div className="ml-auto flex min-w-0 items-center gap-2 lg:gap-3">

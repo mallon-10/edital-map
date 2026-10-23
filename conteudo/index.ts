@@ -3,21 +3,26 @@ import { termos as parte2 } from './glossario/parte-2';
 import { guia as ataDeRegistroDePrecos } from './guias/ata-de-registro-de-precos';
 import { guia as atestadoDeCapacidadeTecnica } from './guias/atestado-de-capacidade-tecnica';
 import { guia as comoParticipar } from './guias/como-participar-de-licitacao';
+import { guia as comprasGovBr } from './guias/compras-gov-br';
 import { guia as dispensa } from './guias/dispensa-de-licitacao';
 import { guia as documentos } from './guias/documentos-para-licitacao';
 import { guia as empenho } from './guias/empenho';
+import { guia as impugnacaoERecurso } from './guias/impugnacao-e-recurso';
 import { guia as inexigibilidade } from './guias/inexigibilidade-de-licitacao';
+import { guia as prefeitura } from './guias/licitacao-de-prefeitura';
+import { guia as meEppEMei } from './guias/me-epp-e-mei';
 import { guia as novaLei } from './guias/nova-lei-de-licitacoes';
 import { guia as oQueELicitacao } from './guias/o-que-e-licitacao';
 import { guia as pncp } from './guias/pncp';
 import { guia as pregao } from './guias/pregao-eletronico';
+import { guia as proposta } from './guias/proposta-de-precos';
 import { guia as sicaf } from './guias/sicaf';
 import type { Guia, Termo } from './tipos';
 
 /** Guias na ordem do índice /guias: o pilar primeiro, depois do básico ao pós-venda. */
 export const GUIAS: readonly Guia[] = [
-  comoParticipar, oQueELicitacao, novaLei, pncp, sicaf, documentos, atestadoDeCapacidadeTecnica, pregao, dispensa, inexigibilidade,
-  ataDeRegistroDePrecos, empenho,
+  comoParticipar, oQueELicitacao, prefeitura, meEppEMei, novaLei, pncp, comprasGovBr, sicaf, documentos, atestadoDeCapacidadeTecnica,
+  proposta, pregao, dispensa, inexigibilidade, ataDeRegistroDePrecos, impugnacaoERecurso, empenho,
 ];
 
 /** Termos do glossário em ordem alfabética do nome. */

@@ -26,7 +26,7 @@ export const guia: Guia = {
         {
           tipo: 'paragrafo',
           texto:
-            'Pequenas empresas têm tratamento favorecido. A Lei 14.133 aplica os arts. 42 a 49 da Lei Complementar 123/2006 (art. 4º). Na prática, a [ME e a EPP](/glossario/me-epp) podem ter preferência no desempate, itens exclusivos ou [cota reservada](/glossario/cota-reservada) e prazo extra para acertar certidões. Cada edital diz quais desses benefícios valem naquela compra.',
+            'Pequenas empresas têm tratamento favorecido. A Lei 14.133 aplica os arts. 42 a 49 da Lei Complementar 123/2006 (art. 4º). Na prática, a [ME e a EPP](/glossario/me-epp) podem ter preferência no desempate, itens exclusivos ou [cota reservada](/glossario/cota-reservada) e prazo extra para acertar certidões. Cada edital diz quais desses benefícios valem naquela compra; o guia [ME, EPP e MEI em licitações](/guias/me-epp-e-mei) explica cada um.',
         },
       ],
     },
@@ -37,13 +37,13 @@ export const guia: Guia = {
           tipo: 'passos',
           itens: [
             'Deixe a empresa regular. Confira se o CNAE do CNPJ combina com o que você quer vender e tire as certidões: Receita Federal, FGTS, Justiça do Trabalho ([CNDT](/glossario/cndt)), estado e município. O guia de [documentos para licitação](/guias/documentos-para-licitacao) mostra a lista completa.',
-            'Cadastre a empresa nas plataformas. O governo federal usa o Compras.gov.br e o [SICAF](/guias/sicaf). Estados e prefeituras podem usar sistemas próprios ou privados, desde que ligados ao PNCP (art. 175, § 1º). O edital informa em qual plataforma será a disputa.',
+            'Cadastre a empresa nas plataformas. O governo federal usa o [Compras.gov.br](/guias/compras-gov-br) e o [SICAF](/guias/sicaf). Estados e prefeituras podem usar sistemas próprios ou privados, desde que ligados ao PNCP (art. 175, § 1º). O edital informa em qual plataforma será a disputa.',
             'Encontre editais do seu ramo. Os órgãos publicam o edital e os anexos no [PNCP](/guias/pncp), o portal nacional (art. 54). No [Edital Map](/) você vê no mapa os editais abertos perto de você, filtrados por assunto, cidade ou valor.',
             'Leia o edital inteiro. Veja o objeto, o [termo de referência](/glossario/termo-de-referencia), o prazo de entrega, o local, a forma de pagamento e os documentos de [habilitação](/glossario/habilitacao). Se achar uma exigência irregular, o prazo para [impugnação](/glossario/impugnacao) vai até 3 dias úteis antes da abertura (art. 164).',
-            'Monte a [proposta](/glossario/proposta). Calcule custo, impostos, frete e margem. Proposta com preço inexequível ou acima do orçamento estimado pode ser desclassificada (art. 59, III).',
+            'Monte a [proposta](/glossario/proposta). Calcule custo, impostos, frete e margem (veja [como montar a proposta de preços](/guias/proposta-de-precos)). Proposta com preço inexequível ou acima do orçamento estimado pode ser desclassificada (art. 59, III).',
             'Participe da [sessão pública](/glossario/sessao-publica). Na maioria das compras de bens comuns a disputa é um [pregão eletrônico](/guias/pregao-eletronico), com [lances](/glossario/lance) em tempo real conduzidos pelo [pregoeiro](/glossario/pregoeiro).',
             'Entregue a habilitação, se for chamado. Em regra, só o vencedor apresenta os documentos de habilitação (art. 63, II), e a regularidade fiscal é conferida depois do julgamento das propostas (art. 63, III).',
-            'Acompanhe o resultado. Quem discorda do julgamento pode apresentar [recurso](/glossario/recurso-administrativo) em 3 dias úteis (art. 165, I). Depois vêm a [adjudicação](/glossario/adjudicacao) e a [homologação](/glossario/homologacao).',
+            'Acompanhe o resultado. Quem discorda do julgamento pode apresentar [recurso](/glossario/recurso-administrativo) em 3 dias úteis (art. 165, I); o guia de [impugnação e recurso](/guias/impugnacao-e-recurso) mostra os prazos e como escrever. Depois vêm a [adjudicação](/glossario/adjudicacao) e a [homologação](/glossario/homologacao).',
             'Assine o contrato ou a ata e entregue. O órgão emite o [empenho](/guias/empenho), você entrega o produto ou presta o serviço, emite a nota fiscal e recebe depois da liquidação.',
           ],
         },
@@ -71,7 +71,7 @@ export const guia: Guia = {
           tipo: 'lista',
           itens: [
             'A lei prefere a forma eletrônica (art. 17, § 2º), mas municípios com até 20 mil habitantes tiveram 6 anos, contados de abril de 2021, para adotar o eletrônico e a divulgação em sítio oficial (art. 176). Por isso ainda existe [pregão presencial](/licitacoes/pregao-presencial) em cidades pequenas.',
-            'Cada prefeitura escolhe sua plataforma. Guarde login e senha de cada uma e confira o horário da sessão no edital.',
+            'Cada prefeitura escolhe sua plataforma. Guarde login e senha de cada uma e confira o horário da sessão no edital. O guia [como vender para prefeitura](/guias/licitacao-de-prefeitura) traz o passo a passo das compras municipais.',
             'Compras pequenas podem sair sem licitação. A [dispensa de licitação](/guias/dispensa-de-licitacao) por valor vale para compras e serviços abaixo de ' +
               `${VALORES.dispensaCompras} e para obras e serviços de engenharia abaixo de ${VALORES.dispensaObras} em 2026 (art. 75, I e II).`,
             'Algumas contratações não têm disputa porque só há um fornecedor possível. Esse é o caso da [inexigibilidade de licitação](/guias/inexigibilidade-de-licitacao) (art. 74).',
@@ -138,7 +138,7 @@ export const guia: Guia = {
     { nome: 'Lei nº 14.133/2021 (Planalto)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm' },
     { nome: 'Lei Complementar nº 123/2006 (Planalto)', url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm' },
     { nome: 'Portal Nacional de Contratações Públicas (gov.br)', url: 'https://www.gov.br/pncp/pt-br' },
-    { nome: 'Compras.gov.br: conheça o sistema', url: 'https://www.gov.br/compras/pt-br/sistemas/conheca-o-compras' },
+    { nome: 'Portal de Compras do Governo Federal (gov.br)', url: 'https://www.gov.br/compras/pt-br' },
   ],
   relacionados: ['o-que-e-licitacao', 'documentos-para-licitacao', 'pregao-eletronico', 'sicaf'],
 };
