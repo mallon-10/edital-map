@@ -4,7 +4,7 @@ import { ASSUNTOS, assuntoPorSlug } from './assuntos';
 import { MODALIDADES, modalidadePorSlug } from './modalidades';
 import {
   buscaDaPagina, caminhoDaPagina, descricaoDaPagina, descricaoDoEdital, editalAberto, introDaPagina, jsonLdMigalhas, migalhas,
-  temBusca, tituloDaPagina, tituloSeoDaPagina, vizinhos,
+  temBusca, tituloDaPagina, tituloDoEdital, tituloSeoDaPagina, vizinhos,
 } from './textos';
 
 const epi = assuntoPorSlug('epi')!;
@@ -85,6 +85,20 @@ describe('edital', () => {
   it('sem valor: "Valor não informado"', () => {
     expect(descricaoDoEdital({ ...base, valor_estimado: 0 })).toContain('Valor não informado');
     expect(descricaoDoEdital({ ...base, valor_estimado: null })).toContain('Valor não informado');
+  });
+  it('título com o assunto, a modalidade e a cidade (busca "pregão de luvas em Salvador")', () => {
+    expect(tituloDoEdital(base)).toBe('Luvas nitrílicas · Pregão em Salvador/BA');
+  });
+  it('título: concorrência, dispensa e sem modalidade ou cidade', () => {
+    expect(tituloDoEdital({ ...base, modalidade_nome: 'Concorrência - Eletrônica' })).toBe('Luvas nitrílicas · Concorrência em Salvador/BA');
+    expect(tituloDoEdital({ ...base, modalidade_nome: 'Dispensa' })).toBe('Luvas nitrílicas · Dispensa em Salvador/BA');
+    expect(tituloDoEdital({ ...base, modalidade_nome: null, municipio_nome: null })).toBe('Luvas nitrílicas · Licitação em BA');
+  });
+  it('título: o assunto longo é cortado na palavra, a cidade nunca sai', () => {
+    const t = tituloDoEdital({ ...base, objeto: 'Contratação de empresa para fornecimento de uniformes escolares completos para os alunos da rede municipal de ensino' });
+    expect(t.endsWith(' · Pregão em Salvador/BA')).toBe(true);
+    expect(t).toMatch(/\p{L}… · Pregão/u);
+    expect(t.length).toBeLessThanOrEqual(95);
   });
   it('corta em 160 com reticências', () => {
     const longo = { ...base, orgao_nome: 'SECRETARIA '.repeat(30) };

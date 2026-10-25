@@ -23,7 +23,7 @@ import { linkAssessoria, mostrarAssessoria, numeroWhatsapp } from '@/lib/assesso
 import { NOMES_UF } from '@/lib/estados';
 import { SLUG_EDITAL } from '@/lib/eventos';
 import { linksDoEdital } from '@/lib/seo/linksEdital';
-import { descricaoDoEdital, editalAberto, jsonLdMigalhas } from '@/lib/seo/textos';
+import { descricaoDoEdital, editalAberto, jsonLdMigalhas, tituloDoEdital } from '@/lib/seo/textos';
 import { dataHora, haQuanto, linkOficial, moeda, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
 import { resumoOportunidade } from '@/lib/resumoEdital';
@@ -42,8 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!SLUG_EDITAL.test(slug)) return { title: 'Edital' };
   const e = await edital(slug);
   if (!e) return { title: 'Edital não encontrado' };
-  const t = assunto(e.objeto).titulo;
-  const titulo = t.length > 70 ? `${t.slice(0, 69)}…` : t;
+  const titulo = tituloDoEdital(e);
   const descricao = descricaoDoEdital(e);
   return {
     title: titulo,

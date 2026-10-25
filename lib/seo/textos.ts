@@ -1,7 +1,7 @@
 import { NOMES_UF } from '../estados';
 import { data, moeda, numero } from '../formato';
 import { modalidadeCurta } from '../participacao';
-import { nomeProprio } from '../texto';
+import { assunto, nomeProprio } from '../texto';
 import type { Edital } from '../tipos';
 import { UFS_BRASIL } from '../eventos';
 import { ASSUNTOS, type Assunto, naUf, SEGMENTO_ORGAO } from './assuntos';
@@ -170,6 +170,23 @@ export function editalAberto(e: { encerramento_em: string | null; situacao_id: n
 }
 
 const MAX_DESCRICAO = 160;
+/** O assunto no título do edital; a modalidade e a cidade vêm sempre depois, mesmo cortando o assunto. */
+const MAX_ASSUNTO_TITULO = 60;
+
+/**
+ * Título do edital para o Google: "Luvas nitrílicas · Pregão em Salvador/BA". A busca típica é
+ * "pregão/licitação de X em cidade"; o h1 da página continua só com o assunto.
+ */
+export function tituloDoEdital(e: Pick<Edital, 'objeto' | 'modalidade_nome' | 'municipio_nome' | 'uf'>): string {
+  let t = assunto(e.objeto).titulo;
+  if (t.length > MAX_ASSUNTO_TITULO) {
+    const espaco = t.lastIndexOf(' ', MAX_ASSUNTO_TITULO);
+    t = `${t.slice(0, espaco > 20 ? espaco : MAX_ASSUNTO_TITULO).replace(/[s,;:.–-]+$/, '')}…`;
+  }
+  const modalidade = e.modalidade_nome?.split(' - ')[0].trim() || 'Licitação';
+  const onde = e.municipio_nome ? `em ${e.municipio_nome}/${e.uf}` : `em ${e.uf}`;
+  return `${t} · ${modalidade} ${onde}`;
+}
 
 export function descricaoDoEdital(e: Edital): string {
   const partes = [
