@@ -23,6 +23,8 @@ export type Dependencias = {
   agora: () => Date;
   /** Linhas de progresso (uma por chave) para o log da rodada. */
   log?: (linha: string) => void;
+  /** Abertas novas ou alteradas, já com os itens gravados (vão para o IndexNow no fim da rodada). */
+  novidades?: (linhas: LinhaContratacao[]) => void;
 };
 
 /** Mede uma chave UF × modalidade e emite a linha de progresso ao terminar. */
@@ -125,7 +127,10 @@ export async function gravarPagina(recebidas: LinhaContratacao[], deps: Dependen
   if (precisamItens.size === 0) return;
   const comItens = await sincronizarItens(linhas.filter((l) => precisamItens.has(l.id)).map(chaveDaLinha), deps);
   const definitivas = linhas.filter((l) => comItens.has(l.id));
-  if (definitivas.length > 0) await deps.banco.upsertContratacoes(definitivas);
+  if (definitivas.length > 0) {
+    await deps.banco.upsertContratacoes(definitivas);
+    deps.novidades?.(definitivas);
+  }
 }
 
 export async function processarPaginas(paginas: AsyncIterable<PaginaContratacoes>, deps: Dependencias): Promise<void> {

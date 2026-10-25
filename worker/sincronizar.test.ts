@@ -77,6 +77,32 @@ describe('gravarPagina', () => {
     expect(banco.contratacoes.size).toBe(4);
     expect(deps.resumo.contratacoesGravadas).toBe(4);
   });
+  it('avisa as novidades (abertas novas ou alteradas, já com itens) para o IndexNow', async () => {
+    const banco = new BancoFalso();
+    const novidades: string[] = [];
+    const deps = { ...montarDeps(banco, clienteFalso()), novidades: (ls: Array<{ id: string }>) => novidades.push(...ls.map((l) => l.id)) };
+    await banco.upsertContratacoes([linha({ sequencial: 3, atualizacao: '2026-10-13T07:22:24' })]);
+    await gravarPagina(
+      [
+        linha({ sequencial: 1 }), // aberta e nova
+        linha({ sequencial: 2, encerramento: '2026-10-12T10:00:00' }), // encerrada
+        linha({ sequencial: 3, atualizacao: '2026-10-13T07:22:24' }), // sem mudança
+      ],
+      deps,
+    );
+    expect(novidades).toEqual([idDe(1)]);
+  });
+  it('compra cujos itens falharam não é novidade (ainda não está pronta)', async () => {
+    const novidades: string[] = [];
+    const cliente = clienteFalso({
+      itens: () => {
+        throw new Error('HTTP 503');
+      },
+    });
+    const deps = { ...montarDeps(new BancoFalso(), cliente), novidades: (ls: Array<{ id: string }>) => novidades.push(...ls.map((l) => l.id)) };
+    await gravarPagina([linha({ sequencial: 1 })], deps);
+    expect(novidades).toEqual([]);
+  });
 });
 
 describe('gravarPagina · ordem de gravação', () => {
