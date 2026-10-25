@@ -21,8 +21,6 @@ const parecido = (i: number): EditalRelacionado => ({
 vi.mock('@/lib/servidor/consultas', () => ({
   edital: async () => EDITAL,
   atualizadoEm: async () => null,
-  itensDoEdital: async () => [],
-  arquivosDoEdital: async () => [],
   resumoItens: async () => ({ total: 0, materiais: 0, servicos: 0, comBeneficio: 0, exclusivos: 0, cota: 0, criterios: [] }),
   relacionados: async () => [1, 2, 3, 4, 5, 6].map(parecido),
 }));
@@ -44,6 +42,10 @@ const { default: PaginaEdital } = await import('./page');
 
 describe('página do edital no grátis (sem limite e sem cadeado)', async () => {
   const html = renderToStaticMarkup(await PaginaEdital({ params: Promise.resolve({ slug: SLUG }), searchParams: Promise.resolve({}) }));
+  it('documentos e itens ficam para o navegador: o servidor não espera o PNCP', () => {
+    expect(html).toContain('Carregando os documentos do PNCP…');
+    expect(html).toContain('Carregando os itens do PNCP…');
+  });
   it('mostra o detalhe, nunca o cartão dos planos', () => {
     expect(html).toContain('Itens da licitação');
     expect(html).toContain('Documentos do edital');

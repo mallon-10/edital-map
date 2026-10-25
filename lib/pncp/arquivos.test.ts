@@ -1,8 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('server-only', () => ({}));
-
-const { arquivosDoPncp } = await import('./arquivosPncp');
+import { afterEach, describe, expect, it, vi } from 'vitest';
+// Sem o mock de server-only: o módulo roda no navegador (o import de server-only quebraria aqui).
+import { arquivosDoPncp } from './arquivos';
 
 const compra = { id: 'C1', cnpj: '00394452000103', ano: 2026, sequencial: 21982 };
 const URL_ARQ = (n: number) => `https://pncp.gov.br/pncp-api/v1/orgaos/00394452000103/compras/2026/21982/arquivos/${n}`;
@@ -73,5 +71,21 @@ describe('arquivosDoPncp', () => {
     await expect(arquivosDoPncp(compra, fetchFalso(new Response('x', { status: 500 })).f, 'https://x')).rejects.toThrow('HTTP 500');
     await expect(arquivosDoPncp(compra, fetchFalso(new Error('rede')).f, 'https://x')).rejects.toThrow('rede');
     await expect(arquivosDoPncp(compra, fetchFalso(ok({ a: 1 })).f, 'https://x')).rejects.toThrow('fora do formato');
+  });
+
+  it('PNCP que não responde vira exceção no prazo', async () => {
+    const parado = ((_url: string | URL | Request, init?: RequestInit) =>
+      new Promise<Response>((_, rejeitar) => {
+        init?.signal?.addEventListener('abort', () => rejeitar(new DOMException('aborted', 'AbortError')));
+      })) as typeof fetch;
+    await expect(arquivosDoPncp(compra, parado, 'https://x', 20)).rejects.toThrow('arquivos do PNCP: sem resposta');
+  });
+
+  describe('no navegador', () => {
+    afterEach(() => vi.unstubAllGlobals());
+    it('funciona sem AbortSignal.timeout (WebView Android antiga)', async () => {
+      vi.stubGlobal('AbortSignal', class {});
+      expect(await arquivosDoPncp(compra, fetchFalso(ok([arquivo(1, 2, 'Edital', 'e.pdf')])).f, 'https://x')).toHaveLength(1);
+    });
   });
 });

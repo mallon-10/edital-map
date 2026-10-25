@@ -1,8 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('server-only', () => ({}));
-
-const { itensDoPncp } = await import('./itensPncp');
+import { afterEach, describe, expect, it, vi } from 'vitest';
+// Sem o mock de server-only: o módulo roda no navegador (o import de server-only quebraria aqui).
+import { itensDoPncp } from './itens';
 
 const compra = { id: 'C1', cnpj: '00394452000103', ano: 2026, sequencial: 21982 };
 const item = (numero: number, extra: Record<string, unknown> = {}) => ({
@@ -92,5 +90,14 @@ describe('itensDoPncp', () => {
     }) as typeof fetch;
     await expect(itensDoPncp(compra, 2000, lento, 'https://pncp.gov.br/api/pncp', 50)).rejects.toThrow('prazo total esgotado');
     expect(chamadas).toBe(2);
+  });
+
+  describe('no navegador', () => {
+    afterEach(() => vi.unstubAllGlobals());
+    it('funciona sem AbortSignal.any e AbortSignal.timeout (WebView Android antiga)', async () => {
+      vi.stubGlobal('AbortSignal', class {});
+      const { f } = fetchFalso([ok([item(1)])]);
+      expect((await itensDoPncp(compra, 50, f)).map((i) => i.numero)).toEqual([1]);
+    });
   });
 });

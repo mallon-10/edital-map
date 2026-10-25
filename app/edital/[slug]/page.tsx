@@ -2,7 +2,6 @@ import { OPEN_GRAPH_BASE } from '@/lib/seo/site';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Suspense } from 'react';
 import { connection } from 'next/server';
 import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
@@ -10,9 +9,8 @@ import { BotaoCompartilhar } from '@/components/edital/BotaoCompartilhar';
 import { BotaoAssessoria, CartaoAssessoria } from '@/components/edital/CartaoAssessoria';
 import { BotaoDescartar } from '@/components/oportunidades/BotaoDescartar';
 import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
-import { DocumentosEdital } from '@/components/edital/DocumentosEdital';
+import { DocumentosDoPncp, ItensDoPncp } from '@/components/edital/DoPncp';
 import { FichaEdital } from '@/components/edital/FichaEdital';
-import { ListaItens } from '@/components/edital/ListaItens';
 import { PrincipaisInformacoes } from '@/components/edital/PrincipaisInformacoes';
 import { Relacionados } from '@/components/edital/Relacionados';
 import { ResumoOportunidade } from '@/components/edital/ResumoOportunidade';
@@ -29,7 +27,7 @@ import { descricaoDoEdital, editalAberto, jsonLdMigalhas } from '@/lib/seo/texto
 import { dataHora, haQuanto, linkOficial, moeda, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
 import { resumoOportunidade } from '@/lib/resumoEdital';
-import { arquivosDoEdital, atualizadoEm, edital, itensDoEdital, relacionados, resumoItens } from '@/lib/servidor/consultas';
+import { atualizadoEm, edital, relacionados, resumoItens } from '@/lib/servidor/consultas';
 import { cidadesComPagina, orgaosComPagina } from '@/lib/servidor/licitacoes';
 import { contextoDaPagina } from '@/lib/servidor/registro';
 import { planoDaPagina } from '@/lib/servidor/plano';
@@ -86,19 +84,6 @@ async function detalhesDoEdital(e: Edital) {
   return { resumo, parecidos, links };
 }
 
-/** Documentos e itens vêm do PNCP na hora (lento às vezes): chegam depois do resto da página, sem segurá-la. */
-const CARREGANDO_PNCP = 'text-[15px] text-ink-muted';
-
-async function SecaoDocumentos({ e }: { e: Edital }) {
-  return <DocumentosEdital arquivos={await arquivosDoEdital(e)} slug={e.slug} />;
-}
-
-async function SecaoItens({ e, todos, totalResumo }: { e: Edital; todos: boolean; totalResumo: number }) {
-  const itens = await itensDoEdital(e, todos ? 2000 : 50);
-  // O total vem do resumo gravado pelo worker; sem resumo ainda, do que o PNCP devolveu agora.
-  return <ListaItens itens={itens} total={Math.max(totalResumo, itens?.length ?? 0)} slug={e.slug} todos={todos} />;
-}
-
 export default async function PaginaEdital({ params, searchParams }: Props) {
   await connection();
   const { slug } = await params;
@@ -109,6 +94,8 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
 
   const ctx = await contextoDaPagina();
   const todos = modoItens === 'todos';
+  // Só a chave da compra vai ao navegador (o PNCP é lido de lá).
+  const compra = { id: e.id, cnpj: e.cnpj, ano: e.ano, sequencial: e.sequencial };
   const [atualizado, detalhes, plano] = await Promise.all([atualizadoEm(), detalhesDoEdital(e), planoDaPagina(ctx)]);
   const agora = new Date();
   const p = prazo(e.encerramento_em, agora);
@@ -241,15 +228,12 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             <section aria-labelledby="documentos" className={CARTAO}>
               <h2 id="documentos" className={TITULO}>Documentos do edital</h2>
               <p className="mb-2 mt-1 text-[14px] text-ink-muted">Os documentos exigidos para participar estão no edital e no termo de referência.</p>
-              <Suspense fallback={<p role="status" className={CARREGANDO_PNCP}>Carregando os documentos do PNCP…</p>}>
-                <SecaoDocumentos e={e} />
-              </Suspense>
+              {/* Documentos e itens vêm do PNCP no navegador, depois que a página abre (components/edital/DoPncp.tsx). */}
+              <DocumentosDoPncp compra={compra} slug={e.slug} />
             </section>
             <section aria-labelledby="itens" className={CARTAO}>
               <h2 id="itens" className={`${TITULO} mb-3`}>Itens da licitação</h2>
-              <Suspense fallback={<p role="status" className={CARREGANDO_PNCP}>Carregando os itens do PNCP…</p>}>
-                <SecaoItens e={e} todos={todos} totalResumo={detalhes.resumo.total} />
-              </Suspense>
+              <ItensDoPncp compra={compra} slug={e.slug} todos={todos} totalResumo={detalhes.resumo.total} />
             </section>
             <Relacionados editais={detalhes.parecidos} origem={e.slug} agora={agora} />
             <section aria-labelledby="complementares" className={CARTAO}>

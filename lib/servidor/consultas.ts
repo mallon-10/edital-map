@@ -1,5 +1,4 @@
 import 'server-only';
-import type { ChaveCompra } from '@/worker/mapear';
 import { criarCache } from '../cache';
 import { MAX_EXPORTACAO } from '../csv';
 import { chaveFiltros, limiteDeValor, ordemEfetiva, POR_PAGINA } from '../filtros';
@@ -7,11 +6,9 @@ import { relevancia, type Acertos } from '../relevancia/pontuacao';
 import { interpretarBusca, type Busca } from '../relevancia/termos';
 import { nomeProprio } from '../texto';
 import type {
-  ArquivoEdital, Edital, EditalExportado, EditalRelacionado, EditalResumo, FiltrosBusca, ItemEdital, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens,
+  Edital, EditalExportado, EditalRelacionado, EditalResumo, FiltrosBusca, OrgaoAberto, PontoMapa, ResultadoBusca, ResumoItens,
 } from '../tipos';
-import { arquivosDoPncp } from './arquivosPncp';
 import { compartilhado } from './cacheCompartilhado';
-import { itensDoPncp } from './itensPncp';
 import { supabaseServidor } from './supabase';
 
 const memoria = criarCache(5 * 60 * 1000);
@@ -153,22 +150,6 @@ export function edital(slug: string): Promise<Edital | null> {
       .maybeSingle();
     if (error) throw new Error(`edital: ${error.message}`);
     return data ? ({ ...data, valor_estimado: num(data.valor_estimado), situacao_id: num(data.situacao_id) } as Edital) : null;
-  });
-}
-
-/** Itens do edital vindos do PNCP na hora (cache de 5 min; falha não fica no cache). `null` = PNCP indisponível agora. */
-export function itensDoEdital(compra: ChaveCompra, limite: number): Promise<ItemEdital[] | null> {
-  return cache(`itens:${compra.id}:${limite}`, () => itensDoPncp(compra, limite)).catch((erro: unknown) => {
-    console.error(`itens do edital ${compra.id}:`, erro);
-    return null;
-  });
-}
-
-/** Arquivos do edital no PNCP; `null` se falhar (a página mostra "Documentos indisponíveis agora"). */
-export function arquivosDoEdital(compra: ChaveCompra): Promise<ArquivoEdital[] | null> {
-  return cache(`arquivos:${compra.id}`, () => arquivosDoPncp(compra)).catch((erro: unknown) => {
-    console.error(`arquivos do edital ${compra.id}:`, erro);
-    return null;
   });
 }
 

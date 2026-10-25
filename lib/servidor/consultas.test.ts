@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { lerFiltros, paraParametros } from '../filtros';
 import type { FiltrosBusca, FiltrosTela } from '../tipos';
 
@@ -26,47 +26,14 @@ vi.mock('./supabase', () => ({
 }));
 
 const {
-  abertosPorUf, buscarEditais, editaisAbertosSitemap, exportarEditais, itensDoEdital, orgaosAbertos, pontosDoMapa, relacionados,
+  abertosPorUf, buscarEditais, editaisAbertosSitemap, exportarEditais, orgaosAbertos, pontosDoMapa, relacionados,
   resumoItens, totalEditaisAbertos,
 } = await import('./consultas');
 
-const compra = (id: string) => ({ id, cnpj: '00394452000103', ano: 2026, sequencial: 21982 });
 const SEM_FILTRO: FiltrosBusca = {
   q: null, uf: null, ibge: null, dias: null, pagina: 1, ordem: null, valorMin: null, modalidades: null, orgao: null, raio: null,
 };
 const chaves = (args: Record<string, unknown>) => Object.keys(args).sort();
-
-describe('itensDoEdital (PNCP na hora)', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-  });
-
-  it('devolve os itens do PNCP mapeados para a lista do edital', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response(JSON.stringify([{ numeroItem: 1, descricao: 'Luva nitrílica', materialOuServico: 'M' }]), { status: 200 })),
-    );
-    expect(await itensDoEdital(compra('ok-1'), 50)).toEqual([
-      expect.objectContaining({ numero: 1, descricao: 'Luva nitrílica', material_ou_servico: 'M' }),
-    ]);
-  });
-
-  it('PNCP fora do ar vira null (a página mostra "Itens indisponíveis agora")', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('fetch failed'))));
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    expect(await itensDoEdital(compra('falha-1'), 50)).toBeNull();
-  });
-
-  it('falha não fica no cache: a próxima visita tenta de novo', async () => {
-    const f = vi.fn(async () => Promise.reject(new TypeError('fetch failed')));
-    vi.stubGlobal('fetch', f);
-    vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    await itensDoEdital(compra('falha-2'), 50);
-    await itensDoEdital(compra('falha-2'), 50);
-    expect(f).toHaveBeenCalledTimes(2);
-  });
-});
 
 describe('contrato com as funções SQL (0007)', () => {
   beforeEach(() => {
