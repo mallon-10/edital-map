@@ -98,7 +98,7 @@ describe('edital', () => {
     const t = tituloDoEdital({ ...base, objeto: 'Contratação de empresa para fornecimento de uniformes escolares completos para os alunos da rede municipal de ensino' });
     expect(t.endsWith(' · Pregão em Salvador/BA')).toBe(true);
     expect(t).toMatch(/\p{L}… · Pregão/u);
-    expect(t.length).toBeLessThanOrEqual(95);
+    expect(t.length).toBeLessThanOrEqual(105);
   });
   it('corta em 160 com reticências', () => {
     const longo = { ...base, orgao_nome: 'SECRETARIA '.repeat(30) };

@@ -171,7 +171,7 @@ export function editalAberto(e: { encerramento_em: string | null; situacao_id: n
 
 const MAX_DESCRICAO = 160;
 /** O assunto no título do edital; a modalidade e a cidade vêm sempre depois, mesmo cortando o assunto. */
-const MAX_ASSUNTO_TITULO = 60;
+const MAX_ASSUNTO_TITULO = 70;
 
 /**
  * Título do edital para o Google: "Luvas nitrílicas · Pregão em Salvador/BA". A busca típica é
