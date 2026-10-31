@@ -289,7 +289,7 @@ export function editaisAbertosSitemap(limite: number, deslocamento: number): Pro
 }
 
 const memoriaHora = criarCache(60 * 60 * 1000);
-const cacheHora = <T>(chave: string, carregar: () => Promise<T>): Promise<T> => memoriaHora(chave, () => compartilhado(chave, 60 * 60, carregar));
+export const cacheHora = <T>(chave: string, carregar: () => Promise<T>): Promise<T> => memoriaHora(chave, () => compartilhado(chave, 60 * 60, carregar));
 
 /** Editais abertos por município (0019), para escolher as páginas /licitacoes/{uf}/{cidade}. Cache de 1 h. */
 export function municipiosAbertos(): Promise<Array<{ codigo_ibge: string; nome: string; uf: string; total: number }>> {

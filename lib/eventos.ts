@@ -96,10 +96,11 @@ function validarVisita(d: Record<string, unknown>): Resultado<{ tipo: TipoEvento
   if (d.entrada === true) {
     const host = typeof d.site === 'string' ? d.site.trim().toLowerCase() : '';
     const site = host.length <= 100 && DOMINIO.test(host) ? host : null;
-    detalhe.origem = classificarOrigem({
-      site, utmSource: textoCurto(d.utm_source, 60), utmMedium: textoCurto(d.utm_medium, 60), anuncio: d.anuncio === true,
-    });
+    const utmSource = textoCurto(d.utm_source, 60);
+    detalhe.origem = classificarOrigem({ site, utmSource, utmMedium: textoCurto(d.utm_medium, 60), anuncio: d.anuncio === true });
     if (site) detalhe.site = site;
+    // O app do ChatGPT não manda referrer: sem o utm_source não se sabe qual assistente trouxe a visita.
+    if (detalhe.origem === 'ia' && !site && utmSource) detalhe.fonte = utmSource;
     const campanha = textoCurto(d.utm_campaign, 60);
     if (campanha) detalhe.campanha = campanha;
   }

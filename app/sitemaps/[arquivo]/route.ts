@@ -29,7 +29,7 @@ async function paginas(): Promise<{ urls: Array<{ url: string }>; completo: bool
   if (!completo) console.error('sitemap paginas.xml: contagem faltando, arquivo sem cache');
   const porModalidade = modalidades ?? {};
   const caminhos = [
-    '/', '/planos', '/assessoria', '/sobre', '/alertas', '/cnpj', '/guias', '/glossario',
+    '/', '/planos', '/assessoria', '/sobre', '/alertas', '/cnpj', '/guias', '/glossario', '/panorama',
     ...GUIAS.map((g) => `/guias/${g.slug}`),
     ...TERMOS.map((t) => `/glossario/${t.slug}`),
     ...paginasFixas(contagens.map((c) => ({ assunto: c.assunto, porUf: c.porUf ?? {} }))),

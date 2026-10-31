@@ -9,7 +9,7 @@ import { ehOficial, linksDoTexto, palavras } from './texto';
  */
 export type Contexto = { guias: ReadonlySet<string>; termos: ReadonlySet<string>; hoje: string };
 
-const FIXAS = new Set(['/', '/licitacoes', '/planos', '/alertas', '/cnpj', '/sobre', '/guias', '/glossario']);
+const FIXAS = new Set(['/', '/licitacoes', '/planos', '/alertas', '/cnpj', '/sobre', '/guias', '/glossario', '/panorama']);
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
 /** Palavras de promessa que o conteúdo não usa (spec, seção 3). */

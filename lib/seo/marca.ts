@@ -100,6 +100,7 @@ export function linksDaInicio(cidades: readonly CidadePagina[], maxCidades = 24)
 /** Rodapé de todas as páginas. */
 export const LINKS_RODAPE: readonly Link[] = [
   { nome: 'Licitações abertas', caminho: '/licitacoes' },
+  { nome: 'Panorama das licitações', caminho: '/panorama' },
   { nome: 'Guias de licitação', caminho: '/guias' },
   { nome: 'Glossário', caminho: '/glossario' },
   { nome: 'Buscar pelo CNPJ', caminho: '/cnpj' },

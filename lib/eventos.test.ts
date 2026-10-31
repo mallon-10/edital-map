@@ -37,6 +37,14 @@ describe('validarEvento', () => {
       ok: true, valor: { tipo: 'pagina_vista', detalhe: { pagina: '/', origem: 'direto' } },
     });
   });
+  it('pagina_vista: assistente de IA sem referrer guarda a fonte do utm_source', () => {
+    expect(validarEvento({ tipo: 'pagina_vista', detalhe: { pagina: '/edital/x', entrada: true, utm_source: 'chatgpt.com' } })).toMatchObject({
+      ok: true, valor: { detalhe: { origem: 'ia', fonte: 'chatgpt.com' } },
+    });
+    const comSite = validarEvento({ tipo: 'pagina_vista', detalhe: { pagina: '/', entrada: true, site: 'chatgpt.com', utm_source: 'chatgpt.com' } });
+    expect(comSite).toMatchObject({ ok: true, valor: { detalhe: { origem: 'ia', site: 'chatgpt.com' } } });
+    expect(JSON.stringify(comSite)).not.toContain('fonte');
+  });
   it('quer_recurso assessoria (WhatsApp no edital) exige edital', () => {
     expect(validarEvento({ tipo: 'quer_recurso', detalhe: { recurso: 'assessoria', edital: SLUG } })).toEqual({
       ok: true, valor: { tipo: 'quer_recurso', detalhe: { recurso: 'assessoria', edital: SLUG } },
