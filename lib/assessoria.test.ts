@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linkAssessoria, linkAssessoriaInicio, MENSAGEM_ASSESSORIA_INICIO, mensagemAssessoria, mostrarAssessoria, numeroWhatsapp } from './assessoria';
-
-const EDITAL = {
-  slug: '00394452000103-2026-21982',
-  titulo: 'Aquisição de equipamentos de informática',
-  orgao: 'Prefeitura Municipal de Joinville',
-  local: 'Joinville/SC',
-  encerramento_em: '2026-11-12T13:00:00.000Z',
-};
+import { ENTREGAVEIS_ASSESSORIA, hrefAssessoria, LIMITES_ASSESSORIA, mostrarAssessoria, numeroWhatsapp, precoAssessoria, rotuloPrecoAssessoria } from './assessoria';
 
 describe('numeroWhatsapp', () => {
   it('guarda só os dígitos, com 55 na frente', () => {
@@ -24,24 +16,42 @@ describe('numeroWhatsapp', () => {
   });
 });
 
-describe('mensagemAssessoria', () => {
-  it('título, órgão, local, prazo e link do edital', () => {
-    expect(mensagemAssessoria(EDITAL)).toBe(
-      [
-        'Olá! Vi este edital no Edital Map e quero orientação para participar:',
-        '',
-        'Aquisição de equipamentos de informática',
-        'Prefeitura Municipal de Joinville · Joinville/SC',
-        'Propostas até 12.11.2026 · 10h',
-        'https://www.editalmap.com.br/edital/00394452000103-2026-21982',
-      ].join('\n'),
-    );
+describe('preço da assessoria', () => {
+  it('R$ 197 por padrão, sem centavos quando redondo', () => {
+    expect(rotuloPrecoAssessoria(precoAssessoria(undefined))).toBe('R$ 197');
   });
-  it('sem prazo, sem a linha; título longo cortado', () => {
-    const m = mensagemAssessoria({ ...EDITAL, titulo: 'a'.repeat(200), encerramento_em: null });
-    expect(m).not.toContain('Propostas até');
-    expect(m).toContain(`${'a'.repeat(119)}…`);
-    expect(m).not.toContain('a'.repeat(120));
+  it('configurável em centavos', () => {
+    expect(precoAssessoria('24700')).toBe(24700);
+    expect(rotuloPrecoAssessoria(24700)).toBe('R$ 247');
+    expect(rotuloPrecoAssessoria(19790)).toBe('R$ 197,90');
+  });
+  it('valor inválido volta ao padrão, nunca mostra preço quebrado', () => {
+    for (const v of ['', 'abc', '0', '-100', '19.7']) expect(precoAssessoria(v), v).toBe(19700);
+  });
+});
+
+describe('o que a assessoria inclui e o que não inclui', () => {
+  it('os seis entregáveis combinados', () => {
+    expect(ENTREGAVEIS_ASSESSORIA).toEqual([
+      'Análise orientativa do edital',
+      'Resumo em linguagem simples',
+      'Identificação dos documentos exigidos',
+      'Checklist para preparação',
+      'Orientações sobre as etapas para participar',
+      'Indicação dos canais e procedimentos oficiais',
+    ]);
+  });
+  it('o que não prestamos só aparece como limite, nunca como entrega', () => {
+    const limites = LIMITES_ASSESSORIA.join(' ');
+    for (const t of ['habilitação', 'vitória', 'proposta', 'sessões públicas', 'jurídica', 'integral']) expect(limites, t).toContain(t);
+    expect(ENTREGAVEIS_ASSESSORIA.join(' ')).not.toMatch(/garant|vitória|sessão|sessões|jurídic|envio de proposta/i);
+  });
+});
+
+describe('hrefAssessoria', () => {
+  it('com e sem edital', () => {
+    expect(hrefAssessoria()).toBe('/assessoria');
+    expect(hrefAssessoria('00394452000103-2026-21982')).toBe('/assessoria?edital=00394452000103-2026-21982');
   });
 });
 
@@ -55,22 +65,5 @@ describe('mostrarAssessoria', () => {
   it('revogada ou anulada não', () => {
     expect(mostrarAssessoria({ encerramento_em: '2026-12-01T13:00:00.000Z', situacao_id: 2 }, agora)).toBe(false);
     expect(mostrarAssessoria({ encerramento_em: '2026-12-01T13:00:00.000Z', situacao_id: 3 }, agora)).toBe(false);
-  });
-});
-
-describe('linkAssessoria', () => {
-  it('wa.me com a mensagem codificada', () => {
-    const url = new URL(linkAssessoria('5511987654321', EDITAL));
-    expect(url.origin + url.pathname).toBe('https://wa.me/5511987654321');
-    expect(url.searchParams.get('text')).toBe(mensagemAssessoria(EDITAL));
-  });
-});
-
-describe('linkAssessoriaInicio', () => {
-  it('wa.me com a mensagem geral da página inicial (sem edital)', () => {
-    const url = new URL(linkAssessoriaInicio('5511987654321'));
-    expect(url.origin + url.pathname).toBe('https://wa.me/5511987654321');
-    expect(url.searchParams.get('text')).toBe(MENSAGEM_ASSESSORIA_INICIO);
-    expect(MENSAGEM_ASSESSORIA_INICIO).toContain('Edital Map');
   });
 });

@@ -28,5 +28,8 @@ export function corpoCompraGa4(p: { cliente: string; sessao: string | null; codi
     items: [{ item_id: `pro_${p.periodo}`, item_name: `Edital Map Pro ${p.periodo}`, price: valor, quantity: 1 }],
   };
   if (p.sessao) params.session_id = p.sessao;
-  return { client_id: p.cliente, events: [{ name: 'purchase', params }] };
+  // `purchase` é o que o Google Ads importa; `purchase_completed` fecha o funil comercial (lib/rastreio.ts).
+  const funil: Record<string, unknown> = { plano: p.periodo, value: valor, currency: 'BRL', engagement_time_msec: 1 };
+  if (p.sessao) funil.session_id = p.sessao;
+  return { client_id: p.cliente, events: [{ name: 'purchase', params }, { name: 'purchase_completed', params: funil }] };
 }

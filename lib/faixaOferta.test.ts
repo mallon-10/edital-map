@@ -9,7 +9,9 @@ const fonte = readFileSync(new URL('../components/FaixaOferta.tsx', import.meta.
 
 describe('oferta do Pro (cartão abaixo do cabeçalho ou do cartão do topo)', () => {
   it('texto da oferta (e-mail é do Pro) e o convite para conhecer o Pro, levando a /planos', () => {
-    expect(html).toContain('Receba no seu e-mail, toda semana, as licitações que combinam com o seu negócio');
+    expect(html).toContain('Pare de perder oportunidades de vender para o governo');
+    expect(html).toContain('Alertas de novas oportunidades todos os dias às 7h e resumo semanal às segundas-feiras.');
+    expect(html).not.toContain('toda semana');
     expect(html).toContain('Conhecer o Pro');
     expect(html.match(/href="\/planos"/g)).toHaveLength(1);
   });

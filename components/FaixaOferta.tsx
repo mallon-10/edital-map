@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { rastrear } from '@/lib/cliente/rastrear';
+import { useAoVer } from '@/lib/cliente/aoVer';
 import { CHAVE_OFERTA_FECHADA, ofertaFechada } from '@/lib/inicio';
 import { OFERTA } from '@/lib/planos';
 import { IconeEmail, IconeFechar } from './inicio/Icones';
@@ -13,6 +15,8 @@ import { IconeEmail, IconeFechar } from './inicio/Icones';
  */
 export function FaixaOferta({ className = '' }: { className?: string }) {
   const [fechada, setFechada] = useState(false);
+  // Aparece em muitas páginas: conta só no GA4, sem uma linha no banco por página vista.
+  const cartao = useAoVer<HTMLElement>(() => rastrear('pro_offer_viewed', { origem: 'faixa' }, { soGa: true }));
   useEffect(() => {
     try {
       if (ofertaFechada(localStorage.getItem(CHAVE_OFERTA_FECHADA), new Date())) setFechada(true);
@@ -32,15 +36,20 @@ export function FaixaOferta({ className = '' }: { className?: string }) {
   }
 
   return (
-    <aside aria-label="Alertas por e-mail" className={`flex items-start gap-3 rounded-[22px] bg-raised p-4 pr-2 lg:gap-5 lg:px-6 lg:py-5 ${className}`}>
+    <aside ref={cartao} aria-label="Alertas por e-mail" className={`flex items-start gap-3 rounded-[22px] bg-raised p-4 pr-2 lg:gap-5 lg:px-6 lg:py-5 ${className}`}>
       <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-[15px] bg-surface lg:size-[60px] lg:rounded-[18px]">
         <IconeEmail className="size-[22px] text-pin-strong lg:size-[26px]" />
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[16px] font-semibold leading-snug lg:text-[19px]">{OFERTA.texto}</p>
         <p className="mt-1 text-[14px] text-ink-muted lg:text-[15px]">
-          Alertas todo dia às 7h e o resumo de segunda.{' '}
-          <Link href={OFERTA.href} prefetch={false} className="font-semibold text-pin-strong underline-offset-2 hover:underline">
+          {OFERTA.apoio}{' '}
+          <Link
+            href={OFERTA.href}
+            prefetch={false}
+            onClick={() => rastrear('pro_cta_clicked', { origem: 'faixa' }, { soGa: true })}
+            className="font-semibold text-pin-strong underline-offset-2 hover:underline"
+          >
             {OFERTA.cta}
           </Link>
         </p>

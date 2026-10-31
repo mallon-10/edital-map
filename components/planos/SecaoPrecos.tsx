@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { IconeCheck, IconeEmail } from '@/components/inicio/Icones';
 import { registrar } from '@/lib/cliente/registrar';
-import { ITENS_GRATIS, ITENS_PRO, jaEPro, precoNaPagina, type EstadoPlanos } from '@/lib/paginaPlanos';
+import { rastrear } from '@/lib/cliente/rastrear';
+import { ITENS_GRATIS, ITENS_PRO, jaEPro, precoNaPagina, PUBLICO_PLANOS, type EstadoPlanos } from '@/lib/paginaPlanos';
 import { AVISO_PLANOS, PLANOS } from '@/lib/planos';
 import { AlternadorPeriodo } from './AlternadorPeriodo';
 import { BotaoAssinar } from './BotaoAssinar';
@@ -45,6 +46,7 @@ export function SecaoPrecos({ pagamento, atual }: EstadoPlanos) {
       (entradas) => {
         if (!entradas.some((e) => e.isIntersecting)) return;
         registrar('usou_recurso', { recurso: 'viu_precos' });
+        rastrear('pro_offer_viewed', { origem: 'planos' }, { soGa: true });
         obs.disconnect();
       },
       { threshold: 0.3 },
@@ -72,7 +74,7 @@ export function SecaoPrecos({ pagamento, atual }: EstadoPlanos) {
             <h3 id="plano-gratis" className="text-[22px] font-bold">
               {GRATIS.nome}
             </h3>
-            <p className="text-[14.5px] text-ink-muted">Para pesquisar quando precisar.</p>
+            <p className="text-[14.5px] text-ink-muted">{PUBLICO_PLANOS.gratis}</p>
           </div>
           <Preco plano={GRATIS} />
           {pro ? null : (
@@ -106,7 +108,7 @@ export function SecaoPrecos({ pagamento, atual }: EstadoPlanos) {
                   Recomendado
                 </span>
               </h3>
-              <p className="text-[14.5px] text-ink-muted">Para quem vende ao governo toda semana.</p>
+              <p className="text-[14.5px] text-ink-muted">{PUBLICO_PLANOS.pro}</p>
             </div>
           </div>
           <Preco plano={PRO} />

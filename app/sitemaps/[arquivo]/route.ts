@@ -22,7 +22,7 @@ async function paginas(): Promise<Array<{ url: string }>> {
     orgaosComPagina(),
   ]);
   const caminhos = [
-    '/', '/planos', '/sobre', '/alertas', '/cnpj', '/guias', '/glossario',
+    '/', '/planos', '/assessoria', '/sobre', '/alertas', '/cnpj', '/guias', '/glossario',
     ...GUIAS.map((g) => `/guias/${g.slug}`),
     ...TERMOS.map((t) => `/glossario/${t.slug}`),
     ...paginasFixas(contagens),

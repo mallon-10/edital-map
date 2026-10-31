@@ -7,6 +7,7 @@ import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
 import { BotaoCompartilhar } from '@/components/edital/BotaoCompartilhar';
 import { BotaoAssessoria, CartaoAssessoria } from '@/components/edital/CartaoAssessoria';
+import { CartaoMonitorar } from '@/components/edital/CartaoMonitorar';
 import { BotaoDescartar } from '@/components/oportunidades/BotaoDescartar';
 import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
 import { DocumentosDoPncp, ItensDoPncp } from '@/components/edital/DoPncp';
@@ -19,13 +20,15 @@ import { EtiquetaSituacao } from '@/components/EtiquetaSituacao';
 import { TAG_PRAZO, TEXTO_PRAZO } from '@/components/estilosPrazo';
 import { RegistrarAbertura } from '@/components/RegistrarAbertura';
 import { VitrineEmBreve } from '@/components/VitrineEmBreve';
-import { linkAssessoria, mostrarAssessoria, numeroWhatsapp } from '@/lib/assessoria';
+import { hrefMonitorarEdital, segmentoDoEdital } from '@/lib/alertaDaBusca';
+import { hrefAssessoria, mostrarAssessoria, numeroWhatsapp } from '@/lib/assessoria';
 import { NOMES_UF } from '@/lib/estados';
 import { SLUG_EDITAL } from '@/lib/eventos';
 import { linksDoEdital } from '@/lib/seo/linksEdital';
 import { descricaoDoEdital, editalAberto, jsonLdMigalhas, tituloDoEdital } from '@/lib/seo/textos';
 import { dataHora, haQuanto, linkOficial, moeda, prazo } from '@/lib/formato';
 import { modalidadeCurta } from '@/lib/participacao';
+import { PRECO_PRO_MENSAL } from '@/lib/planos';
 import { resumoOportunidade } from '@/lib/resumoEdital';
 import { atualizadoEm, edital, relacionados, resumoItens } from '@/lib/servidor/consultas';
 import { cidadesComPagina, orgaosComPagina } from '@/lib/servidor/licitacoes';
@@ -110,21 +113,18 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const encerradaPorSituacao = rotuloSit === 'Revogada' || rotuloSit === 'Anulada';
   const valorEstimado = moeda(e.valor_estimado);
   // Edital aberto e número configurado (WHATSAPP_ASSESSORIA na Vercel).
-  const whatsapp = numeroWhatsapp(process.env.WHATSAPP_ASSESSORIA);
-  const assessoria =
-    whatsapp && mostrarAssessoria(e, agora)
-      ? linkAssessoria(whatsapp, {
-          slug: e.slug,
-          titulo: titulo.titulo,
-          orgao: nomeProprio(e.orgao_nome),
-          local,
-          encerramento_em: e.encerramento_em,
-        })
-      : null;
+  const assessoria = numeroWhatsapp(process.env.WHATSAPP_ASSESSORIA) && mostrarAssessoria(e, agora) ? hrefAssessoria(e.slug) : null;
+  // Monitorar parecidos: para quem é Pro, vai direto ao formulário preenchido, sem falar em preço.
+  const monitorar = {
+    href: hrefMonitorarEdital(e.objeto, e.uf),
+    segmento: segmentoDoEdital(e.objeto)?.termo ?? null,
+    preco: plano.plano === 'gratis' && !plano.dono ? PRECO_PRO_MENSAL : null,
+  };
 
   return (
     <>
-      <Cabecalho plano={plano} />
+      {/* A oferta do Pro aqui é o cartão de monitorar, com o assunto do edital: sem a faixa genérica. */}
+      <Cabecalho plano={plano} semOferta />
       <RegistrarAbertura slug={e.slug} />
       <script
         type="application/ld+json"
@@ -197,17 +197,10 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
               Descartar também (a rota decide o plano). */}
           <div className="flex flex-wrap gap-2.5 lg:gap-3">
             <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} />
-            {assessoria ? <BotaoAssessoria href={assessoria} slug={e.slug} /> : null}
+            {assessoria ? <BotaoAssessoria href={assessoria} /> : null}
             <BotaoCompartilhar titulo={titulo.titulo} slug={e.slug} />
             <BotaoSalvar id={e.id} variante="botao" />
             <BotaoDescartar id={e.id} />
-            <Link
-              href="/alertas"
-              prefetch={false}
-              className="inline-flex h-12 items-center rounded-full border border-line-strong bg-raised px-5 text-[15px] font-semibold hover:bg-sunken"
-            >
-              Criar alerta
-            </Link>
           </div>
         </section>
 
@@ -221,6 +214,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
         <PrincipaisInformacoes edital={e} resumo={detalhes.resumo} agora={agora} />
         {/* Assessoria: no celular antes de documentos e itens; no computador, no topo da coluna da direita. */}
         {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria" className="flex lg:hidden" /> : null}
+        <CartaoMonitorar {...monitorar} id="monitorar" className="flex lg:hidden" />
 
         <div className="flex flex-wrap items-start gap-5 lg:gap-6">
           <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5 lg:gap-6">
@@ -254,6 +248,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
           </div>
           <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5 lg:gap-6">
             {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria-lado" className="hidden lg:flex" /> : null}
+            <CartaoMonitorar {...monitorar} id="monitorar-lado" className="hidden lg:flex" />
             <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} links={detalhes.links} />
             <VitrineEmBreve slug={e.slug} />
             <section aria-labelledby="local" className={`${CARTAO} flex flex-col gap-3 text-[15px]`}>

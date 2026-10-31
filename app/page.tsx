@@ -8,7 +8,7 @@ import { Cabecalho } from '@/components/Cabecalho';
 import { Explorador } from '@/components/Explorador';
 import { Medir } from '@/components/Medir';
 import { SobreInicio } from '@/components/inicio/SobreInicio';
-import { linkAssessoriaInicio, numeroWhatsapp } from '@/lib/assessoria';
+import { hrefAssessoria, numeroWhatsapp } from '@/lib/assessoria';
 import { lerFiltros, paraParametros } from '@/lib/filtros';
 import { mostrarOferta } from '@/lib/planos';
 import { jsonLdMarca } from '@/lib/seo/marca';
@@ -81,7 +81,7 @@ export default async function Inicio({ searchParams }: Props) {
         oferta={mostrarOferta(plano, '/')}
         totaisAtalhos={totaisAtalhos}
         pontosIniciais={pontosIniciais}
-        assessoria={whatsapp ? linkAssessoriaInicio(whatsapp) : null}
+        assessoria={whatsapp ? hrefAssessoria() : null}
       />
       <Suspense fallback={null}>
         <SobreInicioComCidades />

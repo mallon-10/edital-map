@@ -38,6 +38,7 @@ vi.mock('@/lib/servidor/plano', () => ({
   planoDaPagina: async () => ({ plano: 'gratis', dono: false }),
 }));
 
+process.env.WHATSAPP_ASSESSORIA = '(11) 98765-4321';
 const { default: PaginaEdital } = await import('./page');
 
 describe('página do edital no grátis (sem limite e sem cadeado)', async () => {
@@ -59,8 +60,18 @@ describe('página do edital no grátis (sem limite e sem cadeado)', async () => 
     for (let i = 1; i <= 6; i++) expect(html).toContain(`Luvas lote ${i}`);
     expect(html).not.toContain('Veja todos os parecidos');
   });
-  it('a faixa da oferta no lugar da faixa do plano grátis', () => {
-    expect(html).toContain('Conhecer o Pro');
+  it('sem faixa genérica: a oferta do Pro é o cartão de monitorar parecidos, com o contexto do edital', () => {
+    expect(html).not.toContain('Conhecer o Pro');
     expect(html).not.toMatch(/Plano grátis|Renova à 0h/);
+    expect(html).toContain('Quer encontrar outras licitações como esta?');
+    expect(html).toContain('Monitorar oportunidades semelhantes');
+    expect(html).toMatch(/href="\/alertas\/novo\?q=luva[^"]*uf=SC"/i);
+  });
+  it('assessoria com preço inicial, levando à triagem com o edital ligado (nunca direto ao WhatsApp)', () => {
+    expect(html).toContain('Quer participar desta licitação?');
+    expect(html).toContain('Assessoria a partir de R$ 197.');
+    expect(html).toContain('Quero orientação para este edital');
+    expect(html).toContain(`href="/assessoria?edital=${SLUG}"`);
+    expect(html).not.toContain('wa.me');
   });
 });

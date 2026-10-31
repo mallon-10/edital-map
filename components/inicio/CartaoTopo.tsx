@@ -21,6 +21,8 @@ type Props = {
   aoVerEditais: () => void;
   /** Vista Lista (sem o mapa): o botão que liga o mapa de novo. */
   aoMostrarMapa: () => void;
+  /** Criar alerta com os filtros da busca atual (hrefAlertaDaBusca). */
+  hrefAlerta: string;
   /** O mapa (vista Mapa): em cima no celular, à direita a partir de lg. Sem ele, o cartão é só o resumo. */
   children?: ReactNode;
 };
@@ -79,7 +81,7 @@ export function CartaoTopo(p: Props) {
             <span className="lg:hidden">Ver os editais</span>
             <span className="hidden lg:inline">{p.total > 0 ? `Ver os ${numero(p.total)} editais` : 'Ver a lista'}</span>
           </button>
-          <Link href="/alertas/novo" prefetch={false} aria-label="Criar alerta por e-mail" title="Criar alerta por e-mail" className={REDONDO}>
+          <Link href={p.hrefAlerta} prefetch={false} aria-label="Criar alerta por e-mail" title="Criar alerta por e-mail" className={REDONDO}>
             <IconeSino className="size-[22px]" />
           </Link>
           <BotaoExportar parametros={p.parametrosBusca} total={p.total} aoErro={p.aoErroExportar} redondo />

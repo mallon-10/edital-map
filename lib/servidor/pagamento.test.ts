@@ -140,7 +140,10 @@ describe('aplicarPedido (webhook)', () => {
     await aplicarPedido(pedido(), CFG, AGORA);
     expect(ga.enviar).toHaveBeenCalledWith({
       client_id: '123.456',
-      events: [expect.objectContaining({ name: 'purchase', params: expect.objectContaining({ transaction_id: 'c'.repeat(32), value: 37.9, session_id: '99' }) })],
+      events: [
+        expect.objectContaining({ name: 'purchase', params: expect.objectContaining({ transaction_id: 'c'.repeat(32), value: 37.9, session_id: '99' }) }),
+        expect.objectContaining({ name: 'purchase_completed', params: expect.objectContaining({ plano: 'mensal', session_id: '99' }) }),
+      ],
     });
     ga.enviar.mockClear();
     f.responder('assinaturas', semAssinatura);

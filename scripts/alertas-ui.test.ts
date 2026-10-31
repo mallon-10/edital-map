@@ -46,12 +46,12 @@ describe('/alertas com conta', () => {
     }
     expect(ler('components/radar/FormRadar.tsx')).toContain('<CamposOportunidade');
   });
-  it('páginas novas exigem conta e ficam fora do Google; edital leva a /alertas', () => {
+  it('páginas novas exigem conta e ficam fora do Google; edital leva ao alerta', () => {
     for (const f of ['app/alertas/novo/page.tsx', 'app/alertas/[id]/editar/page.tsx']) {
       expect(ler(f), f).toContain('usuarioAtual()');
       expect(ler(f), f).toContain('robots: { index: false, follow: false }');
     }
-    expect(ler('app/edital/[slug]/page.tsx')).toContain('href="/alertas"');
+    expect(ler('app/edital/[slug]/page.tsx')).toContain('hrefMonitorarEdital(');
   });
 
   describe('rodada de correções 1', () => {
@@ -86,10 +86,10 @@ describe('/alertas com conta', () => {
       expect(pagina).toContain('alertas.filter((a) => a.ativo)');
       expect(pagina).not.toContain('podeTerAlertas');
     });
-    it('edital: link "Criar alerta" sem prefetch', () => {
+    it('edital: o alerta sai do cartão de monitorar, com o assunto do edital', () => {
       const edital = ler('app/edital/[slug]/page.tsx');
       expect(edital).not.toContain('Criar alerta para editais parecidos');
-      expect(edital).toMatch(/href="\/alertas"\s+prefetch=\{false\}/);
+      expect(edital).toContain('hrefMonitorarEdital(');
     });
   });
 });

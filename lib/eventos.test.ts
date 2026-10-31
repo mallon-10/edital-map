@@ -126,6 +126,7 @@ describe('validarEvento', () => {
     expect(RECURSOS_USADOS).toEqual([
       'relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'tentou_assinar', 'consultou_cnpj',
       'viu_precos', 'escolheu_periodo', 'clicou_assinar',
+      'pro_offer_viewed', 'pro_cta_clicked', 'assessoria_offer_viewed', 'assessoria_qualification_started', 'assessoria_qualification_completed',
     ]);
     // tentou_assinar é gravado só pela rota /api/assinar (que conta as tentativas por IP).
     expect(validarEvento({ tipo: 'usou_recurso', detalhe: { recurso: 'tentou_assinar' } }).ok).toBe(false);

@@ -1,10 +1,44 @@
-import { dataHora } from '@/lib/formato';
-import { url } from '@/lib/seo/site';
+import { formatarReais } from './planos';
 
 /** Edital resumido para a mensagem do WhatsApp (título já limpo por assunto()). */
 export type EditalAssessoria = { slug: string; titulo: string; orgao: string; local: string; encerramento_em: string | null };
 
-const MAX_TITULO = 120;
+/** Assessoria Edital Map: serviço avulso, separado do Pro. Escopo e preço final são confirmados na conversa. */
+export const NOME_ASSESSORIA = 'Assessoria Edital Map';
+
+const PRECO_PADRAO_CENTAVOS = 19_700;
+
+/** Preço inicial em centavos: NEXT_PUBLIC_ASSESSORIA_PRECO_CENTAVOS (inteiro positivo) ou o padrão. */
+export function precoAssessoria(bruto: string | undefined): number {
+  return /^[1-9]\d*$/.test(bruto ?? '') ? Number(bruto) : PRECO_PADRAO_CENTAVOS;
+}
+
+export function rotuloPrecoAssessoria(centavos: number): string {
+  return formatarReais(centavos).replace(/,00$/, '');
+}
+
+/** "R$ 197" (preço inicial de hoje; a variável precisa estar na Vercel antes do build). */
+export const PRECO_ASSESSORIA = rotuloPrecoAssessoria(precoAssessoria(process.env.NEXT_PUBLIC_ASSESSORIA_PRECO_CENTAVOS));
+
+export const ENTREGAVEIS_ASSESSORIA = [
+  'Análise orientativa do edital',
+  'Resumo em linguagem simples',
+  'Identificação dos documentos exigidos',
+  'Checklist para preparação',
+  'Orientações sobre as etapas para participar',
+  'Indicação dos canais e procedimentos oficiais',
+] as const;
+
+/** O que o serviço não faz. Aparece escrito para ninguém contratar achando que está incluído. */
+export const LIMITES_ASSESSORIA = [
+  'Garantia de habilitação ou de vitória',
+  'Envio de proposta pela nossa equipe',
+  'Representação em sessões públicas',
+  'Assessoria jurídica especializada',
+  'Execução integral da licitação',
+] as const;
+
+export const hrefAssessoria = (slug?: string) => (slug ? `/assessoria?edital=${slug}` : '/assessoria');
 
 /** Cartão em todo edital aberto (não revogado nem anulado); prazo curto o João recusa na conversa. */
 export function mostrarAssessoria(e: { encerramento_em: string | null; situacao_id: number | null }, agora: Date): boolean {
@@ -18,30 +52,4 @@ export function numeroWhatsapp(bruto: string | undefined): string | null {
   const nacional = d.length >= 12 && d.startsWith('55') ? d.slice(2) : d;
   // DDD (11 a 99) + 8 dígitos (fixo) ou 9 (celular).
   return /^[1-9][1-9]\d{8,9}$/.test(nacional) ? `55${nacional}` : null;
-}
-
-/** Texto pronto que o cliente manda ao pedir orientação para o edital. */
-export function mensagemAssessoria(e: EditalAssessoria): string {
-  const titulo = e.titulo.length > MAX_TITULO ? `${e.titulo.slice(0, MAX_TITULO - 1)}…` : e.titulo;
-  return [
-    'Olá! Vi este edital no Edital Map e quero orientação para participar:',
-    '',
-    titulo,
-    `${e.orgao} · ${e.local}`,
-    e.encerramento_em ? `Propostas até ${dataHora(e.encerramento_em)}` : null,
-    url(`/edital/${e.slug}`),
-  ]
-    .filter((linha) => linha !== null)
-    .join('\n');
-}
-
-export function linkAssessoria(numero: string, e: EditalAssessoria): string {
-  return `https://wa.me/${numero}?text=${encodeURIComponent(mensagemAssessoria(e))}`;
-}
-
-/** Texto do cartão da página inicial, sem edital escolhido (o João pergunta qual na conversa). */
-export const MENSAGEM_ASSESSORIA_INICIO = 'Olá! Vim pelo Edital Map e quero orientação para participar de uma licitação.';
-
-export function linkAssessoriaInicio(numero: string): string {
-  return `https://wa.me/${numero}?text=${encodeURIComponent(MENSAGEM_ASSESSORIA_INICIO)}`;
 }

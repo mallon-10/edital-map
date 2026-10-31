@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatarReais, mostrarOferta, OFERTA, PLANOS, precoDoPlano } from './planos';
+import { formatarReais, mostrarOferta, OFERTA, ROTINA_ENVIO, PLANOS, precoDoPlano } from './planos';
 
 const pro = PLANOS.find((p) => p.id === 'pro')!;
 
@@ -23,10 +23,14 @@ describe('tabela de planos', () => {
 describe('faixa da oferta', () => {
   it('texto e destino', () => {
     expect(OFERTA).toEqual({
-      texto: 'Receba no seu e-mail, toda semana, as licitações que combinam com o seu negócio',
+      texto: 'Pare de perder oportunidades de vender para o governo',
+      apoio: 'Alertas de novas oportunidades todos os dias às 7h e resumo semanal às segundas-feiras.',
       cta: 'Conhecer o Pro',
       href: '/planos',
     });
+  });
+  it('a frase da rotina de envio é uma só', () => {
+    expect(ROTINA_ENVIO).toBe('Alertas de novas oportunidades todos os dias às 7h e resumo semanal às segundas-feiras.');
   });
   it('aparece para o grátis; some para o Pro, o Basic antigo, o dono e com o plano desconhecido', () => {
     expect(mostrarOferta({ plano: 'gratis', dono: false }, '/')).toBe(true);

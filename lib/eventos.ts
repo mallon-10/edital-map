@@ -20,15 +20,22 @@ export type Recurso = (typeof RECURSOS)[number];
 /** Interesse em planos ("Quero o Basic" / "Quero o Pro" em /planos), filtros Pro e assessoria da página inicial: sem edital. */
 const RECURSOS_SEM_EDITAL: readonly string[] = ['plano_pro', 'filtros_pro', 'plano_basic', 'assessoria_inicio'];
 
+/** Funil comercial que só existe aqui (lib/rastreio.ts): sem tabela nova, aparece no painel do dono como usou_recurso. */
+export const RECURSOS_COMERCIAIS = [
+  'pro_offer_viewed', 'pro_cta_clicked', 'assessoria_offer_viewed', 'assessoria_qualification_started', 'assessoria_qualification_completed',
+] as const;
+export type RecursoComercial = (typeof RECURSOS_COMERCIAIS)[number];
+
 /** Uso dos recursos Pro (evento usou_recurso). */
 export const RECURSOS_USADOS = [
   'relacionados_clique', 'filtro_orgao', 'filtro_raio', 'exportou', 'baixou_documento', 'tentou_assinar', 'consultou_cnpj',
-  'viu_precos', 'escolheu_periodo', 'clicou_assinar',
+  'viu_precos', 'escolheu_periodo', 'clicou_assinar', ...RECURSOS_COMERCIAIS,
 ] as const;
 export type RecursoUsado = (typeof RECURSOS_USADOS)[number];
 /** O navegador manda estes; `exportou` e `tentou_assinar` são gravados pelas próprias rotas (que contam o limite por IP). */
 const USOS_DO_NAVEGADOR: readonly string[] = [
   'relacionados_clique', 'filtro_orgao', 'filtro_raio', 'baixou_documento', 'viu_precos', 'escolheu_periodo', 'clicou_assinar',
+  ...RECURSOS_COMERCIAIS,
 ];
 /** De onde veio o clique em "Assinar o Pro" na página de planos. */
 export const ORIGENS_ASSINAR = ['topo', 'precos', 'final'] as const;
@@ -57,6 +64,28 @@ function objeto(v: unknown): v is Record<string, unknown> {
 
 const DOMINIO = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 const textoCurto = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
+
+/** Texto livre que não pode virar parâmetro: e-mail, ou 8+ dígitos (CPF, CNPJ, telefone). */
+export const semDadoPessoal = (t: string) => !t.includes('@') && t.replace(/\D/g, '').length < 8;
+
+const ROTULO_EVENTO = /^[a-z0-9_]{1,40}$/;
+const rotuloEvento = (v: unknown) => (typeof v === 'string' && ROTULO_EVENTO.test(v) ? v : null);
+
+/** Funil comercial: campo fora do formato some, sem recusar o evento (medição não atrapalha quem está comprando). */
+function detalheComercial(recurso: string, d: Record<string, unknown>, edital: string | null): Detalhe {
+  const segmento = textoCurto(d.segmento, 60);
+  const pagina = typeof d.pagina === 'string' ? paginaDoCaminho(d.pagina)?.pagina ?? null : null;
+  return {
+    recurso,
+    origem: rotuloEvento(d.origem),
+    segmento: segmento && semDadoPessoal(segmento) ? segmento : null,
+    resultados: typeof d.resultados === 'number' && Number.isInteger(d.resultados) && d.resultados >= 0 ? d.resultados : null,
+    plano: rotuloEvento(d.plano),
+    resultado: rotuloEvento(d.resultado),
+    edital,
+    pagina,
+  };
+}
 
 function validarVisita(d: Record<string, unknown>): Resultado<{ tipo: TipoEventoNavegacao; detalhe: Detalhe }> {
   const p = typeof d.pagina === 'string' ? paginaDoCaminho(d.pagina) : null;
@@ -100,6 +129,7 @@ export function validarEvento(corpo: unknown): Resultado<{ tipo: TipoEvento | Ti
   }
   if (tipo === 'usou_recurso') {
     if (typeof d.recurso !== 'string' || !USOS_DO_NAVEGADOR.includes(d.recurso)) return { ok: false, erro: 'recurso inválido' };
+    if ((RECURSOS_COMERCIAIS as readonly string[]).includes(d.recurso)) return { ok: true, valor: { tipo, detalhe: detalheComercial(d.recurso, d, edital) } };
     // Página de planos (spec 2026-10-21-planos-conversao-design.md): sem edital; período e origem do clique.
     if (d.recurso === 'escolheu_periodo' || d.recurso === 'clicou_assinar') {
       if (d.periodo !== 'mensal' && d.periodo !== 'anual') return { ok: false, erro: 'período inválido' };

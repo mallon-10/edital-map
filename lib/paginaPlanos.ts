@@ -1,5 +1,5 @@
 import { LIMITES_CONTA } from './limitesConta';
-import { formatarReais, PLANOS, type Periodo, type Plano, type PlanoVendido } from './planos';
+import { formatarReais, PLANOS, ROTINA_ENVIO, type Periodo, type Plano, type PlanoVendido } from './planos';
 
 /**
  * Textos e preços da página /planos (spec 2026-10-21-planos-conversao-design.md). Só o que já funciona é vendido; o que
@@ -43,11 +43,17 @@ export const hrefAssinar = (periodo: Periodo) => `/assinar?periodo=${periodo}`;
 
 export const TOPO = {
   sobretitulo: 'Monitoramento automático de licitações',
-  titulo: 'As oportunidades certas chegam até você.',
-  destaque: 'Todos os dias.',
+  titulo: 'Sua próxima oportunidade',
+  destaque: 'pode aparecer amanhã.',
   subtitulo:
-    'Configure seus interesses e receba novas oportunidades do seu segmento diretamente no seu e-mail, sem precisar pesquisar todos os dias.',
-  beneficios: ['Alertas diários às 7h', 'Meu Radar', 'Resumo semanal'],
+    'O Edital Map encontra as licitações do seu segmento. Com o Pro, você recebe automaticamente as novas oportunidades e acompanha tudo em um só lugar.',
+  cta: 'Começar a receber oportunidades',
+  beneficios: ['Alertas diários às 7h', 'Meu Radar', 'Resumo semanal às segundas'],
+} as const;
+
+export const PUBLICO_PLANOS = {
+  gratis: 'Para quem deseja pesquisar oportunidades quando precisar.',
+  pro: 'Para quem deseja acompanhar oportunidades continuamente e economizar tempo.',
 } as const;
 
 export type IconePlanos = 'filtro' | 'sino' | 'email' | 'calendario' | 'radar' | 'salvar';
@@ -78,28 +84,28 @@ export const BENEFICIOS_PRO: ReadonlyArray<{ icone: IconePlanos; tom: TomBenefic
   {
     icone: 'sino',
     tom: 'pin',
-    titulo: `Até ${ALERTAS} alertas por e-mail`,
+    titulo: 'Monitoramento automático',
     texto:
-      'Cada alerta guarda uma busca: termos, palavras para excluir, estados ou municípios, valor e modalidade. Por volta das 7h chegam só os editais novos, sem repetir o que você já recebeu.',
+      'Receba diariamente novas licitações relacionadas ao seu negócio. Por volta das 7h chegam só os editais novos, sem repetir o que você já recebeu.',
   },
   {
     icone: 'calendario',
     tom: 'mata',
-    titulo: 'Resumo semanal do seu segmento',
-    texto: 'Toda segunda de manhã, um e-mail com o que entrou no seu Meu Radar na semana. Liga e desliga em Alertas.',
-  },
-  {
-    icone: 'radar',
-    tom: 'rio',
-    titulo: 'Meu Radar',
-    texto: 'Uma página com os editais abertos que combinam com o perfil da sua empresa, sem refazer a busca a cada visita.',
+    titulo: 'Economia de tempo',
+    texto: 'Em vez de pesquisar todo dia, você abre o e-mail. Toda segunda, um resumo com o que entrou no seu Meu Radar na semana.',
   },
   {
     icone: 'salvar',
     tom: 'ouro',
-    titulo: 'Editais salvos',
+    titulo: 'Organização',
     texto:
       'Marque cada edital como Salvo, Em análise, Vou participar ou Descartado e anote o que importa. Os descartados saem do Meu Radar.',
+  },
+  {
+    icone: 'radar',
+    tom: 'rio',
+    titulo: 'Personalização por segmento e região',
+    texto: `Monitore até ${ALERTAS} segmentos ou regiões diferentes, com termos, estados ou municípios, valor e modalidade. No Meu Radar, tudo em uma página, sem refazer a busca.`,
   },
 ];
 
@@ -112,11 +118,21 @@ export const EM_PREPARACAO = {
 export type LinhaDiferenca = { recurso: string; gratis: string | boolean; pro: string | boolean };
 
 export const DIFERENCAS: readonly LinhaDiferenca[] = [
-  { recurso: 'Alertas por e-mail às 7h', gratis: false, pro: `Até ${ALERTAS}` },
-  { recurso: 'Resumo semanal (segunda)', gratis: false, pro: true },
+  { recurso: 'Descobrir editais novos', gratis: 'Você pesquisa', pro: 'Chegam por e-mail às 7h' },
+  { recurso: 'Segmentos e regiões acompanhados', gratis: false, pro: `Até ${ALERTAS}` },
+  { recurso: 'Resumo semanal às segundas', gratis: false, pro: true },
   { recurso: 'Meu Radar', gratis: false, pro: true },
-  { recurso: 'Editais salvos', gratis: false, pro: 'Uso justo' },
+  { recurso: 'Organizar editais', gratis: false, pro: 'Status e anotações' },
   { recurso: 'Buscas e editais', gratis: 'Ilimitados', pro: 'Ilimitados' },
+];
+
+/** Só fatos do produto: nada de depoimento, contador ou número de assinantes. */
+export const CONFIANCA: ReadonlyArray<{ titulo: string; texto: string }> = [
+  { titulo: 'Fonte oficial: PNCP', texto: 'Os editais vêm do Portal Nacional de Contratações Públicas, sempre com o link do edital oficial.' },
+  { titulo: 'Atualizado a cada 3 horas', texto: 'Lemos as licitações abertas dos 27 estados a cada 3 horas.' },
+  { titulo: 'Como os alertas funcionam', texto: `${ROTINA_ENVIO} Sem novidade, não mandamos e-mail.` },
+  { titulo: 'Pix Automático ou cartão', texto: 'Pagamento processado pela Cakto, mensal ou anual.' },
+  { titulo: 'Cancele quando quiser', texto: 'O Pro continua até o fim do período que você já pagou.' },
 ];
 
 export const INCLUIDO_NOS_DOIS = [
@@ -168,6 +184,6 @@ export const PERGUNTAS: ReadonlyArray<{ pergunta: string; resposta: string }> = 
 ];
 
 export const CHAMADA_FINAL = {
-  titulo: 'Dedique seu tempo às propostas.',
-  destaque: 'Deixe o monitoramento com o Edital Map.',
+  titulo: 'Pare de perder oportunidades',
+  destaque: 'de vender para o governo.',
 } as const;

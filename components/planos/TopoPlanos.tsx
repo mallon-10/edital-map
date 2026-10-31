@@ -32,7 +32,7 @@ export function TopoPlanos({ pagamento, atual }: EstadoPlanos) {
           })}
         </ul>
         <div className="flex flex-col gap-3">
-          <AcoesPlanos origem="topo" pagamento={pagamento} atual={atual} />
+          <AcoesPlanos origem="topo" pagamento={pagamento} atual={atual} rotulo={TOPO.cta} />
           {jaEPro(atual) ? null : (
             <p className="font-mono text-[12.5px] text-ink-muted">
               Pro: <span className="text-ink">{formatarReais(PRO.centavosMes)}/mês</span> ou{' '}

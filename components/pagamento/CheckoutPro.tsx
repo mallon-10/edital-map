@@ -17,6 +17,7 @@ import {
 } from '@/lib/checkout';
 import { sdkCakto } from '@/lib/cliente/caktoSdk';
 import { dadosGa4, medir } from '@/lib/cliente/medir';
+import { rastrear } from '@/lib/cliente/rastrear';
 import { validarComprador } from '@/lib/pagamento/comprador';
 import { PLANOS, type Periodo } from '@/lib/planos';
 import { Campo } from './Campo';
@@ -61,6 +62,11 @@ export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; 
 
   const cep = so(endereco.cep);
   const estadoCep: EstadoCep = cep.length !== 8 ? 'vazio' : busca?.cep !== cep ? 'buscando' : busca.achou ? 'achou' : 'falhou';
+
+  // Entrou no checkout (quem desiste antes de pagar aparece no funil); o clique em pagar continua na conversão `checkout`.
+  useEffect(() => {
+    rastrear('checkout_started', { plano: periodoInicial });
+  }, [periodoInicial]);
 
   // O antifraude começa no carregamento (quanto antes, mais sinais); falha aqui não impede o Pix.
   useEffect(() => {

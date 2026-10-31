@@ -3,6 +3,7 @@ import { LIMITES_CONTA } from './limitesConta';
 import {
   BENEFICIOS_PRO,
   CHAMADA_FINAL,
+  CONFIANCA,
   DIFERENCAS,
   EM_PREPARACAO,
   INCLUIDO_NOS_DOIS,
@@ -10,6 +11,7 @@ import {
   ITENS_PRO,
   PASSOS,
   PERGUNTAS,
+  PUBLICO_PLANOS,
   TOPO,
   economiaAnual,
   hrefAssinar,
@@ -50,28 +52,38 @@ describe('preço na página de planos', () => {
 describe('textos da página de planos', () => {
   it('topo e chamada final com os textos aprovados', () => {
     expect(TOPO.sobretitulo).toBe('Monitoramento automático de licitações');
-    expect(`${TOPO.titulo} ${TOPO.destaque}`).toBe('As oportunidades certas chegam até você. Todos os dias.');
+    expect(`${TOPO.titulo} ${TOPO.destaque}`).toBe('Sua próxima oportunidade pode aparecer amanhã.');
     expect(TOPO.subtitulo).toBe(
-      'Configure seus interesses e receba novas oportunidades do seu segmento diretamente no seu e-mail, sem precisar pesquisar todos os dias.',
+      'O Edital Map encontra as licitações do seu segmento. Com o Pro, você recebe automaticamente as novas oportunidades e acompanha tudo em um só lugar.',
     );
-    expect(TOPO.beneficios).toEqual(['Alertas diários às 7h', 'Meu Radar', 'Resumo semanal']);
-    expect(`${CHAMADA_FINAL.titulo} ${CHAMADA_FINAL.destaque}`).toBe(
-      'Dedique seu tempo às propostas. Deixe o monitoramento com o Edital Map.',
-    );
+    expect(TOPO.cta).toBe('Começar a receber oportunidades');
+    expect(TOPO.beneficios).toEqual(['Alertas diários às 7h', 'Meu Radar', 'Resumo semanal às segundas']);
+    expect(`${CHAMADA_FINAL.titulo} ${CHAMADA_FINAL.destaque}`).toBe('Pare de perder oportunidades de vender para o governo.');
+  });
+  it('para quem é cada plano', () => {
+    expect(PUBLICO_PLANOS.gratis).toBe('Para quem deseja pesquisar oportunidades quando precisar.');
+    expect(PUBLICO_PLANOS.pro).toBe('Para quem deseja acompanhar oportunidades continuamente e economizar tempo.');
+  });
+  it('confiança: fonte, atualização, alertas, pagamento e cancelamento, com o que é real', () => {
+    const t = JSON.stringify(CONFIANCA);
+    for (const f of ['PNCP', 'a cada 3 horas', 'todos os dias às 7h', 'Pix Automático', 'Cakto', 'Cancele quando quiser', 'até o fim do período']) expect(t, f).toContain(f);
+  });
+  it('benefícios pelo que muda na prática', () => {
+    expect(BENEFICIOS_PRO.map((b) => b.titulo)).toEqual(['Monitoramento automático', 'Economia de tempo', 'Organização', 'Personalização por segmento e região']);
   });
   it('o número de alertas vem do limite da conta', () => {
     const n = LIMITES_CONTA.pro.alertas;
-    expect(DIFERENCAS[0]).toEqual({ recurso: 'Alertas por e-mail às 7h', gratis: false, pro: `Até ${n}` });
+    expect(DIFERENCAS[1]).toEqual({ recurso: 'Segmentos e regiões acompanhados', gratis: false, pro: `Até ${n}` });
     expect(ITENS_PRO[0]).toBe(`Até ${n} alertas por e-mail às 7h`);
-    expect(BENEFICIOS_PRO[0].titulo).toBe(`Até ${n} alertas por e-mail`);
+    expect(BENEFICIOS_PRO[3].texto).toContain(`até ${n} segmentos ou regiões`);
     expect(PASSOS[1].texto).toContain(`Até ${n} alertas`);
   });
-  it('comparação: só o que muda, mais buscas ilimitadas nos dois', () => {
+  it('comparação: o que muda na rotina, mais buscas ilimitadas nos dois', () => {
     expect(DIFERENCAS.map((d) => d.recurso)).toEqual([
-      'Alertas por e-mail às 7h', 'Resumo semanal (segunda)', 'Meu Radar', 'Editais salvos', 'Buscas e editais',
+      'Descobrir editais novos', 'Segmentos e regiões acompanhados', 'Resumo semanal às segundas', 'Meu Radar', 'Organizar editais', 'Buscas e editais',
     ]);
+    expect(DIFERENCAS[0]).toEqual({ recurso: 'Descobrir editais novos', gratis: 'Você pesquisa', pro: 'Chegam por e-mail às 7h' });
     expect(DIFERENCAS.at(-1)).toEqual({ recurso: 'Buscas e editais', gratis: 'Ilimitados', pro: 'Ilimitados' });
-    for (const d of DIFERENCAS.slice(0, -1)) expect(d.gratis).toBe(false);
     expect(INCLUIDO_NOS_DOIS).toContain('Exportar a lista para planilha (CSV)');
     expect(INCLUIDO_NOS_DOIS).toContain('Botão "Abrir edital oficial"');
   });

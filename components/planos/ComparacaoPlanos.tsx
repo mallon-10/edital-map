@@ -24,14 +24,14 @@ function Valor({ v }: { v: LinhaDiferenca['pro'] }) {
   return <>{v}</>;
 }
 
-/** Só o que muda entre Grátis e Pro (e as buscas ilimitadas nos dois); o que os dois têm fica num bloco que abre e fecha. */
+/** O que muda na rotina entre Grátis e Pro (e as buscas ilimitadas nos dois); o que os dois têm fica num bloco que abre e fecha. */
 export function ComparacaoPlanos() {
   return (
     <section aria-labelledby="comparacao" className="mx-auto w-full max-w-[900px]">
       <div className="mb-3.5 flex flex-col gap-1.5 px-1">
         <p className={MONO}>Comparação</p>
         <h2 id="comparacao" className={H2}>
-          O que muda no Pro
+          O que muda na sua rotina
         </h2>
       </div>
       <div className="overflow-x-auto rounded-[22px] bg-raised">
@@ -39,7 +39,7 @@ export function ComparacaoPlanos() {
           <caption className="sr-only">Diferenças entre os planos Grátis e Pro</caption>
           <thead>
             <tr>
-              <th scope="col" className={`border-b border-line px-[18px] py-[15px] text-left ${MONO}`}>Recurso</th>
+              <th scope="col" className={`border-b border-line px-[18px] py-[15px] text-left ${MONO}`}>No dia a dia</th>
               <th scope="col" className={`${CELULA} w-[24%] ${MONO}`}>Grátis</th>
               <th scope="col" className={`${CELULA} w-[24%] bg-pin-soft/50 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-pin-strong lg:text-xs`}>
                 Pro

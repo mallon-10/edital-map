@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import { Lupa } from '@/components/inicio/Icones';
 import { consultarCnpj, type RespostaCnpj } from '@/lib/cliente/cnpj';
+import { esquecerRascunhoAlerta, lerRascunhoAlerta } from '@/lib/cliente/rascunhoAlerta';
 import { normalizarCnpj } from '@/lib/cnpj';
 import {
   corpoRadarRapido, localPadraoDoCnpj, marcadosDoCnpj, opcoesDoCnpj, pareceCnpj, produtosDoTexto, radarDoCnpj, type LocalCnpj,
@@ -25,7 +26,8 @@ type Cnpj = { r: RespostaCnpj; marcados: string[]; local: LocalCnpj };
  * Onboarding do Meu Radar numa tela só: o que a empresa vende (vírgula ou ponto e vírgula separam os produtos, que
  * viram chips) ou o CNPJ (empresa, segmentos da atividade e "Só em UF" ou "Todo o Brasil"). "Criar meu radar" salva
  * só produtos e local por POST /api/radar (validarRadar, limites de LIMITES_RADAR) e leva ao Meu Radar; o resto do
- * radar fica para /radar/editar.
+ * radar fica para /radar/editar. Quem assinou a partir da prévia de um alerta volta com aquela busca preenchida
+ * (lib/cliente/rascunhoAlerta.ts), inclusive exclusões e valor.
  */
 export function OnboardingRadar() {
   const router = useRouter();
@@ -38,6 +40,16 @@ export function OnboardingRadar() {
   const [consultando, setConsultando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [daBusca, setDaBusca] = useState(false);
+
+  useEffect(() => {
+    const r = lerRascunhoAlerta();
+    if (!r) return;
+    setProdutos(r.termos);
+    setLocal(r);
+    setEscolherLocal(r.abrangencia !== 'brasil');
+    setDaBusca(true);
+  }, []);
 
   async function continuar(e?: FormEvent) {
     e?.preventDefault();
@@ -84,7 +96,7 @@ export function OnboardingRadar() {
       if (msg) return setErro(msg);
       setProdutos(termos);
       setTexto('');
-      corpo = corpoDoRascunho(d, { pular: true });
+      corpo = corpoDoRascunho(d, { pular: !daBusca });
     }
     setErro(null);
     setSalvando(true);
@@ -104,6 +116,7 @@ export function OnboardingRadar() {
         setSalvando(false);
         return;
       }
+      esquecerRascunhoAlerta();
       router.push('/radar');
     } catch {
       setErro(FALHA);
@@ -123,7 +136,9 @@ export function OnboardingRadar() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-[28px] font-bold leading-tight tracking-[-0.015em]">Monte seu radar</h1>
-        <p className="text-[15px] text-ink-muted">Diga o que sua empresa vende e mostramos os editais abertos que combinam com ela.</p>
+        <p className="text-[15px] text-ink-muted">
+          {daBusca ? 'Trouxemos a busca que você fez. Confira e crie seu radar: o alerta diário liga junto.' : 'Diga o que sua empresa vende e mostramos os editais abertos que combinam com ela.'}
+        </p>
       </div>
 
       <form onSubmit={(e) => void continuar(e)} className="flex flex-col gap-2" noValidate>

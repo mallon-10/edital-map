@@ -9,8 +9,12 @@ import { buscaDoCampo, filtrosAtivos, normalizarTela, ordemEfetiva, paraParametr
 import { PainelCnpj } from '@/components/cnpj/PainelCnpj';
 import { consultarCnpj, type RespostaCnpj } from '@/lib/cliente/cnpj';
 import { medir } from '@/lib/cliente/medir';
+import { rastrear } from '@/lib/cliente/rastrear';
+import { hrefAlertaDaBusca } from '@/lib/alertaDaBusca';
 import { moedaCurta } from '@/lib/formato';
 import { juntarEditais, proximaPagina, temMais, tituloDaBusca } from '@/lib/inicio';
+import { ofertaDaBusca } from '@/lib/ofertaBusca';
+import { segmentoDaBusca } from '@/lib/rastreio';
 import { urlDosPontos } from '@/lib/pontosMapa';
 import { resumirPontos } from '@/lib/painel';
 import { temTermo } from '@/lib/relevancia/termos';
@@ -27,6 +31,7 @@ import { Chips } from './inicio/Chips';
 import { ColunaLista } from './inicio/ColunaLista';
 import { FolhaFiltros } from './inicio/FolhaFiltros';
 import { IconeExpandir, IconeRecolher } from './inicio/Icones';
+import { OfertaBusca } from './inicio/OfertaBusca';
 import { OndeMaisCompram } from './inicio/OndeMaisCompram';
 import { ValorEmJogo } from './inicio/ValorEmJogo';
 
@@ -71,6 +76,9 @@ const mensagem = (e: unknown, padrao: string) => (e instanceof Error && e.messag
 /** Evento "busca" com o total achado (null: a busca falhou). */
 function registrarBusca(f: FiltrosTela, total: number | null) {
   registrar('busca', { q: f.q.trim() || null, uf: f.uf || null, dias: f.seteDias ? 7 : null, total });
+  const parametros = { segmento: segmentoDaBusca(f.q), uf: f.uf || null };
+  rastrear('search_performed', parametros);
+  if (total !== null) rastrear('search_results_viewed', { ...parametros, resultados: total });
 }
 
 type Props = {
@@ -87,13 +95,14 @@ type Props = {
   totaisAtalhos: Promise<Record<string, number | null>>;
   /** Pontos do mapa da busca do endereço, chegando depois do HTML (null: sem filtros, vêm da CDN, ou falhou). */
   pontosIniciais: Promise<PontoMapa[] | null> | null;
-  /** Link do WhatsApp da assessoria (null: número não configurado, sem cartão). */
+  /** Triagem da assessoria (null: número do WhatsApp não configurado, sem cartão). */
   assessoria: string | null;
 };
 
 // Cartão da assessoria na página inicial (sem edital escolhido).
-const TITULO_ASSESSORIA = 'Quer participar de uma licitação?';
-const TEXTO_ASSESSORIA = 'Achou um edital e não sabe por onde começar? A gente analisa e prepara um passo a passo para a sua empresa.';
+const TITULO_ASSESSORIA = 'Encontrou uma licitação e não sabe como participar?';
+const TEXTO_ASSESSORIA = 'Ajudamos sua empresa a entender o edital, identificar os documentos necessários e organizar os próximos passos.';
+const BOTAO_ASSESSORIA = 'Quero orientação';
 
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
 type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'tela' | 'selecionadoId'>;
@@ -114,6 +123,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
   // pendente (tocar num card e rolar um pouco) a descartaria.
   const [ativoBarra, setAtivoBarra] = useState<Tela>(estadoInicial.vista === 'lista' ? 'lista' : estadoInicial.tela);
   const [resultado, setResultado] = useState<ResultadoBusca>(inicial);
+  // Última busca já respondida: a oferta só muda com o resultado na tela (nunca com um total velho, nem ao trocar a ordem).
+  const [buscaPronta, setBuscaPronta] = useState<{ filtros: FiltrosTela; total: number } | null>({ filtros: filtrosIniciais, total: inicial.total });
   // Campo da busca com um CNPJ: a empresa e os segmentos aparecem embaixo da barra (a busca só roda em "Ver editais").
   const [cnpj, setCnpj] = useState<
     { estado: 'carregando' } | { estado: 'erro'; erro: string } | { estado: 'ok'; r: RespostaCnpj } | null
@@ -175,6 +186,8 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     : 'Carregando o resumo…';
   const selecionado = resultado.editais.find((e) => e.id === selecionadoId) ?? resultado.editais[0] ?? null;
   const comTermo = temTermo(filtros.q);
+  // Com termo, a oferta fala da busca e fica no lugar da faixa genérica: nunca as duas.
+  const ofertaBuscada = oferta && buscaPronta ? ofertaDaBusca(buscaPronta.filtros, buscaPronta.total) : null;
   const naLista = vista === 'lista';
   // Sede do município filtrado (com ou sem raio): o mapa vai até ela; com raio, ela é o centro do círculo.
   const centro = filtros.cidade ? centros[filtros.cidade.ibge] : undefined;
@@ -364,6 +377,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
       estadoAtual.current = { ...estadoAtual.current, tela: volta.tela };
       setAtivoBarra(estadoAtual.current.vista === 'lista' ? 'lista' : volta.tela);
       setResultado(volta.resultado);
+      setBuscaPronta({ filtros: volta.filtros, total: volta.resultado.total });
       setSelecionadoId(volta.selecionadoId);
       // Os prazos ("encerra em 2 dias") contam a partir de agora, não da hora em que a lista foi guardada.
       setAgora(new Date());
@@ -409,7 +423,12 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     if ((opcoes.abrirLista || cidadeNova) && ehCelular()) irPara('lista', novo);
     else trocarTela(tela, novo);
     for (const recurso of recursosUsados(filtros, novo)) registrar('usou_recurso', { recurso });
-    void carregarLista(novo, { aoTerminar: (total) => registrarBusca(novo, total) });
+    void carregarLista(novo, {
+      aoTerminar: (total) => {
+        registrarBusca(novo, total);
+        setBuscaPronta(total === null ? null : { filtros: novo, total });
+      },
+    });
     // Repetir a busca depois de um erro do mapa tenta o mapa de novo.
     if (mudouMapa || erroMapa !== null) void carregarMapa(novo);
   }
@@ -561,6 +580,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
           aoErroExportar={setErroExportar}
           aoVerEditais={verEditais}
           aoMostrarMapa={() => mudarVista('mapa')}
+          hrefAlerta={hrefAlertaDaBusca(filtros)}
         >
           {/* Celular: em cima no cartão, com 46svh (pinça e um dedo mexem no mapa; fora dele, arrastar rola a página).
               Computador: a metade direita do cartão. Tela cheia: o mapa cobre a página. */}
@@ -595,7 +615,13 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
             </section>
           )}
         </CartaoTopo>
-        {oferta ? <FaixaOferta /> : null}
+        {oferta && comTermo ? (
+          ofertaBuscada && buscaPronta ? (
+            <OfertaBusca key={ofertaBuscada.chave} oferta={ofertaBuscada} segmento={segmentoDaBusca(buscaPronta.filtros.q)} total={buscaPronta.total} />
+          ) : null
+        ) : oferta ? (
+          <FaixaOferta />
+        ) : null}
         <Suspense fallback={<Atalhos totais={{}} q={filtros.q} uf={filtros.uf} aoEscolher={escolherAtalho} />}>
           <AtalhosComTotais promessa={totaisAtalhos} q={filtros.q} uf={filtros.uf} aoEscolher={escolherAtalho} />
         </Suspense>
@@ -606,6 +632,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
             id="assessoria-inicio-celular"
             titulo={TITULO_ASSESSORIA}
             texto={TEXTO_ASSESSORIA}
+            botao={BOTAO_ASSESSORIA}
             className="flex lg:hidden"
           />
         ) : null}
@@ -644,6 +671,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
                 id="assessoria-inicio"
                 titulo={TITULO_ASSESSORIA}
                 texto={TEXTO_ASSESSORIA}
+                botao={BOTAO_ASSESSORIA}
                 className="flex"
               />
             ) : null}

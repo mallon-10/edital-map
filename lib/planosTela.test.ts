@@ -27,12 +27,18 @@ describe('página de planos: grátis com o pagamento ligado', () => {
   const html = tela({ pagamento: true, atual: 'gratis' });
   it('um h1 só, com o título aprovado', () => {
     expect(contar(html, '<h1')).toBe(1);
-    expect(html).toContain('As oportunidades certas chegam até você.');
+    expect(html).toContain('Sua próxima oportunidade');
   });
-  it('"Assinar o Pro" no topo, nos preços e no final, todos para o checkout no mensal', () => {
+  it('três chamadas para o checkout no mensal: a do topo fala do benefício', () => {
     expect(contar(html, 'href="/assinar?periodo=mensal"')).toBe(3);
     expect(html).not.toContain('/assinar?periodo=anual');
-    expect(contar(html, '>Assinar o Pro<')).toBe(3);
+    expect(contar(html, '>Começar a receber oportunidades<')).toBe(1);
+    expect(contar(html, '>Assinar o Pro<')).toBe(2);
+  });
+  it('confiança e a assessoria como serviço à parte', () => {
+    expect(html).toContain('Fonte oficial: PNCP');
+    expect(html).toContain('href="/assessoria"');
+    expect(html).toContain('a partir de R$ 197');
   });
   it('Grátis discreto com "Continuar grátis"; Pro recomendado com a âncora #pro; seção #precos', () => {
     expect(html).toContain('Continuar grátis');
@@ -66,8 +72,8 @@ describe('página de planos: grátis com o pagamento ligado', () => {
     expect(contar(html, '<details')).toBe(PERGUNTAS.length + 1);
   });
   it('chamada final', () => {
-    expect(html).toContain('Dedique seu tempo às propostas.');
-    expect(html).toContain('Deixe o monitoramento com o Edital Map.');
+    expect(html).toContain('Pare de perder oportunidades');
+    expect(html).toContain('de vender para o governo.');
   });
 });
 

@@ -11,13 +11,17 @@ export type Plano = IdPlano;
 /** O que o cabeçalho precisa saber do visitante: o plano e se é o dono confiável (cookie em_dono). */
 export type PlanoDaPagina = { plano: Plano; dono: boolean };
 
+/** A rotina de envio do Pro, com a mesma frase em todo o site. */
+export const ROTINA_ENVIO = 'Alertas de novas oportunidades todos os dias às 7h e resumo semanal às segundas-feiras.';
+
 /**
  * Oferta do Pro (decisão de 19/10/2026): buscar, abrir editais, link oficial, raio, órgão, parecidos e exportar são
  * grátis e sem limite; o que se vende é receber as licitações certas por e-mail (alertas, resumo semanal, Meu Radar).
  * A faixa abaixo do cabeçalho mostra a quem não é Pro que o e-mail é do Pro e leva aos planos (components/FaixaOferta.tsx).
  */
 export const OFERTA = {
-  texto: 'Receba no seu e-mail, toda semana, as licitações que combinam com o seu negócio',
+  texto: 'Pare de perder oportunidades de vender para o governo',
+  apoio: ROTINA_ENVIO,
   cta: 'Conhecer o Pro',
   href: '/planos',
 } as const;
@@ -57,6 +61,9 @@ export function precoDoPlano(p: Pick<PlanoVendido, 'centavosMes' | 'centavosAno'
     equivalente: `${formatarReais(Math.round(p.centavosAno / 12))}/mês · economize ${economia}%`,
   };
 }
+
+/** "R$ 37,90/mês", nas ofertas fora da página de planos. */
+export const PRECO_PRO_MENSAL = precoDoPlano(PLANOS.find((p) => p.id === 'pro')!, 'mensal').principal;
 
 /** Com o pagamento desligado (lista de espera no lugar do "Assinar o Pro"). */
 export const AVISO_PLANOS =

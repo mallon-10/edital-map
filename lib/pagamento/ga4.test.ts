@@ -23,6 +23,7 @@ describe('corpoCompraGa4', () => {
             items: [{ item_id: 'pro_mensal', item_name: 'Edital Map Pro mensal', price: 37.9, quantity: 1 }],
           },
         },
+        { name: 'purchase_completed', params: { plano: 'mensal', value: 37.9, currency: 'BRL', session_id: '1729260000', engagement_time_msec: 1 } },
       ],
     });
   });

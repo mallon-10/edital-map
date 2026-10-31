@@ -4,16 +4,20 @@ import { ASSUNTOS, naUf } from './seo/assuntos';
 import { POR_PAGINA } from './filtros';
 import type { EditalResumo, FiltrosTela, ResultadoBusca } from './tipos';
 
+/** Onde se busca, em texto corrido ("em Santa Catarina", "a 50 km de Joinville/SC"); sem lugar, vazio. */
+export function localDaBusca(f: Pick<FiltrosTela, 'uf' | 'cidade' | 'raio'>): string {
+  if (f.cidade) {
+    const lugar = `${f.cidade.nome}/${f.cidade.uf}`;
+    return f.raio ? `a ${f.raio} km de ${lugar}` : `em ${lugar}`;
+  }
+  return f.uf && NOMES_UF[f.uf] ? naUf(f.uf) : '';
+}
+
 /** Título do cartão do topo da página inicial: o que se busca e onde ("Uniforme em Santa Catarina"). */
 export function tituloDaBusca(f: FiltrosTela): string {
   const termo = separarNegativos(f.q).positivo.replace(/\s+/g, ' ').trim();
   const oque = termo ? termo.charAt(0).toLocaleUpperCase('pt-BR') + termo.slice(1) : 'Licitações abertas';
-  if (f.cidade) {
-    const lugar = `${f.cidade.nome}/${f.cidade.uf}`;
-    return f.raio ? `${oque} a ${f.raio} km de ${lugar}` : `${oque} em ${lugar}`;
-  }
-  if (f.uf && NOMES_UF[f.uf]) return `${oque} ${naUf(f.uf)}`;
-  return `${oque} no Brasil`;
+  return `${oque} ${localDaBusca(f) || 'no Brasil'}`;
 }
 
 export type IconeAtalho = 'camisa' | 'capacete' | 'brilho' | 'monitor' | 'talheres' | 'cruz';
