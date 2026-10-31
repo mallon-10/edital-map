@@ -29,8 +29,9 @@ const BENEFICIOS = ['Todo dia às 7h', 'Só editais novos', 'Cancele quando quis
 
 /** O cartão em si, sem a regra da sessão: fundo azul-escuro, para não se confundir com os cartões dos editais. */
 export function CartaoOfertaBusca({ oferta, segmento, total, aoFechar }: Props & { aoFechar: () => void }) {
+  const [valor, periodo] = oferta.preco.split('/');
   return (
-    <aside aria-label="Receber novos editais" className="relative flex flex-col gap-4 rounded-[22px] bg-ink p-5 text-surface motion-safe:animate-entrar lg:p-6 xl:flex-row xl:items-center xl:gap-7">
+    <aside aria-label="Receber novos editais" className="relative flex flex-col gap-5 rounded-[22px] bg-ink p-6 text-surface motion-safe:animate-entrar lg:p-7 xl:flex-row xl:items-center xl:gap-10">
       <button
         type="button"
         onClick={aoFechar}
@@ -41,9 +42,9 @@ export function CartaoOfertaBusca({ oferta, segmento, total, aoFechar }: Props &
       </button>
       <div className="min-w-0 flex-1 pr-8 xl:pr-0">
         <p className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[#a9c9c4]">Alertas por e-mail · Pro</p>
-        <p className="mt-1.5 text-pretty text-[20px] font-bold leading-tight tracking-[-0.01em] lg:text-[23px]">{oferta.titulo}</p>
+        <p className="mt-2.5 text-pretty text-[20px] font-bold leading-tight tracking-[-0.01em] lg:text-[23px]">{oferta.titulo}</p>
         <p className="mt-2 text-pretty text-[15px] leading-snug text-[#c7d6d3]">{oferta.texto}</p>
-        <ul className="mt-3 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[14px] font-semibold">
+        <ul className="mt-4 flex list-none flex-wrap gap-x-5 gap-y-1.5 p-0 text-[14px] font-semibold">
           {BENEFICIOS.map((b) => (
             <li key={b} className="flex items-center gap-1.5">
               <IconeCheck className="size-4 text-[#7fd1b0]" />
@@ -52,20 +53,21 @@ export function CartaoOfertaBusca({ oferta, segmento, total, aoFechar }: Props &
           ))}
         </ul>
       </div>
-      <div className="flex shrink-0 flex-col gap-2 xl:w-[290px] xl:pt-5">
-        <p className="text-[24px] font-bold leading-none tracking-[-0.02em]">{oferta.preco}</p>
+      {/* Celular: em coluna. Telas médias: o preço à esquerda e o botão à direita. Computador largo: ao lado do texto. */}
+      <div className="flex shrink-0 flex-col gap-3.5 border-t border-white/15 pt-5 sm:grid sm:grid-cols-[1fr_auto] sm:items-center sm:gap-x-8 xl:flex xl:w-[290px] xl:gap-4 xl:border-t-0 xl:pt-0">
+        <p className="flex items-baseline gap-1 xl:justify-center">
+          <span className="text-[30px] font-bold leading-none tracking-[-0.02em]">{valor}</span>
+          <span className="text-[16px] font-semibold text-[#c7d6d3]">/{periodo}</span>
+        </p>
         <ChamadaPro
           href={oferta.href}
           origem="oferta_busca"
           segmento={segmento}
           resultados={total}
-          className="inline-flex min-h-[52px] items-center justify-center rounded-full bg-pin px-3 py-2.5 text-center text-[15px] font-semibold leading-snug text-on-pin transition-transform duration-150 hover:-translate-y-px motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+          className="inline-flex min-h-[52px] items-center justify-center rounded-full bg-pin px-3 py-2.5 text-center text-[15px] font-semibold leading-snug text-on-pin transition-transform duration-150 hover:-translate-y-px motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:whitespace-nowrap sm:px-6 xl:px-3"
         >
           Receber novos editais deste segmento
         </ChamadaPro>
-        <button type="button" onClick={aoFechar} className="inline-flex min-h-10 items-center justify-center text-[14px] font-semibold text-[#c7d6d3] underline-offset-2 hover:text-surface hover:underline">
-          Continuar pesquisando grátis
-        </button>
       </div>
     </aside>
   );
@@ -73,7 +75,7 @@ export function CartaoOfertaBusca({ oferta, segmento, total, aoFechar }: Props &
 
 /**
  * Oferta do Pro depois da busca: um cartão no fluxo da página, nunca um pop-up, logo acima dos editais. A página monta um
- * por busca (key); fechar (no X ou em "Continuar pesquisando grátis") vale para a sessão inteira.
+ * por busca (key); fechar no X vale para a sessão inteira.
  */
 export function OfertaBusca(p: Props) {
   const [visivel, setVisivel] = useState(false);

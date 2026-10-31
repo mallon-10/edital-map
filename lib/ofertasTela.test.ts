@@ -78,13 +78,20 @@ describe('cartão da oferta depois da busca', () => {
     expect(html).toContain('bg-ink');
     expect(html).toContain('animate-entrar');
   });
-  it('preço visível e só benefícios reais', () => {
-    expect(html).toContain('R$ 37,90/mês');
+  it('preço em destaque: valor grande e "/mês" menor', () => {
+    expect(html).toMatch(/text-\[30px\][^>]*>R\$ 37,90</);
+    expect(html).toMatch(/text-\[16px\][^>]*>\/mês</);
+  });
+  it('em telas médias: preço à esquerda e botão à direita, sem esticar de ponta a ponta', () => {
+    expect(html).toContain('sm:grid-cols-[1fr_auto]');
+    expect(html).toContain('sm:whitespace-nowrap');
+  });
+  it('só benefícios reais', () => {
     for (const t of ['Todo dia às 7h', 'Só editais novos', 'Cancele quando quiser']) expect(html, t).toContain(t);
   });
-  it('chamada e saída', () => {
+  it('uma chamada só: para sair da oferta fica o X', () => {
     expect(html).toContain('Receber novos editais deste segmento');
-    expect(html).toContain('Continuar pesquisando grátis');
+    expect(html).not.toContain('Continuar pesquisando grátis');
     expect(html).toContain('aria-label="Fechar a oferta"');
   });
 });
