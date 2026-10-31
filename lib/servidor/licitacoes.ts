@@ -6,6 +6,7 @@ import { ATALHOS } from '../inicio';
 import { escolherCidades, type CidadePagina } from '../seo/municipios';
 import { ehPrefeitura, escolherOrgaos, nomeDoOrgao, type OrgaoPagina } from '../seo/orgaos';
 import { OPEN_GRAPH_BASE } from '../seo/site';
+import { comNovaTentativa } from '../seo/sitemap';
 import { abertosPorModalidade, abertosPorUf, buscarEditais, municipiosAbertos, orgaosAbertosLista } from './consultas';
 
 const BASE: FiltrosBusca = {
@@ -58,6 +59,17 @@ export async function cidadesComPagina(): Promise<CidadePagina[]> {
 export async function orgaosComPagina(): Promise<OrgaoPagina[]> {
   const [lista, cidades] = await Promise.all([orgaosAbertosLista().catch(() => []), cidadesComPagina()]);
   return escolherOrgaos(lista, cidades);
+}
+
+/**
+ * Cidades e órgãos para o sitemap: com uma nova tentativa, e `completo` falso se alguma lista faltar. Nas outras páginas,
+ * banco fora vira lista vazia; aqui isso iria para a CDN como se não houvesse páginas.
+ */
+export async function listasDoSitemap(): Promise<{ cidades: CidadePagina[]; orgaos: OrgaoPagina[]; completo: boolean }> {
+  const municipios = await comNovaTentativa(municipiosAbertos);
+  const lista = await comNovaTentativa(orgaosAbertosLista);
+  const cidades = escolherCidades(municipios ?? []);
+  return { cidades, orgaos: escolherOrgaos(lista ?? [], cidades), completo: municipios !== null && lista !== null };
 }
 
 const caminhoDoOrgao = (o: OrgaoPagina) => caminhoDaPagina({ assunto: null, uf: o.uf, orgao: o });

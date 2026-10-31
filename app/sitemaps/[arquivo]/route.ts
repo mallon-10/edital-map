@@ -4,7 +4,7 @@ import { url } from '@/lib/seo/site';
 import { comNovaTentativa, emLotes, loteDoArquivo, paginasDeModalidade, paginasFixas, POR_ARQUIVO, xmlUrls } from '@/lib/seo/sitemap';
 import { caminhoDaPagina } from '@/lib/seo/textos';
 import { abertosPorModalidade, abertosPorUf, editaisAbertosSitemap } from '@/lib/servidor/consultas';
-import { cidadesComPagina, orgaosComPagina } from '@/lib/servidor/licitacoes';
+import { listasDoSitemap } from '@/lib/servidor/licitacoes';
 
 type Contexto = { params: Promise<{ arquivo: string }> };
 
@@ -19,13 +19,13 @@ const CONTAGENS_POR_VEZ = 4;
  * Contagem fora: a página entra só no índice /licitacoes.
  */
 async function paginas(): Promise<{ urls: Array<{ url: string }>; completo: boolean }> {
-  const [contagens, modalidades, cidades, orgaos] = await Promise.all([
+  const [contagens, modalidades] = await Promise.all([
     emLotes([null, ...ASSUNTOS], CONTAGENS_POR_VEZ, async (assunto) => ({ assunto, porUf: await comNovaTentativa(() => abertosPorUf(assunto?.termo ?? null)) })),
     comNovaTentativa(abertosPorModalidade),
-    cidadesComPagina(),
-    orgaosComPagina(),
   ]);
-  const completo = modalidades !== null && contagens.every((c) => c.porUf !== null);
+  // Depois das contagens: juntas, disputavam o banco e a lista de órgãos estourava o tempo.
+  const { cidades, orgaos, completo: listasCompletas } = await listasDoSitemap();
+  const completo = listasCompletas && modalidades !== null && contagens.every((c) => c.porUf !== null);
   if (!completo) console.error('sitemap paginas.xml: contagem faltando, arquivo sem cache');
   const porModalidade = modalidades ?? {};
   const caminhos = [
