@@ -12,7 +12,7 @@ import { medir } from '@/lib/cliente/medir';
 import { rastrear } from '@/lib/cliente/rastrear';
 import { hrefAlertaDaBusca } from '@/lib/alertaDaBusca';
 import { moedaCurta } from '@/lib/formato';
-import { juntarEditais, proximaPagina, temMais, textoDoResultado, tituloDaBusca } from '@/lib/inicio';
+import { juntarEditais, precisaRealinhar, proximaPagina, temMais, textoDoResultado, tituloDaBusca } from '@/lib/inicio';
 import { ofertaDaBusca } from '@/lib/ofertaBusca';
 import { segmentoDaBusca } from '@/lib/rastreio';
 import { urlDosPontos } from '@/lib/pontosMapa';
@@ -416,6 +416,16 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     };
   }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial, inicial.total, pontosIniciais]);
 
+  /** Depois do desenho da resposta: o que vem antes da lista pode ter mudado de altura. */
+  function realinharLista() {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const lista = inicioLista.current;
+        if (lista && precisaRealinhar(lista.getBoundingClientRect().top)) lista.scrollIntoView({ block: 'start' });
+      }),
+    );
+  }
+
   /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança respondida grava o evento "busca". */
   function aplicar(pedido: FiltrosTela, opcoes: { abrirLista?: boolean; rolar?: boolean } = {}) {
     // Sem município não há raio (trocar a UF ou tirar a cidade tira o raio também).
@@ -441,6 +451,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
       aoTerminar: (total) => {
         registrarBusca(novo, total);
         setBuscaPronta(total === null ? null : { filtros: novo, total });
+        if (opcoes.rolar && total !== null) realinharLista();
       },
     });
     // Repetir a busca depois de um erro do mapa tenta o mapa de novo.

@@ -63,3 +63,19 @@ export function xmlUrls(entradas: Array<{ url: string; lastModified?: string }>)
     .join('');
   return `${CABECALHO}<urlset xmlns="${NS}">\n${itens}</urlset>\n`;
 }
+
+/** Faz em grupos de `tamanho`: no cache frio, as 52 contagens juntas estouravam o tempo das consultas no banco. */
+export async function emLotes<T, R>(itens: readonly T[], tamanho: number, fazer: (item: T) => Promise<R>): Promise<R[]> {
+  const saida: R[] = [];
+  for (let i = 0; i < itens.length; i += tamanho) saida.push(...(await Promise.all(itens.slice(i, i + tamanho).map(fazer))));
+  return saida;
+}
+
+/** Tenta de novo uma vez. Falhou de novo: null, para quem chamou saber que faltou (uma lista vazia pareceria resposta). */
+export async function comNovaTentativa<T>(carregar: () => Promise<T>): Promise<T | null> {
+  try {
+    return await carregar();
+  } catch {
+    return carregar().catch(() => null);
+  }
+}

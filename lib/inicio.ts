@@ -82,6 +82,18 @@ export function proximaPagina(primeira: number, carregados: number): number {
   return primeira + Math.ceil(carregados / POR_PAGINA);
 }
 
+/** Altura em que a lista para depois da rolagem (scroll-mt-3). */
+const TOPO_DA_LISTA = 12;
+
+/**
+ * A resposta da busca muda a altura do que vem antes da lista (o botão "Ver os N editais" encolhe e volta a caber na
+ * linha): a lista sai do lugar. Só pequenos desvios: bem longe, foi a pessoa que rolou, e ela não é puxada de volta.
+ */
+export function precisaRealinhar(topo: number): boolean {
+  const desvio = Math.abs(topo - TOPO_DA_LISTA);
+  return desvio > 4 && desvio <= 150;
+}
+
 /** Índice do edital depois do qual entra um cartão no meio da lista: o 5º ou, em lista curta, o último. */
 export function posicaoNoMeio(editais: number): number {
   return Math.min(4, editais - 1);

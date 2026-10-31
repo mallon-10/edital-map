@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { posicaoNoMeio, textoDoResultado, ATALHOS, atalhoAtivo, hrefDoAtalho, juntarEditais, OFERTA_FECHADA_DIAS, ofertaFechada, proximaPagina, temMais, tituloDaBusca } from './inicio';
+import { posicaoNoMeio, precisaRealinhar, textoDoResultado, ATALHOS, atalhoAtivo, hrefDoAtalho, juntarEditais, OFERTA_FECHADA_DIAS, ofertaFechada, proximaPagina, temMais, tituloDaBusca } from './inicio';
 import { ASSUNTOS } from './seo/assuntos';
 import type { FiltrosTela } from './tipos';
 
@@ -21,6 +21,21 @@ describe('textoDoResultado', () => {
   });
   it('sem busca, nada a confirmar', () => {
     expect(textoDoResultado(B, 900)).toBeNull();
+  });
+});
+
+describe('precisaRealinhar', () => {
+  it('a página encolheu um pouco depois de rolar: volta ao lugar', () => {
+    expect(precisaRealinhar(-29)).toBe(true);
+    expect(precisaRealinhar(60)).toBe(true);
+  });
+  it('já está no lugar', () => {
+    expect(precisaRealinhar(12)).toBe(false);
+    expect(precisaRealinhar(14)).toBe(false);
+  });
+  it('a pessoa rolou para longe: não puxa de volta', () => {
+    expect(precisaRealinhar(-400)).toBe(false);
+    expect(precisaRealinhar(500)).toBe(false);
   });
 });
 

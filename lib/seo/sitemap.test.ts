@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assuntoPorSlug } from './assuntos';
-import { arquivosDoSitemap, loteDoArquivo, paginasDeModalidade, paginasFixas, POR_ARQUIVO, xmlIndice, xmlUrls } from './sitemap';
+import { arquivosDoSitemap, loteDoArquivo, paginasDeModalidade, paginasFixas, POR_ARQUIVO, xmlIndice, xmlUrls, comNovaTentativa, emLotes } from './sitemap';
 
 describe('arquivos do sitemap', () => {
   it('um arquivo de páginas e um por 40 mil editais', () => {
@@ -53,5 +53,36 @@ describe('XML', () => {
         '<url><loc>https://x.br/a?b=1&amp;c=2</loc></url>\n' +
         '<url><loc>https://x.br/e</loc><lastmod>2026-10-18T10:00:00.000Z</lastmod></url>\n</urlset>\n',
     );
+  });
+});
+
+describe('emLotes', () => {
+  it('nunca passa do tamanho do lote e mantém a ordem', async () => {
+    let agora = 0;
+    let maior = 0;
+    const r = await emLotes([1, 2, 3, 4, 5, 6, 7, 8, 9], 4, async (n) => {
+      agora += 1;
+      maior = Math.max(maior, agora);
+      await new Promise((ok) => setTimeout(ok, 1));
+      agora -= 1;
+      return n * 2;
+    });
+    expect(maior).toBeLessThanOrEqual(4);
+    expect(r).toEqual([2, 4, 6, 8, 10, 12, 14, 16, 18]);
+  });
+});
+
+describe('comNovaTentativa', () => {
+  it('uma falha passageira não vira resultado vazio', async () => {
+    let vezes = 0;
+    const v = await comNovaTentativa(async () => {
+      vezes += 1;
+      if (vezes === 1) throw new Error('tempo esgotado');
+      return 'ok';
+    });
+    expect(v).toBe('ok');
+  });
+  it('falhou de novo: devolve null para quem chamou saber que faltou', async () => {
+    expect(await comNovaTentativa(async () => Promise.reject(new Error('fora')))).toBeNull();
   });
 });
