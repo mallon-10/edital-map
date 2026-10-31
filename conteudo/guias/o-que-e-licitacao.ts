@@ -8,7 +8,7 @@ export const guia: Guia = {
     'O que é licitação, as cinco modalidades da Lei 14.133 (pregão, concorrência, concurso, leilão e diálogo competitivo), os critérios de julgamento e a dispensa.',
   resposta:
     'Licitação é o processo público que o governo usa para escolher quem vai vender um produto, prestar um serviço ou fazer uma obra, comparando propostas com regras iguais para todos. A Lei 14.133/2021 tem cinco modalidades: pregão, concorrência, concurso, leilão e diálogo competitivo. Em casos previstos na lei, a contratação pode ser direta.',
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'O que é licitação',
@@ -166,5 +166,5 @@ export const guia: Guia = {
     { nome: 'Nova Lei de Licitações (Portal de Compras do Governo Federal)', url: 'https://www.gov.br/compras/pt-br/nllc' },
     { nome: 'Portal Nacional de Contratações Públicas (gov.br)', url: 'https://www.gov.br/pncp/pt-br' },
   ],
-  relacionados: ['como-participar-de-licitacao', 'pregao-eletronico', 'dispensa-de-licitacao', 'nova-lei-de-licitacoes'],
+  relacionados: ['como-participar-de-licitacao', 'pregao-eletronico', 'dispensa-de-licitacao', 'nova-lei-de-licitacoes', 'modalidades-de-licitacao'],
 };

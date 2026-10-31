@@ -4,6 +4,9 @@ export const SLUGS_GUIAS = [
   'inexigibilidade-de-licitacao', 'ata-de-registro-de-precos', 'documentos-para-licitacao', 'atestado-de-capacidade-tecnica', 'pncp', 'empenho',
   // Segundo lote (23/10/2026)
   'compras-gov-br', 'licitacao-de-prefeitura', 'me-epp-e-mei', 'impugnacao-e-recurso', 'proposta-de-precos',
+  // Terceiro lote (31/10/2026): pautas em docs/seo-pautas.md
+  'contrata-mais-brasil', 'plano-de-contratacoes-anual', 'modalidades-de-licitacao', 'preco-inexequivel', 'onde-encontrar-licitacoes',
+  'plataformas-de-licitacao', 'painel-de-precos', 'ceis-e-cnep',
 ] as const;
 
 export const SLUGS_TERMOS = [

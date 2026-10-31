@@ -8,7 +8,7 @@ export const guia: Guia = {
     'MEI, ME e EPP podem participar de licitação com benefícios da LC 123: desempate, prazo para certidões, itens exclusivos e cota. Veja o que muda em 2027.',
   resposta:
     'Sim, MEI, microempresa (ME) e empresa de pequeno porte (EPP) podem participar de licitação e têm tratamento favorecido pela Lei Complementar 123/2006, aplicado pela Lei 14.133 (art. 4º). Os principais benefícios são o desempate a seu favor, prazo extra para regularizar certidões, itens exclusivos de até R$ 80 mil em 2026 e cota reservada.',
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'Quem é ME, EPP e MEI',
@@ -182,5 +182,5 @@ export const guia: Guia = {
     { nome: 'Lei nº 14.133/2021 (Planalto)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm' },
     DECRETO_VALORES.fonte,
   ],
-  relacionados: ['como-participar-de-licitacao', 'documentos-para-licitacao', 'pregao-eletronico', 'impugnacao-e-recurso'],
+  relacionados: ['como-participar-de-licitacao', 'documentos-para-licitacao', 'pregao-eletronico', 'impugnacao-e-recurso', 'contrata-mais-brasil'],
 };

@@ -7,7 +7,7 @@ export const guia: Guia = {
     'O que é o Compras.gov.br, o antigo Comprasnet: como entrar com a conta gov.br, o SICAF, onde ver editais, a sessão, os lances e o chat do pregoeiro.',
   resposta:
     'O Compras.gov.br, chamado de Comprasnet até outubro de 2021, é o sistema do governo federal onde órgãos públicos fazem pregões, dispensas eletrônicas e outras compras pela internet. Fica em gov.br/compras. Para participar, a empresa entra com a conta gov.br, faz o credenciamento gratuito no SICAF e envia proposta e lances pelo próprio sistema.',
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'Onde fica o Compras.gov.br (antigo Comprasnet)',
@@ -192,5 +192,5 @@ export const guia: Guia = {
     },
     { nome: 'Lei nº 14.133/2021 (Planalto)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm' },
   ],
-  relacionados: ['sicaf', 'pregao-eletronico', 'pncp', 'licitacao-de-prefeitura'],
+  relacionados: ['sicaf', 'pregao-eletronico', 'pncp', 'licitacao-de-prefeitura', 'plataformas-de-licitacao'],
 };

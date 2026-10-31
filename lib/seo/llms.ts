@@ -21,7 +21,7 @@ export function textoLlms(): string {
     '',
     '> Mapa das licitações públicas abertas no Brasil para empresas que vendem ao governo. Os dados vêm do Portal Nacional de Contratações Públicas (PNCP), são atualizados a cada 3 horas e cobrem as 27 unidades da federação.',
     '',
-    'Pesquisar e abrir editais é grátis, sem conta. O plano Pro inclui Alertas diários por e-mail, Meu Radar, Minhas Oportunidades e resumo semanal; veja a página Planos.',
+    'Pesquisar e abrir editais é grátis, sem conta, e cada pesquisa por palavra mostra cinco editais. O plano Pro libera todos e inclui Alertas diários por e-mail, Meu Radar, Minhas Oportunidades e resumo semanal; veja a página Planos.',
     '',
     'Cobertura: pregão eletrônico, pregão presencial, concorrência, dispensa e credenciamento publicados no PNCP. O Edital Map não é plataforma de disputa: a proposta é enviada na plataforma indicada no edital. Edital aberto significa prazo de proposta em curso, sem revogação nem anulação. A fonte oficial de cada edital é o próprio PNCP ou o sistema do órgão.',
     '',

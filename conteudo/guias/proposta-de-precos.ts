@@ -7,7 +7,7 @@ export const guia: Guia = {
     'Como montar a proposta de preços para licitação: o que ela contém, como formar o preço, validade, proposta ajustada no pregão e erros que desclassificam.',
   resposta:
     'A proposta de preços é a oferta da empresa na licitação. Traz o item descrito como pede o termo de referência, marca e modelo quando exigidos, preço unitário e total, validade, prazo de entrega e as declarações do edital. O preço precisa cobrir custo, frete, impostos, prazo de pagamento e margem, sem ser inexequível nem passar do orçamento.',
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'O que vai na proposta de preços',
@@ -74,7 +74,7 @@ export const guia: Guia = {
         {
           tipo: 'lista',
           itens: [
-            'Obras e serviços de engenharia: a lei considera [inexequível](/glossario/inexequibilidade) a proposta abaixo de 75% do valor orçado pela administração (art. 59, § 4º). Quem vence abaixo de 85% do orçado presta uma garantia adicional (art. 59, § 5º).',
+            'Obras e serviços de engenharia: a lei presume [inexequível](/guias/preco-inexequivel) a proposta abaixo de 75% do valor orçado pela administração (art. 59, § 4º). Para o TCU, a presunção é relativa: a empresa pode demonstrar que o preço é viável. Quem vence abaixo de 85% do orçado presta uma garantia adicional (art. 59, § 5º).',
             'Bens e serviços em geral: a lei não fixa percentual. Nas compras federais, a IN SEGES/ME nº 73/2022 trata o preço abaixo de 50% do orçado como indício, e só depois de diligência que mostre custo maior que o preço a proposta é considerada inexequível (art. 34). Outros órgãos podem ter regra própria: confira o edital.',
           ],
         },
@@ -183,7 +183,7 @@ export const guia: Guia = {
     {
       pergunta: 'O que é preço inexequível?',
       resposta:
-        'É o preço que não cobre os custos de cumprir o contrato. A proposta com preço inexequível é desclassificada (art. 59, III). Em obras e serviços de engenharia, a lei considera inexequível o valor abaixo de 75% do orçado (art. 59, § 4º). Em bens e outros serviços, o critério vem do regulamento e do edital.',
+        'É o preço que não cobre os custos de cumprir o contrato. A proposta com preço inexequível é desclassificada (art. 59, III). Em obras e serviços de engenharia, a lei presume inexequível o valor abaixo de 75% do orçado (art. 59, § 4º), e o TCU admite que a empresa demonstre que ele é viável. Em bens e outros serviços, o critério vem do regulamento e do edital.',
     },
     {
       pergunta: 'Preciso informar a marca do produto?',
@@ -211,5 +211,5 @@ export const guia: Guia = {
       url: 'https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-seges-me-no-98-de-26-de-dezembro-de-2022',
     },
   ],
-  relacionados: ['pregao-eletronico', 'como-participar-de-licitacao', 'impugnacao-e-recurso', 'me-epp-e-mei'],
+  relacionados: ['pregao-eletronico', 'como-participar-de-licitacao', 'impugnacao-e-recurso', 'me-epp-e-mei', 'painel-de-precos', 'preco-inexequivel'],
 };

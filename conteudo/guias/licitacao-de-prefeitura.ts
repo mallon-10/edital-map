@@ -8,7 +8,7 @@ export const guia: Guia = {
     'Como participar de licitação de prefeitura: onde os editais saem, plataformas, cadastro, pregão presencial, preferência local para ME e EPP e dispensa.',
   resposta:
     'Para vender para prefeitura, a empresa precisa estar regular, achar os editais do município no PNCP ou no diário oficial, se cadastrar na plataforma que a prefeitura usa e disputar no dia marcado. As regras gerais são as da Lei 14.133/2021, mas cada edital traz as exigências daquela compra: leia o edital inteiro antes de participar.',
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'As regras que valem para a prefeitura',
@@ -186,5 +186,5 @@ export const guia: Guia = {
     },
     DECRETO_VALORES.fonte,
   ],
-  relacionados: ['como-participar-de-licitacao', 'compras-gov-br', 'me-epp-e-mei', 'dispensa-de-licitacao'],
+  relacionados: ['como-participar-de-licitacao', 'compras-gov-br', 'me-epp-e-mei', 'dispensa-de-licitacao', 'plataformas-de-licitacao'],
 };

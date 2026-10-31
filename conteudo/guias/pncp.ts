@@ -7,7 +7,7 @@ export const guia: Guia = {
     'O que é o PNCP (Portal Nacional de Contratações Públicas), o que a Lei 14.133 manda publicar nele e como achar editais abertos do seu ramo.',
   resposta:
     'O PNCP (Portal Nacional de Contratações Públicas) é o site oficial, criado pela Lei 14.133/2021, onde União, estados e municípios divulgam editais, avisos de contratação direta, atas de registro de preços e contratos. Fica em pncp.gov.br. Ele serve para divulgar e consultar; a disputa em si costuma acontecer em outra plataforma, indicada no edital.',
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'O que é o PNCP',
@@ -169,5 +169,5 @@ export const guia: Guia = {
     { nome: 'Sobre o PNCP (gov.br)', url: 'https://www.gov.br/pncp/pt-br' },
     { nome: 'Compras.gov.br (gov.br)', url: 'https://www.gov.br/compras/pt-br' },
   ],
-  relacionados: ['como-participar-de-licitacao', 'nova-lei-de-licitacoes', 'sicaf', 'pregao-eletronico'],
+  relacionados: ['como-participar-de-licitacao', 'nova-lei-de-licitacoes', 'sicaf', 'pregao-eletronico', 'onde-encontrar-licitacoes', 'plano-de-contratacoes-anual'],
 };

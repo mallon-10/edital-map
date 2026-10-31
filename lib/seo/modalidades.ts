@@ -29,7 +29,7 @@ export const MODALIDADES: readonly Modalidade[] = [
   {
     slug: 'concorrencia',
     id: 4,
-    saibaMais: '/glossario/concorrencia',
+    saibaMais: '/guias/modalidades-de-licitacao',
     nome: 'concorrência',
     explicacao:
       'A concorrência serve para bens e serviços especiais e para obras e serviços de engenharia (Lei 14.133/2021, art. 6º, XXXVIII). O critério pode ser menor preço, melhor técnica, técnica e preço, maior retorno econômico ou maior desconto, e a habilitação costuma pedir mais documentos. ' +

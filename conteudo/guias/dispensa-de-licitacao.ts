@@ -6,7 +6,7 @@ export const guia: Guia = {
   titulo: 'Dispensa de licitação: quando cabe, valores de 2026 e dispensa eletrônica',
   descricao: 'Quando o governo pode comprar sem licitação (art. 75 da Lei 14.133), os limites de valor de 2026 e como funciona a dispensa eletrônica para o fornecedor.',
   resposta: `Dispensa de licitação é quando a lei permite ao órgão contratar sem fazer licitação, nos casos listados no art. 75 da Lei 14.133/2021. O caso mais comum é o pequeno valor: em 2026, abaixo de ${VALORES.dispensaCompras} para compras e serviços e de ${VALORES.dispensaObras} para obras e serviços de engenharia. Muitas têm disputa de lances na dispensa eletrônica.`,
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'O que é dispensa de licitação',
@@ -192,5 +192,5 @@ export const guia: Guia = {
       url: 'https://www.gov.br/compras/pt-br/nllc/legislacao-14-133-por-tema/outros/dispensa-eletronica',
     },
   ],
-  relacionados: ['inexigibilidade-de-licitacao', 'pregao-eletronico', 'sicaf', 'como-participar-de-licitacao'],
+  relacionados: ['inexigibilidade-de-licitacao', 'pregao-eletronico', 'sicaf', 'como-participar-de-licitacao', 'contrata-mais-brasil'],
 };

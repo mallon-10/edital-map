@@ -181,7 +181,7 @@ export const termos: Termo[] = [
     definicao:
       'Inexequibilidade é a situação em que o preço de uma proposta é tão baixo que não parece possível cumprir o contrato com ele. A lei manda desclassificar propostas com preços inexequíveis, e o órgão pode pedir que a empresa demonstre, com planilhas e documentos, que consegue entregar pelo valor oferecido.',
     detalhe:
-      'Em obras e serviços de engenharia, a lei considera inexequível a proposta abaixo de 75% do valor orçado pela administração. Para bens e outros serviços, os critérios dependem do regulamento e do [edital](/glossario/edital), e muitas vezes o órgão abre prazo para a empresa provar que o preço se sustenta. Na disputa de [lances](/glossario/lance), calcule antes o seu preço mínimo com impostos, frete e margem, e tenha notas e cotações de fornecedores à mão.',
+      'Em obras e serviços de engenharia, a lei presume inexequível a proposta abaixo de 75% do valor orçado pela administração, e o TCU admite que a empresa demonstre que o preço é viável. Para bens e outros serviços, os critérios dependem do regulamento e do [edital](/glossario/edital), e muitas vezes o órgão abre prazo para a empresa provar que o preço se sustenta. Na disputa de [lances](/glossario/lance), calcule antes o seu preço mínimo com impostos, frete e margem, e tenha notas e cotações de fornecedores à mão.',
     artigo: 'Lei 14.133/2021, art. 59, III e § 4º',
     relacionados: ['menor-preco', 'sobrepreco', 'lance', 'proposta'],
     guia: 'pregao-eletronico',

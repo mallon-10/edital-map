@@ -8,7 +8,7 @@ export const guia: Guia = {
     'O que a Lei 14.133/2021 mudou para quem vende ao governo: fim da 8.666, PNCP, pregão eletrônico, julgamento antes da habilitação, dispensa e garantias.',
   resposta:
     'A Nova Lei de Licitações (Lei 14.133/2021) é a lei geral de compras públicas do Brasil desde 30 de dezembro de 2023, quando a Lei 8.666/1993 e a Lei do Pregão foram revogadas. Para a empresa, ela trouxe o PNCP, a disputa preferencialmente eletrônica, o julgamento antes da habilitação e novas regras de dispensa e garantia.',
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'O que é a Lei 14.133 e desde quando vale',
@@ -94,7 +94,7 @@ export const guia: Guia = {
           itens: [
             '[Matriz de riscos](/glossario/matriz-de-riscos): cláusula que divide entre o órgão e a empresa a responsabilidade por eventos depois da assinatura (art. 6º, XXVII, e art. 22). Leia antes de calcular o preço.',
             '[Garantia contratual](/glossario/garantia-contratual): quando o edital exige, pode chegar a 5% do valor inicial do contrato, ou até 10% com justificativa (art. 98). A empresa escolhe entre caução, [seguro-garantia](/glossario/seguro-garantia), fiança bancária ou título de capitalização (art. 96, § 1º).',
-            '[Inexequibilidade](/glossario/inexequibilidade): em obras e serviços de engenharia, proposta abaixo de 75% do valor orçado pelo órgão é considerada inexequível (art. 59, § 4º).',
+            '[Inexequibilidade](/glossario/inexequibilidade): em obras e serviços de engenharia, proposta abaixo de 75% do valor orçado pelo órgão é presumida [inexequível](/guias/preco-inexequivel) (art. 59, § 4º). Para o TCU, a presunção é relativa: a empresa pode demonstrar que o preço é viável.',
             'Ordem cronológica: o órgão deve pagar seguindo a ordem cronológica de cada fonte de recursos, separada por tipo de contrato (art. 141). O guia de [empenho](/guias/empenho) mostra o caminho até o pagamento.',
             'Sanções: advertência, multa, impedimento de licitar e contratar e declaração de inidoneidade (art. 156).',
           ],
@@ -154,5 +154,5 @@ export const guia: Guia = {
       url: 'https://www.gov.br/compras/pt-br/nllc/legislacao-14-133-por-tema/outros/dispensa-eletronica',
     },
   ],
-  relacionados: ['o-que-e-licitacao', 'como-participar-de-licitacao', 'pncp', 'dispensa-de-licitacao'],
+  relacionados: ['o-que-e-licitacao', 'como-participar-de-licitacao', 'pncp', 'dispensa-de-licitacao', 'modalidades-de-licitacao'],
 };

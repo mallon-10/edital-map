@@ -6,7 +6,7 @@ export const guia: Guia = {
   descricao: 'Como funciona o pregão eletrônico na Lei 14.133: fases, prazos, modos de disputa, lances, negociação, habilitação e recurso, explicado para empresas.',
   resposta:
     'Pregão eletrônico é a modalidade de licitação usada para comprar bens e serviços comuns pela internet. As empresas enviam propostas e depois disputam com lances públicos, e vence o menor preço ou o maior desconto. Em regra, só depois do julgamento o pregoeiro confere os documentos de habilitação de quem ficou em primeiro lugar (Lei 14.133/2021, arts. 6º e 17).',
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'O que é o pregão',
@@ -200,5 +200,5 @@ export const guia: Guia = {
     },
     { nome: 'Lei Complementar nº 123/2006 (Planalto)', url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp123.htm' },
   ],
-  relacionados: ['sicaf', 'como-participar-de-licitacao', 'documentos-para-licitacao', 'dispensa-de-licitacao'],
+  relacionados: ['sicaf', 'como-participar-de-licitacao', 'documentos-para-licitacao', 'dispensa-de-licitacao', 'modalidades-de-licitacao'],
 };

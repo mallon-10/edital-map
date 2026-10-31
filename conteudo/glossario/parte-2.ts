@@ -263,7 +263,7 @@ export const termos: Termo[] = [
     definicao:
       'Plano de contratações anual é a lista, preparada por cada órgão público, das compras e contratações que ele pretende fazer no ano seguinte. Ele serve para organizar as compras e alinhar com o orçamento, e deve ser publicado em site oficial, o que permite às empresas saber com antecedência o que o governo planeja comprar.',
     detalhe:
-      'Os planos são publicados no [PNCP](/glossario/pncp), onde é possível pesquisar por órgão e por tipo de item. Para quem vende, o PCA é um bom ponto de partida para prospecção: mostra quais órgãos devem comprar o que a empresa oferece e em que época, antes mesmo de o [edital](/glossario/edital) sair. Ele é um planejamento, não uma promessa de compra, e pode mudar ao longo do ano. Veja o guia [PNCP](/guias/pncp).',
+      'Os planos são publicados no [PNCP](/glossario/pncp), onde é possível abrir o plano de cada órgão e baixar a lista de itens. Para quem vende, o PCA é um bom ponto de partida para prospecção: mostra quais órgãos devem comprar o que a empresa oferece e em que época, antes mesmo de o [edital](/glossario/edital) sair. Ele é um planejamento, não uma promessa de compra, e pode mudar ao longo do ano. Veja o guia [PNCP](/guias/pncp).',
     artigo: 'Lei 14.133/2021, art. 12, VII, e § 1º',
     relacionados: ['pncp', 'edital', 'estudo-tecnico-preliminar'],
     guia: 'pncp',

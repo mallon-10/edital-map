@@ -8,7 +8,7 @@ export const guia: Guia = {
     'Passo a passo para a empresa vender ao governo: documentos, cadastro, onde achar editais, proposta, disputa, habilitação, contrato e pagamento.',
   resposta:
     'Para participar de licitação, a empresa precisa estar regular (CNPJ e certidões em dia), se cadastrar na plataforma onde o órgão faz a disputa, encontrar editais do seu ramo, ler o edital inteiro, enviar a proposta no prazo, disputar os lances e, se vencer, apresentar os documentos de habilitação e assinar o contrato.',
-  revisadoEm: '2026-10-23',
+  revisadoEm: '2026-10-31',
   secoes: [
     {
       titulo: 'Quem pode vender para o governo',
@@ -96,6 +96,22 @@ export const guia: Guia = {
       ],
     },
     {
+      titulo: 'Quais guias ler em cada etapa?',
+      blocos: [
+        {
+          tipo: 'lista',
+          itens: [
+            'Sou MEI: veja o [Contrata Mais Brasil](/guias/contrata-mais-brasil), o programa federal de pequenas contratações.',
+            'Quero achar compras: comece por [onde encontrar licitações](/guias/onde-encontrar-licitacoes) e, para saber o que vem pela frente, pelo [plano de contratações anual](/guias/plano-de-contratacoes-anual). O [panorama](/panorama) mostra quantos editais estão abertos por estado e modalidade.',
+            'Não sei que tipo de compra é: leia [modalidades de licitação](/guias/modalidades-de-licitacao).',
+            'O edital cita um sistema que não conheço: veja [plataformas de licitação](/guias/plataformas-de-licitacao).',
+            'Preciso formar o preço: consulte [quanto o governo pagou](/guias/painel-de-precos) e entenda o [preço inexequível](/guias/preco-inexequivel).',
+            'Vou subcontratar ou formar consórcio: consulte o [CEIS e o CNEP](/guias/ceis-e-cnep) antes.',
+          ],
+        },
+      ],
+    },
+    {
       titulo: 'Como o Edital Map ajuda',
       blocos: [
         {
@@ -140,5 +156,5 @@ export const guia: Guia = {
     { nome: 'Portal Nacional de Contratações Públicas (gov.br)', url: 'https://www.gov.br/pncp/pt-br' },
     { nome: 'Portal de Compras do Governo Federal (gov.br)', url: 'https://www.gov.br/compras/pt-br' },
   ],
-  relacionados: ['o-que-e-licitacao', 'documentos-para-licitacao', 'pregao-eletronico', 'sicaf'],
+  relacionados: ['o-que-e-licitacao', 'documentos-para-licitacao', 'pregao-eletronico', 'sicaf', 'onde-encontrar-licitacoes', 'contrata-mais-brasil'],
 };
