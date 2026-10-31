@@ -7,9 +7,13 @@ Pedido do João depois de duas semanas de Google Ads: contatos para a assessoria
 
 ## Decisões
 
-**Oferta depois da busca** (`lib/ofertaBusca.ts`, `components/inicio/OfertaBusca.tsx`). Cartão no fluxo da página, só para o grátis, com termo, lugar e total reais. Sem termo fica a faixa geral; sem resultado, nada. Fica no lugar da faixa, nunca junto. Cada busca aparece uma vez na sessão, no máximo três por sessão; fechar vale para a sessão (`sessionStorage`, `em_oferta_busca`). A oferta só muda com a resposta da busca (`buscaPronta`), para nunca mostrar total velho nem sumir ao trocar a ordem.
+**Oferta depois da busca** (`lib/ofertaBusca.ts`, `components/inicio/OfertaBusca.tsx`). A primeira versão ficava abaixo do mapa, fora da primeira tela, e foi revertida no mesmo dia: visual fraco e oferta escondida. Agora é um cartão azul-escuro no topo dos resultados, entre a confirmação da busca e os editais, só para o grátis, com termo, lugar e total reais. Sem termo fica a faixa geral; sem resultado, nada; nunca as duas. Aparece em toda busca até a pessoa fechar, e fechar vale para a sessão (`sessionStorage`, `em_oferta_busca`): a regra antiga de uma vez por busca, com teto de três, ajudava a escondê-la. O título fala do próximo passo, e o total vai na frase de apoio, porque a confirmação logo acima já diz quantos editais foram achados. A oferta só muda com a resposta da busca (`buscaPronta`), para nunca mostrar total velho nem sumir ao trocar a ordem.
+
+**Resposta da busca.** Quem busca é levado aos resultados nas duas larguras, com "Buscando editais…" e cartões animados enquanto espera, e depois a confirmação com quantos editais achou. A rolagem sai depois do desenho: a faixa geral some do topo junto com a busca, e rolar antes passaria do ponto.
 
 **Continuidade** (`lib/alertaDaBusca.ts`). `/alertas/novo?q=&uf=&municipio=&valor=&modalidades=`: o grátis vê a prévia, que diz que o alerta ainda não foi criado; o Pro vê o formulário preenchido. Raio, órgão e prazo não entram: o alerta não guarda esses filtros, e por isso a oferta com raio promete o município, não o círculo. A prévia guarda o rascunho em `localStorage` (`em_rascunho_alerta`) e o onboarding pós-compra abre preenchido; o `POST /api/radar` cria o alerta real.
+
+**Ofertas no edital.** Assessoria e Pro ficam lado a lado, logo abaixo do cartão principal. No celular, o botão verde do cartão do topo continua, porque as ofertas ficam fora da primeira tela. Para quem já é Pro, o cartão de monitorar não fala em preço.
 
 **Monitorar parecidos no edital.** `segmentoDoEdital` usa o termo do catálogo que bateu no objeto, não o nome do ramo ("luvas de procedimento" não vira "medicamento"). Sem termo conhecido, vai só a UF: nenhum segmento é inventado.
 

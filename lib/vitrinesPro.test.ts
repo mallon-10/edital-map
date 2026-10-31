@@ -68,6 +68,13 @@ describe('prévia do alerta vinda da busca', () => {
     expect(html).toContain('A ativação depende da assinatura');
     expect(html).not.toMatch(/alerta criado|alerta ativado|alerta ligado/i);
   });
+  it('um botão só: voltar à busca é um link discreto', () => {
+    expect(html.match(/h-\[54px\]/g)).toHaveLength(1);
+    expect(html).not.toContain('border-line-strong bg-raised text-ink hover:bg-sunken');
+  });
+  it('quando chega, em poucas palavras', () => {
+    expect(html).toContain('Todos os dias às 7h, quando houver novidade');
+  });
   it('chamada para ativar e o caminho de volta à busca', () => {
     expect(html).toContain('Ativar este alerta — R$ 37,90/mês');
     expect(html).toContain('Continuar pesquisando grátis');

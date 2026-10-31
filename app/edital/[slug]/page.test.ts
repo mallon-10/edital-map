@@ -67,6 +67,13 @@ describe('página do edital no grátis (sem limite e sem cadeado)', async () => 
     expect(html).toContain('Monitorar oportunidades semelhantes');
     expect(html).toMatch(/href="\/alertas\/novo\?q=luva[^"]*uf=SC"/i);
   });
+  it('as duas ofertas logo abaixo do cartão principal, uma vez cada, a assessoria primeiro', () => {
+    expect(html.match(/Monitorar oportunidades semelhantes/g)).toHaveLength(1);
+    expect(html.match(/Quer participar desta licitação\?/g)).toHaveLength(1);
+    const resumo = html.indexOf('Resumo da oportunidade');
+    expect(html.indexOf('Quer participar desta licitação?')).toBeLessThan(html.indexOf('Quer encontrar outras licitações como esta?'));
+    expect(html.indexOf('Monitorar oportunidades semelhantes')).toBeLessThan(resumo);
+  });
   it('assessoria com preço inicial, levando à triagem com o edital ligado (nunca direto ao WhatsApp)', () => {
     expect(html).toContain('Quer participar desta licitação?');
     expect(html).toContain('Assessoria a partir de R$ 197.');

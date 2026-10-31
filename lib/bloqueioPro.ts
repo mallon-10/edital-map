@@ -35,6 +35,7 @@ export const PREVIA_ALERTA = {
   titulo: 'Prévia do seu alerta',
   aviso: 'Este alerta ainda não foi criado. A ativação depende da assinatura do Pro: depois de assinar, você confirma os filtros e ele começa a valer.',
   semProdutos: 'Você escolhe os produtos ao ativar',
+  quando: 'Todos os dias às 7h, quando houver novidade',
   cta: `Ativar este alerta — ${PRECO_PRO_MENSAL}`,
   voltar: 'Continuar pesquisando grátis',
 } as const;

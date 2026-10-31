@@ -76,7 +76,7 @@ export function CartaoTopo(p: Props) {
           <button
             type="button"
             onClick={p.aoVerEditais}
-            className="h-[54px] min-w-0 flex-1 rounded-full bg-pin px-6 text-[17px] font-semibold text-on-pin lg:h-[60px] lg:flex-none lg:px-9 lg:text-[18px]"
+            className="h-[54px] min-w-0 flex-1 rounded-full bg-pin px-6 text-[17px] font-semibold text-on-pin lg:h-[60px] lg:flex-none lg:px-7 lg:text-[18px] xl:px-9"
           >
             <span className="lg:hidden">Ver os editais</span>
             <span className="hidden lg:inline">{p.total > 0 ? `Ver os ${numero(p.total)} editais` : 'Ver a lista'}</span>

@@ -209,12 +209,15 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
           <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" />
         </div>
 
+        {/* As duas ofertas logo abaixo do cartão principal: ajuda com este edital e acompanhar os próximos. */}
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-5">
+          {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria" /> : null}
+          <CartaoMonitorar {...monitorar} />
+        </div>
+
         {/* Seção nova da página entra aqui (e a consulta dela, em detalhesDoEdital). */}
         <ResumoOportunidade frases={resumoOportunidade(e)} />
         <PrincipaisInformacoes edital={e} resumo={detalhes.resumo} agora={agora} />
-        {/* Assessoria: no celular antes de documentos e itens; no computador, no topo da coluna da direita. */}
-        {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria" className="flex lg:hidden" /> : null}
-        <CartaoMonitorar {...monitorar} id="monitorar" className="flex lg:hidden" />
 
         <div className="flex flex-wrap items-start gap-5 lg:gap-6">
           <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-5 lg:gap-6">
@@ -247,8 +250,6 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
             </section>
           </div>
           <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-5 lg:gap-6">
-            {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria-lado" className="hidden lg:flex" /> : null}
-            <CartaoMonitorar {...monitorar} id="monitorar-lado" className="hidden lg:flex" />
             <FichaEdital edital={e} agora={agora} atualizadoEm={atualizado} links={detalhes.links} />
             <VitrineEmBreve slug={e.slug} />
             <section aria-labelledby="local" className={`${CARTAO} flex flex-col gap-3 text-[15px]`}>

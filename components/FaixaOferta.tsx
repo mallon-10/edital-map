@@ -6,7 +6,7 @@ import { rastrear } from '@/lib/cliente/rastrear';
 import { useAoVer } from '@/lib/cliente/aoVer';
 import { CHAVE_OFERTA_FECHADA, ofertaFechada } from '@/lib/inicio';
 import { OFERTA } from '@/lib/planos';
-import { IconeEmail, IconeFechar } from './inicio/Icones';
+import { IconeFechar } from './inicio/Icones';
 
 /**
  * Cartão da oferta do Pro (receber as licitações certas por e-mail), para quem não é Pro. Na página inicial fica embaixo
@@ -36,29 +36,24 @@ export function FaixaOferta({ className = '' }: { className?: string }) {
   }
 
   return (
-    <aside ref={cartao} aria-label="Alertas por e-mail" className={`flex items-start gap-3 rounded-[22px] bg-raised p-4 pr-2 lg:gap-5 lg:px-6 lg:py-5 ${className}`}>
-      <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-[15px] bg-surface lg:size-[60px] lg:rounded-[18px]">
-        <IconeEmail className="size-[22px] text-pin-strong lg:size-[26px]" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[16px] font-semibold leading-snug lg:text-[19px]">{OFERTA.texto}</p>
-        <p className="mt-1 text-[14px] text-ink-muted lg:text-[15px]">
-          {OFERTA.apoio}{' '}
-          <Link
-            href={OFERTA.href}
-            prefetch={false}
-            onClick={() => rastrear('pro_cta_clicked', { origem: 'faixa' }, { soGa: true })}
-            className="font-semibold text-pin-strong underline-offset-2 hover:underline"
-          >
-            {OFERTA.cta}
-          </Link>
-        </p>
+    <aside ref={cartao} aria-label="Alertas por e-mail" className={`relative flex flex-col gap-3 rounded-[22px] bg-ink p-5 text-surface lg:flex-row lg:items-center lg:gap-6 lg:py-5 lg:pl-7 lg:pr-14 ${className}`}>
+      <div className="min-w-0 flex-1 pr-8 lg:pr-0">
+        <p className="text-pretty text-[18px] font-bold leading-tight lg:text-[21px]">{OFERTA.texto}</p>
+        <p className="mt-1 text-pretty text-[14.5px] leading-snug text-[#c7d6d3]">{OFERTA.apoio}</p>
       </div>
+      <Link
+        href={OFERTA.href}
+        prefetch={false}
+        onClick={() => rastrear('pro_cta_clicked', { origem: 'faixa' }, { soGa: true })}
+        className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-pin px-6 text-[15px] font-semibold text-on-pin"
+      >
+        {OFERTA.cta}
+      </Link>
       <button
         type="button"
         onClick={fechar}
         aria-label="Fechar a oferta"
-        className="-mt-1 flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-sunken"
+        className="absolute right-1.5 top-1.5 flex size-11 items-center justify-center rounded-full text-[#c7d6d3] hover:bg-white/10 hover:text-surface"
       >
         <IconeFechar className="size-5" />
       </button>

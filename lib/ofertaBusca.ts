@@ -18,21 +18,20 @@ const cortar = (t: string) => (t.length > MAX_TERMO ? `${t.slice(0, MAX_TERMO).t
 export function ofertaDaBusca(f: FiltrosTela, total: number): OfertaDaBusca | null {
   const termo = separarNegativos(f.q).positivo.replace(/\s+/g, ' ').trim();
   if (!termo || !temTermo(f.q) || total < 1) return null;
-  const lugar = localDaBusca(f);
   // O alerta guarda o município, não o raio: a promessa de envio fica no que ele faz.
-  const lugarDoAlerta = localDaBusca({ ...f, raio: null });
+  const lugar = localDaBusca({ ...f, raio: null });
+  const abertos = total === 1 ? 'É 1 aberto' : `São ${numero(total)} abertos`;
   return {
     chave: [chave(termo), f.uf, f.cidade?.ibge ?? '', f.raio ?? ''].join('|'),
-    titulo: `Encontramos ${numero(total)} ${total === 1 ? 'licitação' : 'licitações'} de ${cortar(termo)}${lugar ? ` ${lugar}` : ''}.`,
-    texto: `Novas oportunidades podem aparecer todos os dias. Receba automaticamente os novos editais desse segmento${lugarDoAlerta ? ` ${lugarDoAlerta}` : ''} e acompanhe tudo em um único lugar.`,
+    titulo: `Não perca os próximos editais de ${cortar(termo)}${lugar ? ` ${lugar}` : ''}.`,
+    texto: `${abertos} agora, e novas oportunidades podem aparecer todos os dias. Receba por e-mail, sem precisar pesquisar.`,
     preco: PRECO_PRO_MENSAL,
     href: hrefAlertaDaBusca(f),
   };
 }
 
-/** sessionStorage: quem fechou não vê mais nesta sessão, e cada busca aparece uma vez (no máximo três por sessão). */
+/** sessionStorage: aparece em toda busca até a pessoa fechar, e fechar vale para a sessão. `vistas` só evita contar o evento duas vezes. */
 export const CHAVE_OFERTA_BUSCA = 'em_oferta_busca';
-export const MAX_OFERTAS_SESSAO = 3;
 export type SessaoOferta = { fechada: boolean; vistas: string[] };
 
 export function lerSessaoOferta(bruto: string | null): SessaoOferta {
@@ -44,8 +43,8 @@ export function lerSessaoOferta(bruto: string | null): SessaoOferta {
   }
 }
 
-export function ofertaPodeAparecer(s: SessaoOferta, chaveOferta: string): boolean {
-  return !s.fechada && !s.vistas.includes(chaveOferta) && s.vistas.length < MAX_OFERTAS_SESSAO;
+export function ofertaPodeAparecer(s: SessaoOferta): boolean {
+  return !s.fechada;
 }
 
 export function marcarOfertaVista(s: SessaoOferta, chaveOferta: string): SessaoOferta {

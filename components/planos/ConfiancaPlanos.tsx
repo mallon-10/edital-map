@@ -12,9 +12,9 @@ export function ConfiancaPlanos() {
           Como o Edital Map funciona
         </h2>
       </div>
-      <ul className="m-0 grid list-none gap-2.5 p-0 sm:grid-cols-2">
+      <ul className="m-0 list-none divide-y divide-line rounded-[22px] bg-raised p-0">
         {CONFIANCA.map((c) => (
-          <li key={c.titulo} className="grid grid-cols-[20px_1fr] gap-x-2.5 rounded-[22px] bg-raised p-5">
+          <li key={c.titulo} className="grid grid-cols-[20px_1fr] gap-x-2.5 px-5 py-4">
             <IconeCheck className="mt-0.5 size-5 text-mata" />
             <div>
               <p className="text-[16px] font-semibold">{c.titulo}</p>

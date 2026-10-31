@@ -12,7 +12,7 @@ import { medir } from '@/lib/cliente/medir';
 import { rastrear } from '@/lib/cliente/rastrear';
 import { hrefAlertaDaBusca } from '@/lib/alertaDaBusca';
 import { moedaCurta } from '@/lib/formato';
-import { juntarEditais, proximaPagina, temMais, tituloDaBusca } from '@/lib/inicio';
+import { juntarEditais, proximaPagina, temMais, textoDoResultado, tituloDaBusca } from '@/lib/inicio';
 import { ofertaDaBusca } from '@/lib/ofertaBusca';
 import { segmentoDaBusca } from '@/lib/rastreio';
 import { urlDosPontos } from '@/lib/pontosMapa';
@@ -101,7 +101,7 @@ type Props = {
 
 // Cartão da assessoria na página inicial (sem edital escolhido).
 const TITULO_ASSESSORIA = 'Encontrou uma licitação e não sabe como participar?';
-const TEXTO_ASSESSORIA = 'Ajudamos sua empresa a entender o edital, identificar os documentos necessários e organizar os próximos passos.';
+const TEXTO_ASSESSORIA = 'Ajudamos a entender o edital, os documentos e os próximos passos.';
 const BOTAO_ASSESSORIA = 'Quero orientação';
 
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
@@ -169,6 +169,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
   // Celular: início da lista (alvo do botão Lista) e até quando a rolagem não decide o item ativo da barra.
   const inicioLista = useRef<HTMLElement>(null);
   const ignorarRolagemAte = useRef(0);
+  const rolarDepois = useRef(false);
   // O que vai no endereço além dos filtros (vista, tela, página, ordem), sempre o mais recente (callbacks antigos leem daqui).
   const estadoAtual = useRef<EstadoTela>(estadoInicial);
   /** Escreve a busca no endereço com o estado atual mais as mudanças (sem recarregar nem criar entrada no histórico). */
@@ -186,7 +187,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     : 'Carregando o resumo…';
   const selecionado = resultado.editais.find((e) => e.id === selecionadoId) ?? resultado.editais[0] ?? null;
   const comTermo = temTermo(filtros.q);
-  // Com termo, a oferta fala da busca e fica no lugar da faixa genérica: nunca as duas.
+  // Com termo, a oferta fala da busca e vem no topo dos resultados, no lugar da faixa genérica: nunca as duas.
   const ofertaBuscada = oferta && buscaPronta ? ofertaDaBusca(buscaPronta.filtros, buscaPronta.total) : null;
   const naLista = vista === 'lista';
   // Sede do município filtrado (com ou sem raio): o mapa vai até ela; com raio, ela é o centro do círculo.
@@ -223,6 +224,14 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     },
     [trocarTela, rolarPara],
   );
+
+  // A faixa geral sai do topo junto com a busca e muda a altura da página: rolar antes do desenho passaria do ponto.
+  useEffect(() => {
+    if (!rolarDepois.current) return;
+    rolarDepois.current = false;
+    if (ehCelular()) rolarPara('lista');
+    else inicioLista.current?.scrollIntoView({ behavior: comportamento(), block: 'start' });
+  }, [filtros, rolarPara]);
 
   const carregarLista = useCallback(
     /** 'ok', 'erro' (falha) ou 'velho' (um pedido mais novo tomou o lugar: esta resposta não vale). */
@@ -408,7 +417,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
   }, [carregarMapa, rolarPara, filtrosIniciais, estadoInicial, inicial.total, pontosIniciais]);
 
   /** Aplica filtros novos: a lista sempre; o mapa só quando muda o que ele recebe. Toda mudança respondida grava o evento "busca". */
-  function aplicar(pedido: FiltrosTela, opcoes: { abrirLista?: boolean } = {}) {
+  function aplicar(pedido: FiltrosTela, opcoes: { abrirLista?: boolean; rolar?: boolean } = {}) {
     // Sem município não há raio (trocar a UF ou tirar a cidade tira o raio também).
     const novo = normalizarTela(pedido);
     // O mapa recebe tudo menos a cidade sozinha; com raio, recebe a cidade e o raio.
@@ -420,7 +429,12 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
     // Filtro novo começa na página 1 (a ordem escolhida fica).
     primeiraPagina.current = 1;
     estadoAtual.current = { ...estadoAtual.current, pagina: 1 };
-    if ((opcoes.abrirLista || cidadeNova) && ehCelular()) irPara('lista', novo);
+    if (opcoes.rolar) {
+      // Quem pediu uma busca vai aos resultados nas duas larguras; a rolagem sai depois do desenho (efeito abaixo).
+      rolarDepois.current = true;
+      trocarTela(ehCelular() ? 'lista' : tela, novo);
+      if (ehCelular()) setAtivoBarra('lista');
+    } else if ((opcoes.abrirLista || cidadeNova) && ehCelular()) irPara('lista', novo);
     else trocarTela(tela, novo);
     for (const recurso of recursosUsados(filtros, novo)) registrar('usou_recurso', { recurso });
     void carregarLista(novo, {
@@ -443,7 +457,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
 
   /** Atalho de assunto: busca o termo com os filtros de agora (como digitar no campo). */
   function escolherAtalho(termo: string) {
-    aplicar({ ...filtros, q: termo });
+    aplicar({ ...filtros, q: termo }, { rolar: true });
   }
 
   /** Mouse sobre um card (computador): o ponto dele acende no mapa. Clicar abre o edital. */
@@ -531,7 +545,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
           carregando={carregandoLista}
           filtrosAtivos={filtrosAtivos(filtros)}
           // Celular: o campo não mostra o lugar, então município e raio continuam enquanto a UF for a mesma.
-          aoBuscar={(q, uf) => aplicar(buscaDoCampo(filtros, q, uf, { manterCidade: ehCelular() }))}
+          aoBuscar={(q, uf) => aplicar(buscaDoCampo(filtros, q, uf, { manterCidade: ehCelular() }), { rolar: true })}
           aoCnpj={verCnpj}
           aoAbrirFiltros={() => setFolhaAberta(true)}
         />
@@ -547,7 +561,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
                 r={cnpj.r}
                 aoVer={(q, uf) => {
                   setCnpj(null);
-                  aplicar(buscaDoCampo(filtros, q, uf, { manterCidade: false }));
+                  aplicar(buscaDoCampo(filtros, q, uf, { manterCidade: false }), { rolar: true });
                 }}
               />
             )}
@@ -615,27 +629,10 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
             </section>
           )}
         </CartaoTopo>
-        {oferta && comTermo ? (
-          ofertaBuscada && buscaPronta ? (
-            <OfertaBusca key={ofertaBuscada.chave} oferta={ofertaBuscada} segmento={segmentoDaBusca(buscaPronta.filtros.q)} total={buscaPronta.total} />
-          ) : null
-        ) : oferta ? (
-          <FaixaOferta />
-        ) : null}
+        {oferta && !comTermo ? <FaixaOferta /> : null}
         <Suspense fallback={<Atalhos totais={{}} q={filtros.q} uf={filtros.uf} aoEscolher={escolherAtalho} />}>
           <AtalhosComTotais promessa={totaisAtalhos} q={filtros.q} uf={filtros.uf} aoEscolher={escolherAtalho} />
         </Suspense>
-        {/* Celular: a assessoria entre os assuntos e a lista (no computador ela fica na coluna da direita). */}
-        {assessoria ? (
-          <CartaoAssessoria
-            href={assessoria}
-            id="assessoria-inicio-celular"
-            titulo={TITULO_ASSESSORIA}
-            texto={TEXTO_ASSESSORIA}
-            botao={BOTAO_ASSESSORIA}
-            className="flex lg:hidden"
-          />
-        ) : null}
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6">
           <section aria-label="Lista de editais" id="lista-editais" ref={inicioLista} className="flex scroll-mt-3 flex-col">
             <ColunaLista
@@ -661,6 +658,25 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
               aoCarregarMais={carregarMais}
               aoRecomecar={() => void carregarLista(filtros, { pagina: 1 })}
               aoAplicar={aplicar}
+              confirmacao={buscaPronta ? textoDoResultado(buscaPronta.filtros, buscaPronta.total) : null}
+              oferta={
+                ofertaBuscada && buscaPronta ? (
+                  <OfertaBusca key={ofertaBuscada.chave} oferta={ofertaBuscada} segmento={segmentoDaBusca(buscaPronta.filtros.q)} total={buscaPronta.total} />
+                ) : null
+              }
+              // Celular: no meio dos editais, para nada de venda além da oferta ficar antes da lista.
+              noMeio={
+                assessoria ? (
+                  <CartaoAssessoria
+                    href={assessoria}
+                    id="assessoria-inicio-celular"
+                    titulo={TITULO_ASSESSORIA}
+                    texto={TEXTO_ASSESSORIA}
+                    botao={BOTAO_ASSESSORIA}
+                    className="flex lg:hidden"
+                  />
+                ) : null
+              }
             />
           </section>
           {/* A assessoria rola com a página; o valor e "Onde mais compram" continuam presos (os três juntos passam da altura da tela). */}
@@ -688,7 +704,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
         pontos={pontos}
         // Aplicar sem mudar nada só fecha (não refaz a busca).
         aoAplicar={(f) => {
-          if (!mesmaBusca(f, filtros)) aplicar(f);
+          if (!mesmaBusca(f, filtros)) aplicar(f, { rolar: true });
         }}
         aoFechar={fecharFolha}
       />

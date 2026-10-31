@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lerSessaoOferta, marcarOfertaVista, MAX_OFERTAS_SESSAO, ofertaDaBusca, ofertaPodeAparecer } from './ofertaBusca';
+import { lerSessaoOferta, marcarOfertaVista, ofertaDaBusca, ofertaPodeAparecer } from './ofertaBusca';
 import type { FiltrosTela } from './tipos';
 
 const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
@@ -8,25 +8,23 @@ const JOINVILLE = { ibge: '4209102', nome: 'Joinville', uf: 'SC' };
 describe('ofertaDaBusca', () => {
   it('usa o termo e a quantidade real, e mostra o preço do plano', () => {
     const o = ofertaDaBusca({ ...VAZIO, q: 'uniformes escolares' }, 281);
-    expect(o?.titulo).toBe('Encontramos 281 licitações de uniformes escolares.');
-    expect(o?.texto).toBe('Novas oportunidades podem aparecer todos os dias. Receba automaticamente os novos editais desse segmento e acompanhe tudo em um único lugar.');
+    expect(o?.titulo).toBe('Não perca os próximos editais de uniformes escolares.');
+    expect(o?.texto).toBe('São 281 abertos agora, e novas oportunidades podem aparecer todos os dias. Receba por e-mail, sem precisar pesquisar.');
     expect(o?.preco).toBe('R$ 37,90/mês');
   });
   it('singular e milhar', () => {
-    expect(ofertaDaBusca({ ...VAZIO, q: 'luva' }, 1)?.titulo).toBe('Encontramos 1 licitação de luva.');
-    expect(ofertaDaBusca({ ...VAZIO, q: 'luva' }, 12345)?.titulo).toBe('Encontramos 12.345 licitações de luva.');
+    expect(ofertaDaBusca({ ...VAZIO, q: 'luva' }, 1)?.texto).toContain('É 1 aberto agora,');
+    expect(ofertaDaBusca({ ...VAZIO, q: 'luva' }, 12345)?.texto).toContain('São 12.345 abertos agora,');
   });
-  it('adapta ao estado, ao município e ao raio', () => {
-    expect(ofertaDaBusca({ ...VAZIO, q: 'luva', uf: 'SC' }, 9)?.titulo).toBe('Encontramos 9 licitações de luva em Santa Catarina.');
-    expect(ofertaDaBusca({ ...VAZIO, q: 'luva', uf: 'SC' }, 9)?.texto).toContain('desse segmento em Santa Catarina');
-    expect(ofertaDaBusca({ ...VAZIO, q: 'luva', uf: 'SC', cidade: JOINVILLE }, 9)?.titulo).toBe('Encontramos 9 licitações de luva em Joinville/SC.');
-    const raio = ofertaDaBusca({ ...VAZIO, q: 'luva', uf: 'SC', cidade: JOINVILLE, raio: 50 }, 9);
-    expect(raio?.titulo).toBe('Encontramos 9 licitações de luva a 50 km de Joinville/SC.');
-    // O alerta não guarda raio: a promessa é sobre o município, não sobre a região do círculo.
-    expect(raio?.texto).toContain('desse segmento em Joinville/SC');
+  it('adapta ao estado e ao município', () => {
+    expect(ofertaDaBusca({ ...VAZIO, q: 'luva', uf: 'SC' }, 9)?.titulo).toBe('Não perca os próximos editais de luva em Santa Catarina.');
+    expect(ofertaDaBusca({ ...VAZIO, q: 'luva', uf: 'SC', cidade: JOINVILLE }, 9)?.titulo).toBe('Não perca os próximos editais de luva em Joinville/SC.');
+  });
+  it('com raio promete o município: o alerta não guarda o círculo', () => {
+    expect(ofertaDaBusca({ ...VAZIO, q: 'luva', uf: 'SC', cidade: JOINVILLE, raio: 50 }, 9)?.titulo).toBe('Não perca os próximos editais de luva em Joinville/SC.');
   });
   it('as exclusões não entram no título', () => {
-    expect(ofertaDaBusca({ ...VAZIO, q: 'uniforme -camisa' }, 3)?.titulo).toBe('Encontramos 3 licitações de uniforme.');
+    expect(ofertaDaBusca({ ...VAZIO, q: 'uniforme -camisa' }, 3)?.titulo).toBe('Não perca os próximos editais de uniforme.');
   });
   it('termo longo é cortado na tela, não no alerta', () => {
     const q = `uniforme ${'escolar '.repeat(12)}`.trim();
@@ -59,16 +57,12 @@ describe('oferta na sessão', () => {
     expect(lerSessaoOferta('{quebrado')).toEqual({ fechada: false, vistas: [] });
     expect(lerSessaoOferta('{"fechada":"sim","vistas":3}')).toEqual({ fechada: false, vistas: [] });
   });
-  it('a mesma oferta não volta na sessão; outra busca, sim', () => {
+  it('aparece em toda busca, inclusive repetida, até a pessoa fechar', () => {
     const s = marcarOfertaVista({ fechada: false, vistas: [] }, 'luva|SC');
-    expect(ofertaPodeAparecer(s, 'luva|SC')).toBe(false);
-    expect(ofertaPodeAparecer(s, 'bota|SC')).toBe(true);
+    expect(ofertaPodeAparecer(s)).toBe(true);
+    expect(ofertaPodeAparecer({ fechada: false, vistas: ['a', 'b', 'c', 'd', 'e'] })).toBe(true);
   });
   it('fechar vale para a sessão inteira', () => {
-    expect(ofertaPodeAparecer({ fechada: true, vistas: [] }, 'bota|SC')).toBe(false);
-  });
-  it('no máximo três ofertas por sessão', () => {
-    expect(MAX_OFERTAS_SESSAO).toBe(3);
-    expect(ofertaPodeAparecer({ fechada: false, vistas: ['a', 'b', 'c'] }, 'd')).toBe(false);
+    expect(ofertaPodeAparecer({ fechada: true, vistas: [] })).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import { NOMES_UF } from './estados';
+import { numero } from './formato';
 import { chave, separarNegativos } from './relevancia/termos';
 import { ASSUNTOS, naUf } from './seo/assuntos';
 import { POR_PAGINA } from './filtros';
@@ -18,6 +19,16 @@ export function tituloDaBusca(f: FiltrosTela): string {
   const termo = separarNegativos(f.q).positivo.replace(/\s+/g, ' ').trim();
   const oque = termo ? termo.charAt(0).toLocaleUpperCase('pt-BR') + termo.slice(1) : 'Licitações abertas';
   return `${oque} ${localDaBusca(f) || 'no Brasil'}`;
+}
+
+/** Confirmação depois da busca: quantos, o quê e onde. Sem termo nem lugar não há o que confirmar. */
+export function textoDoResultado(f: FiltrosTela, total: number): string | null {
+  const termo = separarNegativos(f.q).positivo.replace(/\s+/g, ' ').trim();
+  const lugar = localDaBusca(f);
+  if (!termo && !lugar) return null;
+  const alvo = [termo ? `para ${termo}` : '', lugar].filter(Boolean).join(' ');
+  if (total === 0) return `Nenhum edital aberto ${alvo}`;
+  return `${numero(total)} ${total === 1 ? 'edital encontrado' : 'editais encontrados'} ${alvo}`;
 }
 
 export type IconeAtalho = 'camisa' | 'capacete' | 'brilho' | 'monitor' | 'talheres' | 'cruz';
@@ -69,6 +80,11 @@ export function ofertaFechada(valor: string | null, agora: Date): boolean {
  */
 export function proximaPagina(primeira: number, carregados: number): number {
   return primeira + Math.ceil(carregados / POR_PAGINA);
+}
+
+/** Índice do edital depois do qual entra um cartão no meio da lista: o 5º ou, em lista curta, o último. */
+export function posicaoNoMeio(editais: number): number {
+  return Math.min(4, editais - 1);
 }
 
 /** Acrescenta a página nova sem repetir (um edital novo no banco empurra outro para a página seguinte). */

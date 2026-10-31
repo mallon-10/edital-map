@@ -2,10 +2,10 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ChamadaPro, OfertaVista } from '@/components/ChamadaPro';
 import { EmailIlustrativo } from '@/components/planos/EmailIlustrativo';
-import { PILULA_LINHA, PILULA_PIN } from '@/components/planos/estilos';
+import { PILULA_PIN } from '@/components/planos/estilos';
 import { PREVIA_ALERTA, VITRINE_ALERTAS } from '@/lib/bloqueioPro';
 import { hrefAssinar } from '@/lib/paginaPlanos';
-import { PRECO_PRO_MENSAL, ROTINA_ENVIO } from '@/lib/planos';
+import { PRECO_PRO_MENSAL } from '@/lib/planos';
 import { corpoDoRascunho, resumoDoRadar, type RascunhoRadar } from '@/lib/radar';
 import { GuardarRascunho } from './GuardarRascunho';
 
@@ -39,19 +39,21 @@ function PreviaDoAlerta({ previa, busca, entrar }: { previa: RascunhoRadar; busc
         ) : null}
         <div>
           <dt className="text-[13px] text-ink-muted">Quando</dt>
-          <dd className="font-semibold">{ROTINA_ENVIO}</dd>
+          <dd className="font-semibold">{PREVIA_ALERTA.quando}</dd>
         </div>
       </dl>
       <p role="note" className="text-pretty rounded-[14px] bg-pin-soft px-4 py-3 text-[14px] text-pin-strong">{PREVIA_ALERTA.aviso}</p>
-      <div className="flex flex-col flex-wrap items-stretch gap-2.5 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start gap-1">
         <ChamadaPro href={hrefAssinar('mensal')} origem="alerta_previa" segmento={produtos[0] ?? null} className={CTA}>
           {PREVIA_ALERTA.cta}
         </ChamadaPro>
-        <Link href={busca ?? '/'} prefetch={false} className={`${PILULA_LINHA} text-center leading-tight`}>
-          {PREVIA_ALERTA.voltar}
-        </Link>
+        <div className="flex flex-wrap gap-x-5">
+          <Link href={busca ?? '/'} prefetch={false} className="inline-flex h-11 items-center text-sm font-semibold text-ink-muted underline-offset-2 hover:text-ink hover:underline">
+            {PREVIA_ALERTA.voltar}
+          </Link>
+          {entrar}
+        </div>
       </div>
-      {entrar}
     </div>
   );
 }

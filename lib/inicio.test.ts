@@ -1,9 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { ATALHOS, atalhoAtivo, hrefDoAtalho, juntarEditais, OFERTA_FECHADA_DIAS, ofertaFechada, proximaPagina, temMais, tituloDaBusca } from './inicio';
+import { posicaoNoMeio, textoDoResultado, ATALHOS, atalhoAtivo, hrefDoAtalho, juntarEditais, OFERTA_FECHADA_DIAS, ofertaFechada, proximaPagina, temMais, tituloDaBusca } from './inicio';
 import { ASSUNTOS } from './seo/assuntos';
 import type { FiltrosTela } from './tipos';
 
 const VAZIO: FiltrosTela = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
+
+describe('textoDoResultado', () => {
+  const B = { q: '', uf: '', cidade: null, valorMin: null, modalidades: [], seteDias: false, orgao: null, raio: null };
+  it('quantos, o quê e onde', () => {
+    expect(textoDoResultado({ ...B, q: 'uniformes escolares' }, 286)).toBe('286 editais encontrados para uniformes escolares');
+    expect(textoDoResultado({ ...B, q: 'luva', uf: 'SC' }, 9)).toBe('9 editais encontrados para luva em Santa Catarina');
+    expect(textoDoResultado({ ...B, q: 'luva' }, 1)).toBe('1 edital encontrado para luva');
+    expect(textoDoResultado({ ...B, q: 'luva' }, 12345)).toBe('12.345 editais encontrados para luva');
+  });
+  it('só o lugar', () => {
+    expect(textoDoResultado({ ...B, uf: 'SC' }, 120)).toBe('120 editais encontrados em Santa Catarina');
+  });
+  it('nenhum resultado também é resposta', () => {
+    expect(textoDoResultado({ ...B, q: 'xyz' }, 0)).toBe('Nenhum edital aberto para xyz');
+  });
+  it('sem busca, nada a confirmar', () => {
+    expect(textoDoResultado(B, 900)).toBeNull();
+  });
+});
+
+describe('posicaoNoMeio', () => {
+  it('depois do 5º edital; lista curta, depois do último', () => {
+    expect(posicaoNoMeio(20)).toBe(4);
+    expect(posicaoNoMeio(5)).toBe(4);
+    expect(posicaoNoMeio(3)).toBe(2);
+    expect(posicaoNoMeio(1)).toBe(0);
+  });
+});
 
 describe('tituloDaBusca', () => {
   it('sem termo e sem lugar: licitações abertas no Brasil', () => {

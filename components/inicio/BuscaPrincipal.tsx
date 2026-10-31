@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { normalizarCnpj } from '@/lib/cnpj';
 import { UFS_ORDENADAS } from '@/lib/filtros';
-import { Lupa, PinoMini, Seta } from './Icones';
+import { IconeGiro, Lupa, PinoMini, Seta } from './Icones';
 
 type Props = {
   q: string;
@@ -51,7 +51,7 @@ export function BuscaPrincipal({ q, uf, carregando, filtrosAtivos, aoBuscar, aoC
             disabled={carregando}
             className="absolute left-0.5 flex size-11 items-center justify-center rounded-full text-ink-muted disabled:opacity-60 lg:left-1 lg:size-9"
           >
-            <Lupa className="size-[18px]" />
+            {carregando ? <IconeGiro className="size-[18px] animate-spin motion-reduce:animate-none" /> : <Lupa className="size-[18px]" />}
           </button>
           <input
             id="q"
