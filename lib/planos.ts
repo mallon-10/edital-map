@@ -15,8 +15,8 @@ export type PlanoDaPagina = { plano: Plano; dono: boolean };
 export const ROTINA_ENVIO = 'Alertas de novas oportunidades todos os dias às 7h e resumo semanal às segundas-feiras.';
 
 /**
- * Oferta do Pro (decisão de 19/10/2026): buscar, abrir editais, link oficial, raio, órgão, parecidos e exportar são
- * grátis e sem limite; o que se vende é receber as licitações certas por e-mail (alertas, resumo semanal, Meu Radar).
+ * Oferta do Pro: pesquisar, abrir editais, link oficial, raio, órgão e parecidos são grátis; cada pesquisa mostra 5 editais
+ * (lib/limiteBusca.ts). O Pro libera todos e manda as licitações certas por e-mail (alertas, resumo semanal, Meu Radar).
  * A faixa abaixo do cabeçalho mostra a quem não é Pro que o e-mail é do Pro e leva aos planos (components/FaixaOferta.tsx).
  */
 export const OFERTA = {
@@ -67,4 +67,4 @@ export const PRECO_PRO_MENSAL = precoDoPlano(PLANOS.find((p) => p.id === 'pro')!
 
 /** Com o pagamento desligado (lista de espera no lugar do "Assinar o Pro"). */
 export const AVISO_PLANOS =
-  'Buscar, abrir editais, filtrar e exportar são grátis e sem limite. O pagamento do Pro ainda não abriu: entre na lista de espera e avisamos quando der para assinar os alertas e o resumo semanal.';
+  'Buscar, abrir editais, filtrar e exportar são grátis. O pagamento do Pro ainda não abriu: entre na lista de espera e avisamos quando der para assinar os alertas e o resumo semanal.';

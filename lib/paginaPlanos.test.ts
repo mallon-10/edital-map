@@ -74,17 +74,18 @@ describe('textos da página de planos', () => {
   it('o número de alertas vem do limite da conta', () => {
     const n = LIMITES_CONTA.pro.alertas;
     expect(DIFERENCAS[1]).toEqual({ recurso: 'Segmentos e regiões acompanhados', gratis: false, pro: `Até ${n}` });
-    expect(ITENS_PRO[0]).toBe(`Até ${n} alertas por e-mail às 7h`);
+    expect(ITENS_PRO[0]).toBe('Todos os editais de cada pesquisa');
+    expect(ITENS_PRO[1]).toBe(`Até ${n} alertas por e-mail às 7h`);
     expect(BENEFICIOS_PRO[3].texto).toContain(`até ${n} segmentos ou regiões`);
     expect(PASSOS[1].texto).toContain(`Até ${n} alertas`);
   });
   it('comparação: o que muda na rotina, mais buscas ilimitadas nos dois', () => {
     expect(DIFERENCAS.map((d) => d.recurso)).toEqual([
-      'Descobrir editais novos', 'Segmentos e regiões acompanhados', 'Resumo semanal às segundas', 'Meu Radar', 'Organizar editais', 'Buscas e editais',
+      'Descobrir editais novos', 'Segmentos e regiões acompanhados', 'Resumo semanal às segundas', 'Meu Radar', 'Organizar editais', 'Editais por pesquisa',
     ]);
     expect(DIFERENCAS[0]).toEqual({ recurso: 'Descobrir editais novos', gratis: 'Você pesquisa', pro: 'Chegam por e-mail às 7h' });
-    expect(DIFERENCAS.at(-1)).toEqual({ recurso: 'Buscas e editais', gratis: 'Ilimitados', pro: 'Ilimitados' });
-    expect(INCLUIDO_NOS_DOIS).toContain('Exportar a lista para planilha (CSV)');
+    expect(DIFERENCAS.at(-1)).toEqual({ recurso: 'Editais por pesquisa', gratis: '5', pro: 'Todos' });
+    expect(INCLUIDO_NOS_DOIS).toContain('Exportar a lista para planilha (CSV); numa pesquisa no grátis, os 5 liberados');
     expect(INCLUIDO_NOS_DOIS).toContain('Botão "Abrir edital oficial"');
   });
   it('o que ainda não existe fica só em "Em preparação", nunca na lista do Pro', () => {

@@ -16,7 +16,7 @@ export type EventoComercial = (typeof EVENTOS_COMERCIAIS)[number];
 export const vaiAoBanco = (e: EventoComercial): e is RecursoComercial => (RECURSOS_COMERCIAIS as readonly string[]).includes(e);
 
 export type ParametrosComerciais = {
-  /** De onde veio: oferta_busca, radar, alertas, alerta_previa, edital, planos, inicio, assessoria. */
+  /** De onde veio: oferta_busca, bloqueio_busca, radar, alertas, alerta_previa, edital, planos, inicio, assessoria. */
   origem?: string | null;
   pagina?: string | null;
   segmento?: string | null;

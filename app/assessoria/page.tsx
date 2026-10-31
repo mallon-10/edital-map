@@ -99,7 +99,7 @@ export default async function PaginaAssessoria({ searchParams }: Props) {
             <Link href="/planos" prefetch={false} className="font-semibold text-pin-strong hover:underline">
               Edital Map Pro
             </Link>
-            . A busca continua grátis e sem limite.
+            . A busca continua grátis.
           </p>
         </div>
       </main>

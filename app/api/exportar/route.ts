@@ -1,12 +1,14 @@
 import { gerarCsv, nomeArquivo } from '@/lib/csv';
 import { LIMITES } from '@/lib/eventos';
 import { lerFiltros } from '@/lib/filtros';
+import { limiteDaExportacao } from '@/lib/servidor/buscaDoPlano';
 import { exportarEditais } from '@/lib/servidor/consultas';
+import { planoAtual } from '@/lib/servidor/plano';
 import { contexto, exportacaoDentroDoLimite, gravarEvento } from '@/lib/servidor/registro';
 
 /**
  * Planilha (CSV) com os editais da busca atual: os mesmos parâmetros de /api/busca, desde o começo, até 2.000 (e 4 MB).
- * Grátis para todos; contra abuso, 20 exportações por hora por IP (429).
+ * Contra abuso, 20 exportações por hora por IP (429). Pesquisa com termo no grátis: só os editais liberados, como na lista.
  */
 export async function GET(request: Request) {
   const filtros = lerFiltros(new URL(request.url).searchParams);
@@ -18,11 +20,13 @@ export async function GET(request: Request) {
         { status: 429 },
       );
     }
-    const { editais, total } = await exportarEditais(filtros);
+    const limite = await limiteDaExportacao(filtros, () => planoAtual(ctx));
+    const { editais, total } = await exportarEditais(filtros, limite);
     const agora = new Date();
     // A medição (que também conta as exportações da hora) não pode impedir o download.
     await gravarEvento(ctx, 'usou_recurso', { recurso: 'exportou', total: editais.length }).catch((erro: unknown) => console.error(erro));
-    return new Response(gerarCsv(editais, undefined, total), {
+    // Com limite, sem a nota de "arquivo cortado": ela fala do teto de 2.000.
+    return new Response(gerarCsv(editais, undefined, limite ? editais.length : total), {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="${nomeArquivo(agora)}"`,

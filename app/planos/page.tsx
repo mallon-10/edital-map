@@ -8,7 +8,7 @@ import { contextoDaPagina } from '@/lib/servidor/registro';
 export const metadata: Metadata = {
   title: 'Planos',
   description:
-    'Planos do Edital Map: buscas e editais grátis e sem limite; o Pro, por R$ 37,90/mês, manda novas licitações do seu segmento por e-mail todos os dias às 7h e um resumo às segundas-feiras.',
+    'Planos do Edital Map: pesquise de graça, com 5 editais por pesquisa; o Pro, por R$ 37,90/mês, libera todos e manda novas licitações do seu segmento por e-mail todos os dias às 7h e um resumo às segundas-feiras.',
   alternates: { canonical: '/planos' },
 };
 

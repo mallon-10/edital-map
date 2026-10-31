@@ -106,5 +106,5 @@ export function juntarEditais(antigos: readonly EditalResumo[], novos: readonly 
 }
 
 export function temMais(r: ResultadoBusca): boolean {
-  return r.editais.length < r.total;
+  return !r.bloqueados && r.editais.length < r.total;
 }

@@ -250,7 +250,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
         const ordemPedida = lista.ordem === undefined ? estadoAtual.current.ordem : lista.ordem;
         const novo = await obter<ResultadoBusca>(`/api/busca?${paraParametros(f, { pagina: lista.pagina ?? 1, ordem: ordemPedida })}`, ERRO_LISTA);
         if (id !== pedidoLista.current) return 'velho';
-        setResultado({ total: novo.total, editais: novo.editais });
+        setResultado(novo);
         lista.aoTerminar?.(novo.total);
         if (f.q.trim()) medir('buscou', { chave: 'dia' });
         setSelecionadoId(novo.editais[0]?.id ?? null);
@@ -606,6 +606,7 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
           aoVerEditais={verEditais}
           aoMostrarMapa={() => mudarVista('mapa')}
           hrefAlerta={hrefAlertaDaBusca(filtros)}
+          exportarLimitado={Boolean(resultado.bloqueados)}
         >
           {/* Celular: em cima no cartão, com 46svh (pinça e um dedo mexem no mapa; fora dele, arrastar rola a página).
               Computador: a metade direita do cartão. Tela cheia: o mapa cobre a página. */}

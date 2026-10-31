@@ -24,7 +24,7 @@ function Valor({ v }: { v: LinhaDiferenca['pro'] }) {
   return <>{v}</>;
 }
 
-/** O que muda na rotina entre Grátis e Pro (e as buscas ilimitadas nos dois); o que os dois têm fica num bloco que abre e fecha. */
+/** O que muda na rotina entre Grátis e Pro; o que os dois têm fica num bloco que abre e fecha. */
 export function ComparacaoPlanos() {
   return (
     <section aria-labelledby="comparacao" className="mx-auto w-full max-w-[900px]">

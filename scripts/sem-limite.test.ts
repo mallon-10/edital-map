@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-// Decisão de 19/10/2026: o grátis não tem limite por dia nem cadeado; o Pro vende o e-mail (alertas, resumo, Meu Radar).
+// Decisão de 19/10/2026: o grátis não tem limite por dia. Desde 31/10/2026, a pesquisa com termo mostra 5 editais (lib/limiteBusca.ts).
 const RAIZ = fileURLToPath(new URL('..', import.meta.url));
 
 function codigo(pasta: string): { arquivo: string; texto: string }[] {

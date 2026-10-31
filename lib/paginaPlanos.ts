@@ -65,13 +65,14 @@ export const PASSOS: ReadonlyArray<{ icone: IconePlanos; titulo: string; texto: 
 ];
 
 export const ITENS_GRATIS = [
-  'Buscas e editais ilimitados',
+  'Buscas à vontade, com 5 editais por pesquisa',
   'Mapa, filtros, raio em km e órgão',
   'Exportar para planilha (CSV)',
   'Link do edital oficial',
 ] as const;
 
 export const ITENS_PRO = [
+  'Todos os editais de cada pesquisa',
   `Até ${ALERTAS} alertas por e-mail às 7h`,
   'Resumo semanal na segunda',
   'Meu Radar com o perfil da sua empresa',
@@ -123,7 +124,7 @@ export const DIFERENCAS: readonly LinhaDiferenca[] = [
   { recurso: 'Resumo semanal às segundas', gratis: false, pro: true },
   { recurso: 'Meu Radar', gratis: false, pro: true },
   { recurso: 'Organizar editais', gratis: false, pro: 'Status e anotações' },
-  { recurso: 'Buscas e editais', gratis: 'Ilimitados', pro: 'Ilimitados' },
+  { recurso: 'Editais por pesquisa', gratis: '5', pro: 'Todos' },
 ];
 
 /** Só fatos do produto: nada de depoimento, contador ou número de assinantes. */
@@ -139,7 +140,7 @@ export const INCLUIDO_NOS_DOIS = [
   'Botão "Abrir edital oficial"',
   'Filtros por UF, município, valor, modalidade e prazo',
   'Raio em km e órgão comprador',
-  'Exportar a lista para planilha (CSV)',
+  'Exportar a lista para planilha (CSV); numa pesquisa no grátis, os 5 liberados',
   'Editais parecidos abertos',
 ] as const;
 
@@ -179,7 +180,7 @@ export const PERGUNTAS: ReadonlyArray<{ pergunta: string; resposta: string }> = 
   },
   {
     pergunta: 'Preciso pagar para pesquisar?',
-    resposta: 'Não. Buscar, abrir editais, filtrar e exportar são grátis, sem conta e sem limite.',
+    resposta: 'Não. Pesquisar é grátis e não pede conta: cada pesquisa mostra 5 editais, e o Pro libera todos. Navegar pelo mapa e pelas páginas de licitações e abrir qualquer edital continuam livres.',
   },
 ];
 

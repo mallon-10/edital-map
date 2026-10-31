@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { MAX_EXPORTACAO } from '@/lib/csv';
 import { ERRO_EXPORTAR, ErroDaApi, mensagemDaApi, nomeDoArquivo } from '@/lib/exportar-cliente';
 import { numero } from '@/lib/formato';
+import { AVISO_EXPORTAR_GRATIS } from '@/lib/limiteBusca';
 import { IconeBaixar, Planilha } from './Icones';
 
 type Props = {
@@ -14,6 +15,8 @@ type Props = {
   aoErro: (mensagem: string | null) => void;
   /** Botão redondo só com o ícone (cartão do topo da página inicial). */
   redondo?: boolean;
+  /** Grátis pesquisando um assunto: a planilha só traz os editais liberados, e a tela avisa. */
+  limitado?: boolean;
 };
 
 /** Botão redondo do cartão do topo (54 px no celular, 60 px no computador). */
@@ -21,7 +24,7 @@ export const REDONDO =
   'inline-flex size-[54px] shrink-0 items-center justify-center rounded-full border border-line-strong bg-raised text-ink hover:bg-sunken lg:size-[60px]';
 
 /** Baixa a planilha (CSV) da busca atual. Por fetch, para mostrar o erro da API (como o limite por hora) em vez de um download quebrado. */
-export function BotaoExportar({ parametros, total, aoErro, redondo = false }: Props) {
+export function BotaoExportar({ parametros, total, aoErro, redondo = false, limitado = false }: Props) {
   const [baixando, setBaixando] = useState(false);
 
   async function exportar() {
@@ -42,6 +45,7 @@ export function BotaoExportar({ parametros, total, aoErro, redondo = false }: Pr
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      if (limitado) aoErro(AVISO_EXPORTAR_GRATIS);
     } catch (e) {
       aoErro(e instanceof ErroDaApi ? e.message : ERRO_EXPORTAR);
     } finally {

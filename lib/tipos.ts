@@ -60,7 +60,12 @@ export type EditalResumo = {
   destaques: string[];
 };
 
-export type ResultadoBusca = { total: number; editais: EditalResumo[] };
+export type ResultadoBusca = {
+  total: number;
+  editais: EditalResumo[];
+  /** Grátis pesquisando um assunto: editais que ficaram de fora, atrás do cadeado (lib/limiteBusca.ts). */
+  bloqueados?: number;
+};
 
 export type PontoMapa = {
   codigo_ibge: string;

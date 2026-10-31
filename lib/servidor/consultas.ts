@@ -224,15 +224,15 @@ export function orgaosAbertos(q: string): Promise<OrgaoAberto[]> {
  * Linhas da planilha: a mesma busca da lista, desde o começo, até MAX_EXPORTACAO.
  * Páginas de 1.000 (o teto do PostgREST por resposta). Sem cache: cada exportação conta no limite por IP.
  */
-export async function exportarEditais(f: FiltrosBusca): Promise<{ editais: EditalExportado[]; total: number }> {
+export async function exportarEditais(f: FiltrosBusca, maximo: number = MAX_EXPORTACAO): Promise<{ editais: EditalExportado[]; total: number }> {
   const b = interpretarBusca(f.q);
   const editais: EditalExportado[] = [];
   let total = 0;
   const divergentes: string[] = [];
-  for (let de = 0; de < MAX_EXPORTACAO; de += 1000) {
+  for (let de = 0; de < maximo; de += 1000) {
     const { data, error } = await supabaseServidor().rpc('buscar_editais', {
       ...argumentosBusca(f, b),
-      p_limite: Math.min(1000, MAX_EXPORTACAO - de),
+      p_limite: Math.min(1000, maximo - de),
       p_deslocamento: de,
     });
     if (error) throw new Error(`exportar: ${error.message}`);

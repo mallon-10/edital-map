@@ -21,6 +21,8 @@ type Props = {
   aoVerEditais: () => void;
   /** Vista Lista (sem o mapa): o botão que liga o mapa de novo. */
   aoMostrarMapa: () => void;
+  /** Grátis pesquisando um assunto: a planilha só traz os editais liberados. */
+  exportarLimitado: boolean;
   /** Criar alerta com os filtros da busca atual (hrefAlertaDaBusca). */
   hrefAlerta: string;
   /** O mapa (vista Mapa): em cima no celular, à direita a partir de lg. Sem ele, o cartão é só o resumo. */
@@ -84,7 +86,7 @@ export function CartaoTopo(p: Props) {
           <Link href={p.hrefAlerta} prefetch={false} aria-label="Criar alerta por e-mail" title="Criar alerta por e-mail" className={REDONDO}>
             <IconeSino className="size-[22px]" />
           </Link>
-          <BotaoExportar parametros={p.parametrosBusca} total={p.total} aoErro={p.aoErroExportar} redondo />
+          <BotaoExportar parametros={p.parametrosBusca} total={p.total} aoErro={p.aoErroExportar} redondo limitado={p.exportarLimitado} />
           {comMapa ? null : (
             <button type="button" onClick={p.aoMostrarMapa} aria-label="Mostrar o mapa" title="Mostrar o mapa" className={REDONDO}>
               <IconeMapa className="size-[22px]" />

@@ -44,13 +44,13 @@ beforeEach(() => {
   m.planoDaPagina.mockResolvedValue({ plano: 'gratis', dono: false });
 });
 
-describe('/api/busca (grátis e sem limite)', () => {
+describe('/api/busca (grátis: nada de 402)', () => {
   it('quantas buscas forem: sempre a lista, nunca 402', async () => {
     for (const q of ['luva', 'botina', 'capacete', 'uniforme', 'jaleco']) {
       const r = await busca.GET(pedido(`/api/busca?q=${q}&uf=SC`));
       expect(r.status).toBe(200);
       expect(r.headers.get('cache-control')).toBe('private, no-store');
-      expect(await r.json()).toEqual({ total: 1, editais: [] });
+      expect(await r.json()).toMatchObject({ total: 1, editais: [] });
     }
     expect(m.buscarEditais).toHaveBeenCalledTimes(5);
   });
@@ -111,5 +111,18 @@ describe('/api/contagem', () => {
     expect(await r.json()).toEqual({ total: 42 });
     expect(r.headers.get('cache-control')).toContain('s-maxage=300');
     expect(m.buscarEditais).toHaveBeenCalledWith(expect.objectContaining({ q: 'luva', pagina: 1, ordem: 'prazo' }));
+  });
+});
+
+describe('/api/exportar no plano', () => {
+  it('grátis com termo: só os editais liberados, sem a nota do teto de 2.000', async () => {
+    m.exportarEditais.mockResolvedValue({ editais: [], total: 286 });
+    const r = await exportar.GET(pedido('/api/exportar?q=uniforme'));
+    expect(m.exportarEditais.mock.calls[0][1]).toBe(5);
+    expect(await r.text()).not.toContain('limite de');
+  });
+  it('sem termo: o teto normal', async () => {
+    await exportar.GET(pedido('/api/exportar?uf=SC'));
+    expect(m.exportarEditais.mock.calls[0][1]).toBeUndefined();
   });
 });

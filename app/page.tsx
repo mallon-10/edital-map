@@ -13,7 +13,8 @@ import { lerFiltros, paraParametros } from '@/lib/filtros';
 import { mostrarOferta } from '@/lib/planos';
 import { jsonLdMarca } from '@/lib/seo/marca';
 import { temBusca } from '@/lib/seo/textos';
-import { atualizadoEm, buscarEditais, pontosDoMapa } from '@/lib/servidor/consultas';
+import { buscarNoPlano } from '@/lib/servidor/buscaDoPlano';
+import { atualizadoEm, pontosDoMapa } from '@/lib/servidor/consultas';
 import { cidadesComPagina, totaisDosAtalhos } from '@/lib/servidor/licitacoes';
 import { municipioPorIbge, orgaoPorCnpj } from '@/lib/servidor/nomes';
 import { contextoDaPagina } from '@/lib/servidor/registro';
@@ -36,7 +37,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-/** Página inicial. A busca vem do endereço (/?q=luva&uf=SC&…), sem limite (grátis e sem conta). */
+/** Página inicial. A busca vem do endereço (/?q=luva&uf=SC&…); com termo, no grátis, só os editais liberados (lib/limiteBusca.ts). */
 export default async function Inicio({ searchParams }: Props) {
   await connection();
   const { busca, estado } = lerBuscaDaUrl(paraUrlSearchParams(await searchParams));
@@ -55,7 +56,8 @@ export default async function Inicio({ searchParams }: Props) {
   const totaisAtalhos = totaisDosAtalhos();
   const comFiltros = Boolean(paraParametros(filtros).toString());
   const pontosIniciais = comFiltros ? pontosDoMapa(lerFiltros(paraParametros(filtros))).catch(() => null) : null;
-  const [inicial, atualizado, plano] = await Promise.all([buscarEditais(daLista), atualizadoEm(), planoDaPagina(ctx)]);
+  const doPlano = planoDaPagina(ctx);
+  const [inicial, atualizado, plano] = await Promise.all([buscarNoPlano(daLista, async () => (await doPlano).plano), atualizadoEm(), doPlano]);
   // Página sem busca: o navegador começa a baixar os pontos do mapa junto com o HTML (vêm da CDN, URL_MAPA_BRASIL).
   if (!comFiltros) preload(URL_MAPA_BRASIL, { as: 'fetch', crossOrigin: 'anonymous' });
   const agora = new Date().toISOString();

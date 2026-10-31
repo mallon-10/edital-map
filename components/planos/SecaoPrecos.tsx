@@ -62,7 +62,7 @@ export function SecaoPrecos({ pagamento, atual }: EstadoPlanos) {
         <h2 id="titulo-precos" className={H2}>
           Pesquise de graça. Assine para receber.
         </h2>
-        <p className="max-w-[60ch] text-[16px] text-ink-muted">A busca continua grátis e sem limite. O Pro cuida do monitoramento.</p>
+        <p className="max-w-[60ch] text-[16px] text-ink-muted">A busca continua grátis, com 5 editais por pesquisa. O Pro libera todos e cuida do monitoramento.</p>
         <div className="mt-2">
           <AlternadorPeriodo />
         </div>

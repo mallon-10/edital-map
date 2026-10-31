@@ -3,8 +3,10 @@
 import { Fragment, useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { FONTE_COBERTURA } from '@/lib/cobertura';
 import { posicaoNoMeio } from '@/lib/inicio';
+import { segmentoDaBusca } from '@/lib/rastreio';
 import type { Cidade, EditalResumo, FiltrosTela, Ordem, ResultadoBusca } from '@/lib/tipos';
-import type { Vista } from '@/lib/urlBusca';
+import { urlDaBusca, type Vista } from '@/lib/urlBusca';
+import { BloqueioBusca } from './BloqueioBusca';
 import { CardCompacto } from './CardCompacto';
 import { EstadoVazio } from './EstadoVazio';
 import { IconeCheck, IconeGiro } from './Icones';
@@ -150,7 +152,7 @@ function FimDaLista({ total, mostrados, carregando, erro, aoCarregarMais }: {
  * valor e o Exportar ficam no cartão do topo.
  */
 export function ColunaLista(p: Props) {
-  const { editais, total } = p.resultado;
+  const { editais, total, bloqueados = 0 } = p.resultado;
   const vista = p.vista ?? 'mapa';
   const { cidade, raio, seteDias } = p.filtros;
   // Toda busca nova e toda troca de página ou de ordem volta ao topo da lista.
@@ -208,12 +210,14 @@ export function ColunaLista(p: Props) {
             editais.map((e, i) => (
               <Fragment key={e.id}>
                 <CardCompacto edital={e} agora={p.agora} aoSelecionar={() => p.aoSelecionar(e)} />
-                {i === posicaoNoMeio(editais.length) ? p.noMeio : null}
+                {!bloqueados && i === posicaoNoMeio(editais.length) ? p.noMeio : null}
               </Fragment>
             ))
           )}
           {vazia ? p.noMeio : null}
-          {vazia || buscando ? null : (
+          {bloqueados > 0 && !buscando ? <BloqueioBusca bloqueados={bloqueados} termo={segmentoDaBusca(p.filtros.q)} voltar={urlDaBusca(p.filtros)} /> : null}
+          {bloqueados > 0 && !buscando ? p.noMeio : null}
+          {vazia || buscando || bloqueados > 0 ? null : (
             <FimDaLista total={total} mostrados={editais.length} carregando={p.carregandoMais} erro={p.erroMais} aoCarregarMais={p.aoCarregarMais} />
           )}
           <p className="shrink-0 px-1 pb-2 pt-1 text-center font-mono text-[11px] text-ink-muted">{FONTE_COBERTURA}</p>
