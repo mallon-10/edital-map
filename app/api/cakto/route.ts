@@ -5,7 +5,8 @@ import { aplicarPedido } from '@/lib/servidor/pagamento';
 
 /**
  * Webhook da Cakto (spec do pagamento, §4). Vem do servidor da Cakto: confere a assinatura do webhook (não a origem).
- * Responde 2xx rápido; erro de banco = 500 (a Cakto não reenvia resposta recebida: reenviar pelo painel ou pela API).
+ * Responde 2xx rápido; erro de banco = 500 (a Cakto não reenvia resposta recebida: reenviar pelo painel ou pela API; o
+ * reenvio termina o que faltou e não repete o efeito na assinatura, lib/servidor/pagamento.ts).
  */
 export async function POST(request: Request) {
   const cfg = configPagamento();

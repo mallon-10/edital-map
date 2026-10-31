@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import type { PlanoPago } from '../eventos';
 import { gerarChave } from '../pagamento/chave';
 import { type ConfigPagamento, planoDaOferta } from '../pagamento/config';
-import { type Assinatura, efeitoDoEvento, type StatusAssinatura } from '../pagamento/efeitos';
+import { type Assinatura, type Efeito, efeitoDoEvento, type StatusAssinatura } from '../pagamento/efeitos';
 import { corpoCompraGa4, type DadosGa4 } from '../pagamento/ga4';
 import type { PedidoCakto } from '../pagamento/webhook';
 import { PLANOS } from '../planos';
@@ -121,26 +121,34 @@ async function assinaturaDoPedido(p: PedidoCakto, plano: PlanoPago): Promise<(As
   return { id: a.id, plano: a.plano, periodo: a.periodo, status: a.status, validoAte: a.validoAte };
 }
 
-/** Insere a assinatura nova; a chave é única no banco, então tenta de novo se (raramente) colidir. */
-async function criarAssinatura(p: PedidoCakto, plano: PlanoPago, periodo: Periodo, validoAte: string): Promise<string> {
-  for (let tentativa = 0; tentativa < 3; tentativa++) {
-    const { data, error } = await supabaseServidor()
-      .from('assinaturas')
-      .insert({
-        cakto_assinatura: p.assinaturaCakto, cakto_pedido: p.pedido, plano, periodo, email: p.email, status: 'ativa',
-        valido_ate: validoAte, chave: gerarChave(),
-      })
-      .select('id')
-      .single();
-    if (!error) return String((data as Linha).id);
-    if (error.code !== '23505' || !error.message.includes('chave')) throw new Error(`criar assinatura: ${error.message}`);
-  }
-  throw new Error('criar assinatura: chave repetida três vezes');
+/** O evento já terminou? Recebido sem terminar (falhou no meio) pode ser reenviado. */
+async function eventoAplicado(p: PedidoCakto): Promise<boolean> {
+  const { data, error } = await supabaseServidor().from('cakto_eventos').select('aplicado_em').eq('pedido', p.pedido).eq('evento', p.evento).maybeSingle();
+  if (error) throw new Error(`ler evento da Cakto: ${error.message}`);
+  return Boolean((data as Linha | null)?.aplicado_em);
 }
 
-async function atualizar(id: string, valores: Record<string, unknown>, agora: Date) {
-  const { error } = await supabaseServidor().from('assinaturas').update({ ...valores, atualizado_em: agora.toISOString() }).eq('id', id);
-  if (error) throw new Error(`atualizar assinatura: ${error.message}`);
+/**
+ * Efeito na assinatura e a marca dele no evento, na mesma transação (aplicar_efeito_cakto, 0024): num reenvio, o banco
+ * devolve o que já foi feito em vez de aplicar de novo. A chave é única no banco, então tenta de novo se (raramente) colidir.
+ */
+async function gravarEfeito(p: PedidoCakto, efeito: Efeito, atual: { id: string } | null): Promise<{ assinatura: string | null; efeito: Efeito['tipo'] }> {
+  const criar = efeito.tipo === 'criar' ? efeito : null;
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    const { data, error } = await supabaseServidor().rpc('aplicar_efeito_cakto', {
+      p_pedido: p.pedido, p_evento: p.evento, p_efeito: efeito.tipo, p_assinatura: atual?.id ?? null,
+      p_valido_ate: efeito.tipo === 'criar' || efeito.tipo === 'estender' || efeito.tipo === 'estornar' ? efeito.validoAte : null,
+      p_cakto_assinatura: p.assinaturaCakto, p_plano: criar?.plano ?? null, p_periodo: criar?.periodo ?? null, p_email: p.email,
+      p_chave: criar ? gerarChave() : null,
+    });
+    if (!error) {
+      const l = data as { assinatura: string | null; efeito: Efeito['tipo'] } | null;
+      if (!l) throw new Error('efeito da Cakto: resposta vazia');
+      return l;
+    }
+    if (error.code !== '23505' || !error.message.includes('chave')) throw new Error(`efeito da Cakto: ${error.message}`);
+  }
+  throw new Error('efeito da Cakto: chave repetida três vezes');
 }
 
 /** Navegador do checkout (código do `?callback=`), para ligar o plano nele. */
@@ -168,9 +176,13 @@ export type Agendar = (tarefa: () => Promise<unknown>) => void | Promise<unknown
 const naHora: Agendar = (tarefa) => tarefa();
 
 /**
- * Aplica um pedido do webhook da Cakto (spec do pagamento, §4). Idempotente: o par (pedido, evento) só vale uma vez.
+ * Aplica um pedido do webhook da Cakto (spec do pagamento, §4). Idempotente: o par (pedido, evento) só tem efeito uma
+ * vez, e só é 'repetido' depois de terminar (aplicado_em): quem falhou no meio responde 500 e o reenvio termina o
+ * trabalho. Oferta desconhecida não marca aplicado, para poder reenviar depois de configurar.
  * O registro do evento guarda só o pedido já lido (sem cartão, documento, telefone ou endereço). Assinatura nova com
- * e-mail: boas-vindas com o código para ativar a conta (agendado; falhar não derruba o webhook).
+ * e-mail: boas-vindas com o código para ativar a conta (agendado; falhar não derruba o webhook; a idempotência por pedido
+ * segura o reenvio). A medição fica logo antes da marca final: um reenvio não perde a venda e só repetiria o `assinou`
+ * se a própria marca falhasse.
  */
 export async function aplicarPedido(
   p: PedidoCakto,
@@ -180,33 +192,24 @@ export async function aplicarPedido(
 ): Promise<'aplicado' | 'repetido' | 'ignorado'> {
   const registro = await supabaseServidor().from('cakto_eventos').insert({ pedido: p.pedido, evento: p.evento, corpo: p });
   if (registro.error) {
-    if (registro.error.code === '23505') return 'repetido';
-    throw new Error(`registrar evento da Cakto: ${registro.error.message}`);
+    if (registro.error.code !== '23505') throw new Error(`registrar evento da Cakto: ${registro.error.message}`);
+    if (await eventoAplicado(p)) return 'repetido';
   }
   const oferta = planoDaOferta(cfg, p.ofertaId);
   if (!oferta) return 'ignorado';
   const atual = await assinaturaDoPedido(p, oferta.plano);
-  const efeito = efeitoDoEvento({ evento: p.evento, status: p.status, pagoEm: p.pagoEm, ...oferta, atual, agora });
-  let id = atual?.id ?? null;
-  if (efeito.tipo === 'criar') {
-    id = await criarAssinatura(p, efeito.plano, efeito.periodo, efeito.validoAte);
-  } else if (efeito.tipo === 'estender' && atual) {
-    await atualizar(atual.id, { valido_ate: efeito.validoAte, status: 'ativa' }, agora);
-  } else if (efeito.tipo === 'cancelar' && atual) {
-    await atualizar(atual.id, { status: 'cancelada' }, agora);
-  } else if (efeito.tipo === 'estornar' && atual) {
-    await atualizar(atual.id, { status: 'estornada', valido_ate: efeito.validoAte }, agora);
-  }
+  const calculado = efeitoDoEvento({ evento: p.evento, status: p.status, pagoEm: p.pagoEm, ...oferta, atual, agora });
+  const { assinatura: id, efeito } = await gravarEfeito(p, calculado, atual);
   const checkout = id ? await checkoutDoPedido(p.callback) : null;
   const visitante = checkout?.visitante ?? null;
   if (id && visitante) {
     const r = await supabaseServidor().rpc('ligar_navegador', { p_assinatura: id, p_visitante: visitante });
     if (r.error) throw new Error(`ligar navegador do checkout: ${r.error.message}`);
   }
-  if (efeito.tipo === 'criar') {
+  if (efeito === 'criar') {
     const { error } = await supabaseServidor().from('eventos').insert({
       visitante: visitante ?? VISITANTE_DESCONHECIDO, tipo: 'assinou', interno: false,
-      detalhe: { plano: efeito.plano, periodo: efeito.periodo, valor: p.valorCentavos },
+      detalhe: { plano: oferta.plano, periodo: oferta.periodo, valor: p.valorCentavos },
     });
     if (error) console.error(`evento assinou: ${error.message}`);
     // Compra no GA4 pelo servidor (vale mesmo sem a volta ao /obrigado); só com o aceite dos cookies.
@@ -214,20 +217,21 @@ export async function aplicarPedido(
       const pro = PLANOS.find((x) => x.id === 'pro')!;
       await enviarGa4(
         corpoCompraGa4({
-          cliente: checkout.ga.cliente, sessao: checkout.ga.sessao, codigo: p.callback, periodo: efeito.periodo,
-          valorCentavos: efeito.periodo === 'anual' ? pro.centavosAno : pro.centavosMes,
+          cliente: checkout.ga.cliente, sessao: checkout.ga.sessao, codigo: p.callback, periodo: oferta.periodo,
+          valorCentavos: oferta.periodo === 'anual' ? pro.centavosAno : pro.centavosMes,
         }),
       );
     }
     const email = p.email;
     if (email) {
-      const periodo = efeito.periodo;
       await agendar(() =>
-        enviarBoasVindas(email, periodo, p.pedido).catch((erro: unknown) =>
+        enviarBoasVindas(email, oferta.periodo, p.pedido).catch((erro: unknown) =>
           console.error('boas-vindas:', erro instanceof Error ? erro.message : erro),
         ),
       );
     }
   }
-  return efeito.tipo === 'nada' ? 'ignorado' : 'aplicado';
+  const { error } = await supabaseServidor().from('cakto_eventos').update({ aplicado_em: agora.toISOString() }).eq('pedido', p.pedido).eq('evento', p.evento);
+  if (error) throw new Error(`marcar evento da Cakto: ${error.message}`);
+  return efeito === 'nada' ? 'ignorado' : 'aplicado';
 }

@@ -756,6 +756,29 @@ describe('migração 0015 (pagamento pela Cakto)', () => {
   });
 });
 
+describe('migração 0024 (efeito único do webhook da Cakto)', () => {
+  const sql = ler('supabase/migrations/0024_cakto_efeito_unico.sql').replace(/\r\n/g, '\n');
+  it('o histórico já processado não volta a ser aplicado', () => {
+    expect(sql).toContain('update public.cakto_eventos set aplicado_em = recebido_em;');
+  });
+  it('trava por evento, confere o efeito gravado e só depois mexe na assinatura', () => {
+    const trava = sql.indexOf("perform pg_advisory_xact_lock(hashtextextended('cakto:' || p_pedido || ':' || p_evento, 0));");
+    const confere = sql.indexOf('if v_evento.efeito_em is not null then');
+    const altera = sql.indexOf('insert into public.assinaturas');
+    expect(trava).toBeGreaterThan(-1);
+    expect(trava).toBeLessThan(confere);
+    expect(confere).toBeLessThan(altera);
+  });
+  it('a marca do efeito fica na mesma função que aplica o efeito', () => {
+    expect(sql).toContain('set efeito = p_efeito, assinatura = v_id, efeito_em = now()');
+  });
+  it('só o servidor executa', () => {
+    const assinatura = 'aplicar_efeito_cakto(text, text, text, uuid, timestamptz, text, text, text, text, text)';
+    expect(sql).toContain(`revoke execute on function public.${assinatura} from public, anon, authenticated;`);
+    expect(sql).toContain(`grant execute on function public.${assinatura} to service_role;`);
+  });
+});
+
 describe('migração 0018 (teto de alertas por conta)', () => {
   const sql = ler('supabase/migrations/0018_alertas_teto.sql').replace(/\r\n/g, '\n');
   it('trava por conta (advisory lock na transação) antes de contar', () => {
