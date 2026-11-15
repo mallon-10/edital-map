@@ -185,10 +185,250 @@ async function testarWebhook(access: string, id: string, evento: string) {
   console.log(`HTTP ${r.status} ${(await r.text()).slice(0, 300)}`);
 }
 
+/** Mostra um produto sem os campos sensíveis (link de acesso, e-mail de suporte, dados do produtor). */
+async function verProduto(access: string, id: string) {
+  const p = (await chamar(access, 'GET', `/products/${id}/`)) as Record<string, unknown>;
+  const { emailAccessLink: _l, supportEmail: _s, producer: _p, ...visivel } = p;
+  console.log(JSON.stringify(visivel, null, 2).slice(0, 4000));
+}
+
+const CURSO_NOME = 'Curso de Licitação — Do zero à primeira licitação';
+
+/**
+ * Produto do curso (venda única, área de membros Cakto V3, Pix e cartão). Idempotente pelo nome. Imprime o produto e a
+ * oferta padrão com o link do checkout. O texto não promete vitória nem renda (docs/superpowers/specs/2026-10-31-*).
+ */
+async function criarCurso(access: string, preco: number) {
+  const existentes = (await chamar(access, 'GET', '/products/?limit=100')) as Pagina<Produto>;
+  let produto = (existentes.results ?? []).find((p) => p.name === CURSO_NOME);
+  if (produto) console.log(`já existe: ${CURSO_NOME} · id ${produto.id}`);
+  else {
+    produto = (await chamar(access, 'POST', '/products/', {
+      name: CURSO_NOME,
+      description:
+        'Curso em vídeo para quem quer começar a vender para o governo. Você aprende como funciona uma licitação, ' +
+        'quem pode participar, quais documentos e cadastros a empresa precisa, onde encontrar editais e como ler um, ' +
+        'como escolher boas oportunidades, encontrar fornecedores, calcular o preço, enviar a proposta, participar da ' +
+        'disputa e da dispensa eletrônica, e o que fazer depois: entregar e receber. 16 aulas em 6 módulos, com acesso ' +
+        'pela área de membros. Feito pelo Edital Map: https://www.editalmap.com.br',
+      price: preco,
+      type: 'unique',
+      salesPage: 'https://www.editalmap.com.br/cursolicitacao',
+      paymentMethods: ['pix', 'credit_card'],
+      contentDeliveries: ['cakto_v3'],
+      supportEmail: 'mallon@escalav.com.br',
+    })) as Produto;
+    console.log(`criado: ${produto.name} · ${produto.type} · R$ ${produto.price} · id ${produto.id}`);
+  }
+  const lista = (await chamar(access, 'GET', `/offers/?product=${produto.id}&limit=50`)) as Pagina<Oferta & { product?: string }>;
+  for (const o of (lista.results ?? []).filter((x) => !x.product || x.product === produto!.id)) {
+    console.log(`oferta ${o.id} · ${o.name} · R$ ${o.price} · ${o.status}${o.default ? ' · padrão' : ''} · https://pay.cakto.com.br/${o.id}`);
+  }
+}
+
+/** Produto do curso na Cakto (criado em 15/11/2026 com `criar-curso 67`; oferta padrão vutq63g). */
+const CURSO_PRODUTO = 'ff616128-6bb1-4810-926c-fa933bb19c0b';
+
+/** Estrutura do curso definida pelo João em 15/11/2026. */
+const CURSO_MODULOS: Array<{ titulo: string; aulas: string[] }> = [
+  { titulo: 'Módulo 01 — Conhecendo o mercado público', aulas: ['Aula 1 — O governo pode ser seu cliente', 'Aula 2 — Como funciona uma licitação', 'Aula 3 — Quais oportunidades existem?'] },
+  { titulo: 'Módulo 02 — Preparando sua empresa', aulas: ['Aula 4 — Quem pode vender para o governo?', 'Aula 5 — Documentação necessária', 'Aula 6 — Cadastro nas plataformas'] },
+  { titulo: 'Módulo 03 — Encontrando oportunidades', aulas: ['Aula 7 — Onde encontrar licitações', 'Aula 8 — Como ler um edital', 'Aula 9 — Como escolher boas oportunidades'] },
+  { titulo: 'Módulo 04 — Fornecedores e precificação', aulas: ['Aula 10 — Como encontrar fornecedores', 'Aula 11 — Como calcular seu preço'] },
+  { titulo: 'Módulo 05 — Participando de uma licitação', aulas: ['Aula 12 — Como cadastrar sua proposta', 'Aula 13 — Como funciona a disputa', 'Aula 14 — Como participar de uma dispensa eletrônica'] },
+  { titulo: 'Módulo 06 — Ganhei. E agora?', aulas: ['Aula 15 — O que acontece depois da disputa', 'Aula 16 — Como entregar e receber'] },
+];
+
+type Item = { id: string; title?: string; name?: string; status?: string };
+const itens = (r: unknown): Item[] => (Array.isArray(r) ? r : ((r as Pagina<Item>)?.results ?? [])) as Item[];
+
+/**
+ * Monta a área de membros do curso: área (a Cakto devolve a existente), uma seção "Curso", os 6 módulos e as 16 aulas.
+ * Idempotente pelo título. Módulos saem publicados; aulas saem em rascunho até ganharem vídeo (`publicar-aula`).
+ * Precisa de uma chave com o escopo `members`.
+ */
+async function areaCurso(access: string) {
+  const area = (await chamar(access, 'POST', '/members/areas/', { product: CURSO_PRODUTO })) as Item & { slug?: string };
+  await chamar(access, 'PATCH', `/members/areas/${area.id}/`, {
+    description: 'Do zero à primeira licitação: 16 aulas em 6 módulos, do mercado público à entrega e ao pagamento.',
+    support_email: 'mallon@escalav.com.br',
+    comments_enabled: true,
+  });
+  console.log(`área ${area.id} · ${area.slug ?? ''} · ${area.status ?? ''}`);
+  const secoes = itens(await chamar(access, 'GET', `/members/areas/${area.id}/sections/?limit=50`));
+  const secao =
+    secoes.find((s) => s.title === 'Curso') ??
+    ((await chamar(access, 'POST', `/members/areas/${area.id}/sections/`, {
+      title: 'Curso', type: 'course', content_type: 'course', status: 'published', visibility: 'paid_members',
+    })) as Item);
+  console.log(`seção ${secao.id} · Curso`);
+  const modulos = itens(await chamar(access, 'GET', `/members/sections/${secao.id}/modules/?limit=50`));
+  for (const m of CURSO_MODULOS) {
+    const mod =
+      modulos.find((x) => x.title === m.titulo) ??
+      ((await chamar(access, 'POST', `/members/sections/${secao.id}/modules/`, { title: m.titulo, status: 'published' })) as Item);
+    const aulas = itens(await chamar(access, 'GET', `/members/modules/${mod.id}/lessons/?limit=50`));
+    console.log(`${m.titulo} · ${mod.id}`);
+    for (const a of m.aulas) {
+      const aula =
+        aulas.find((x) => x.title === a) ??
+        ((await chamar(access, 'POST', `/members/modules/${mod.id}/lessons/`, { title: a, status: 'draft', release_type: 'immediate' })) as Item);
+      console.log(`  ${a} · ${aula.id} · ${aula.status ?? 'draft'}`);
+    }
+  }
+}
+
+/** Descrições dos módulos e das aulas (sem promessa de vitória nem de renda). */
+const CURSO_DESCRICOES: Record<string, string> = {
+  'Módulo 01 — Conhecendo o mercado público': 'Por que o governo compra de empresas pequenas e como esse mercado funciona.',
+  'Módulo 02 — Preparando sua empresa': 'Quem pode participar, os documentos que a empresa precisa ter e os cadastros nas plataformas de compras.',
+  'Módulo 03 — Encontrando oportunidades': 'Onde os editais são publicados, como ler um e como escolher os que fazem sentido para o seu negócio.',
+  'Módulo 04 — Fornecedores e precificação': 'Como encontrar quem fornece o que você vai vender e como montar um preço que cubra custos e impostos.',
+  'Módulo 05 — Participando de uma licitação': 'Do cadastro da proposta à disputa de lances, incluindo a dispensa eletrônica.',
+  'Módulo 06 — Ganhei. E agora?': 'O que acontece depois da disputa: habilitação, contrato, entrega e pagamento.',
+  'Aula 1 — O governo pode ser seu cliente': 'O tamanho das compras públicas e por que empresas de todos os portes vendem para o governo.',
+  'Aula 2 — Como funciona uma licitação': 'As etapas de uma licitação, do edital publicado ao resultado.',
+  'Aula 3 — Quais oportunidades existem?': 'As formas de contratação (pregão, concorrência, dispensa e outras) e o que cada uma significa para você.',
+  'Aula 4 — Quem pode vender para o governo?': 'Quem pode participar, o que muda para MEI, ME e EPP e quais são os impedimentos.',
+  'Aula 5 — Documentação necessária': 'Os documentos de habilitação que costumam ser pedidos e como deixar tudo em dia.',
+  'Aula 6 — Cadastro nas plataformas': 'Passo a passo do cadastro nas plataformas de compras públicas, com telas reais.',
+  'Aula 7 — Onde encontrar licitações': 'Os portais onde os editais são publicados e como acompanhar os do seu segmento, com telas reais.',
+  'Aula 8 — Como ler um edital': 'As partes de um edital e os pontos que você precisa conferir antes de decidir participar.',
+  'Aula 9 — Como escolher boas oportunidades': 'Critérios para separar os editais que valem o seu tempo dos que não valem.',
+  'Aula 10 — Como encontrar fornecedores': 'Como achar e cotar fornecedores para o que o edital pede.',
+  'Aula 11 — Como calcular seu preço': 'Como somar custo, frete, impostos e margem para chegar a um preço viável.',
+  'Aula 12 — Como cadastrar sua proposta': 'Como preencher e enviar a proposta na plataforma, sem esquecer anexos e prazos.',
+  'Aula 13 — Como funciona a disputa': 'Como funciona a fase de lances e o que acontece depois dela.',
+  'Aula 14 — Como participar de uma dispensa eletrônica': 'Como funciona a dispensa eletrônica e como participar dela.',
+  'Aula 15 — O que acontece depois da disputa': 'Habilitação, recursos, homologação e assinatura do contrato ou da ata.',
+  'Aula 16 — Como entregar e receber': 'Empenho, entrega, nota fiscal e o caminho até o pagamento.',
+};
+
+/** Grava as descrições de CURSO_DESCRICOES nos módulos e nas aulas que já existem (não muda status). */
+async function descreverCurso(access: string) {
+  const area = (await chamar(access, 'POST', '/members/areas/', { product: CURSO_PRODUTO })) as Item;
+  const secao = itens(await chamar(access, 'GET', `/members/areas/${area.id}/sections/?limit=50`)).find((s) => s.title === 'Curso');
+  if (!secao) throw new Error('seção Curso não existe; rode area-curso antes');
+  for (const mod of itens(await chamar(access, 'GET', `/members/sections/${secao.id}/modules/?limit=50`))) {
+    const d = CURSO_DESCRICOES[mod.title ?? ''];
+    if (d) await chamar(access, 'PATCH', `/members/modules/${mod.id}/`, { description: d });
+    console.log(`${mod.title}${d ? ' ✓' : ' (sem descrição)'}`);
+    for (const aula of itens(await chamar(access, 'GET', `/members/modules/${mod.id}/lessons/?limit=50`))) {
+      const da = CURSO_DESCRICOES[aula.title ?? ''];
+      if (da) await chamar(access, 'PATCH', `/members/lessons/${aula.id}/`, { description: da });
+      console.log(`  ${aula.title}${da ? ' ✓' : ' (sem descrição)'} · ${aula.status}`);
+    }
+  }
+}
+
+/**
+ * Nome, topo (hero), botão e cores da área na identidade Edital Map. As imagens (banner, logo, capas) a API não aceita
+ * (só JSON e corpo pequeno): vão pelo painel, a partir de Área de Trabalho\Edital Map\curso-cakto\saida.
+ */
+async function visualCurso(access: string) {
+  const area = (await chamar(access, 'POST', '/members/areas/', { product: CURSO_PRODUTO })) as Item;
+  const secao = itens(await chamar(access, 'GET', `/members/areas/${area.id}/sections/?limit=50`)).find(
+    (s) => s.title === 'Curso' || s.title === 'Aulas do curso',
+  );
+  if (secao) await chamar(access, 'PATCH', `/members/sections/${secao.id}/`, { title: 'Aulas do curso' });
+  const base = {
+    name: 'Curso de Licitação',
+    description: 'Do zero à primeira licitação: 16 aulas em 6 módulos, do mercado público à entrega e ao pagamento.',
+    hero_title: 'Do zero à primeira licitação',
+    hero_description:
+      'Como funciona o mercado público, o que sua empresa precisa, onde achar editais e como participar, em 16 aulas curtas.',
+    hero_cta_label: 'Começar o curso',
+    hero_cta_section: secao?.id ?? null,
+    title_color: '#F4F1E8',
+    subtitle_color: '#C9D2E0',
+    cta_color: '#FF5A1F',
+    banner_overlay_enabled: false,
+    logo_label: '',
+    comments_enabled: true,
+    show_students_count: false,
+  };
+  const r = (await chamar(access, 'PATCH', `/members/areas/${area.id}/`, base)) as Record<string, unknown>;
+  console.log(`área: ${r.name} · topo: ${r.hero_title} · botão: ${r.hero_cta_label} (${r.cta_color})`);
+  for (const campo of ['title_font_family', 'cta_font_family', 'logo_font_family']) {
+    try {
+      await chamar(access, 'PATCH', `/members/areas/${area.id}/`, { [campo]: 'Instrument Sans' });
+      console.log(`${campo}: Instrument Sans`);
+    } catch (e) {
+      console.log(`${campo}: não aceitou (${String(e).slice(0, 160)})`);
+    }
+  }
+}
+
+/** Vídeos da biblioteca da Cakto (os que o João subiu pelo painel), para ligar às aulas. */
+async function videos(access: string) {
+  for (const v of itens(await chamar(access, 'GET', '/members/videos/?limit=100'))) console.log(`${v.id} · ${v.title ?? v.name ?? ''} · ${v.status ?? ''}`);
+}
+
+/** Liga uma aula a um vídeo (id da biblioteca ou link do YouTube) e publica. */
+async function publicarAula(access: string, aulaId: string, video: string) {
+  const corpo = /^https?:\/\//.test(video) ? { external_video_url: video } : { video_id: video };
+  const r = (await chamar(access, 'PATCH', `/members/lessons/${aulaId}/`, { ...corpo, status: 'published' })) as Item;
+  console.log(`aula ${r.id} · ${r.title} · ${r.status}`);
+}
+
+type Checkout = { id: number | string; name: string; config?: unknown; default?: boolean };
+
+/** Checkouts do curso, com o visual (config) gravado em cada um. */
+async function checkoutCurso(access: string) {
+  for (const c of itens(await chamar(access, 'GET', `/products/${CURSO_PRODUTO}/checkouts/?limit=20`)) as unknown as Checkout[])
+    console.log(`${c.id} · ${c.name}\n${JSON.stringify(c.config ?? null, null, 2).slice(0, 3000)}`);
+}
+
+/**
+ * Visual do checkout do curso na identidade Edital Map (mesmo formato do checkout do Pet Sitter): banner do site no topo
+ * (computador e celular), depois o formulário; fundo Atlas, botão de pagar Marcador com texto Carta. As imagens moram em
+ * public/curso/checkout/ (a API só aceita endereço) e saem de Área de Trabalho\Edital Map\curso-cakto\gerar.mjs.
+ */
+async function visualCheckout(access: string) {
+  const SITE = 'https://www.editalmap.com.br/curso/checkout/';
+  const settings = {
+    background: { color: '#0C2340' },
+    payButton: { color: '#FF5A1F', text: { color: '#FFFFFF' } },
+    text: { color: { active: '#FF5A1F' } },
+    icon: { color: '#FF5A1F' },
+  };
+  const lado = (dev: string, banner: string) => ({
+    settings,
+    extra: {},
+    rows: [
+      { id: `${dev}-row-banner`, type: 'row', layout: [12], columns: [
+        { id: `${dev}-col-banner`, type: 'column', components: [
+          { id: `${dev}-banner`, type: 'image', attributes: { image: SITE + banner, alignment: 'center' } },
+        ] },
+      ] },
+      { id: `${dev}-row-checkout`, type: 'row', layout: [12], columns: [
+        { id: `${dev}-col-checkout`, type: 'column', components: [{ id: `${dev}-checkout`, type: 'checkout', attributes: {} }] },
+      ] },
+    ],
+  });
+  const checkouts = itens(await chamar(access, 'GET', `/products/${CURSO_PRODUTO}/checkouts/?limit=20`)) as unknown as Checkout[];
+  for (const c of checkouts) {
+    await chamar(access, 'PATCH', `/products/${CURSO_PRODUTO}/checkouts/${c.id}/`, {
+      name: c.name,
+      config: { desktop: lado('desktop', 'banner-computador.jpg'), mobile: lado('mobile', 'banner-celular.jpg') },
+    });
+    console.log(`checkout ${c.id} · ${c.name}: visual gravado`);
+  }
+}
+
 const comando = process.argv[2];
 const { access, escopos } = await token();
 console.log(`escopos: ${escopos}`);
 if (comando === 'listar') await listar(access);
+else if (comando === 'ver-produto') await verProduto(access, process.argv[3]);
+else if (comando === 'criar-curso') await criarCurso(access, Number(process.argv[3]));
+else if (comando === 'area-curso') await areaCurso(access);
+else if (comando === 'videos') await videos(access);
+else if (comando === 'descrever-curso') await descreverCurso(access);
+else if (comando === 'visual-curso') await visualCurso(access);
+else if (comando === 'checkout-curso') await checkoutCurso(access);
+else if (comando === 'visual-checkout') await visualCheckout(access);
+else if (comando === 'publicar-aula') await publicarAula(access, process.argv[3], process.argv[4]);
 else if (comando === 'criar-produto') await criarProduto(access, process.argv[3], Number(process.argv[4]));
 else if (comando === 'ajustar') await ajustar(access, process.argv[3], Number(process.argv[4]), Number(process.argv[5]));
 else if (comando === 'preco-oferta') await precoOferta(access, process.argv[3], Number(process.argv[4]));

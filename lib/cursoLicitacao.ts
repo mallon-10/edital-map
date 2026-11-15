@@ -10,9 +10,9 @@ export const CURSO = {
   /** Linha pequena embaixo da marca. */
   assinatura: 'Do zero à primeira licitação',
   /** Preço em centavos; null = ainda não definido (a nota embaixo do botão diz "Acesso imediato"). */
-  precoCentavos: null as number | null,
+  precoCentavos: 6700 as number | null,
   /** Link do checkout da Cakto (pay.cakto.com.br/...); vazio = botão avisa que o link ainda não foi configurado. */
-  checkoutUrl: '',
+  checkoutUrl: 'https://pay.cakto.com.br/vutq63g',
   video: {
     /** MP4 em public/ (H.264, 720p ou 1080p, de preferência até ~30 MB). Vazio = capa provisória e oferta liberada. */
     src: '/curso/vsl.mp4',
