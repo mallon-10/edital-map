@@ -23,7 +23,7 @@ import { mesmaBusca, telaPelaRolagem, urlDaBusca, type EstadoTela, type Tela, ty
 import { BarraCelular } from './BarraCelular';
 import { FaixaOferta } from './FaixaOferta';
 import { Mapa } from './Mapa';
-import { CartaoAssessoria } from './edital/CartaoAssessoria';
+import { CartaoCurso } from './CartaoCurso';
 import { Atalhos, AtalhosComTotais } from './inicio/Atalhos';
 import { BuscaPrincipal } from './inicio/BuscaPrincipal';
 import { CartaoTopo } from './inicio/CartaoTopo';
@@ -95,19 +95,12 @@ type Props = {
   totaisAtalhos: Promise<Record<string, number | null>>;
   /** Pontos do mapa da busca do endereço, chegando depois do HTML (null: sem filtros, vêm da CDN, ou falhou). */
   pontosIniciais: Promise<PontoMapa[] | null> | null;
-  /** Triagem da assessoria (null: número do WhatsApp não configurado, sem cartão). */
-  assessoria: string | null;
 };
-
-// Cartão da assessoria na página inicial (sem edital escolhido).
-const TITULO_ASSESSORIA = 'Encontrou uma licitação e não sabe como participar?';
-const TEXTO_ASSESSORIA = 'Ajudamos a entender o edital, os documentos e os próximos passos.';
-const BOTAO_ASSESSORIA = 'Quero orientação';
 
 /** Parte do estado guardada ao sair da página (o resto da Volta é calculado na hora de guardar). */
 type Guardavel = Pick<Volta, 'filtros' | 'resultado' | 'tela' | 'selecionadoId'>;
 
-export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInicial, atualizadoEm, oferta, totaisAtalhos, pontosIniciais, assessoria }: Props) {
+export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInicial, atualizadoEm, oferta, totaisAtalhos, pontosIniciais }: Props) {
   const [filtros, setFiltros] = useState<FiltrosTela>(filtrosIniciais);
   // Celular: a parte da página pedida por último (botão da barra, cidade escolhida ou aviso na lista), guardada
   // no endereço (`tela=lista` abre a página rolada até a lista). Só muda por ação explícita, nunca pela rolagem.
@@ -678,31 +671,13 @@ export function Explorador({ filtrosIniciais, estadoInicial, inicial, agoraInici
               }
               // Celular: no meio dos editais, para nada de venda além da oferta ficar antes da lista.
               noMeio={
-                assessoria ? (
-                  <CartaoAssessoria
-                    href={assessoria}
-                    id="assessoria-inicio-celular"
-                    titulo={TITULO_ASSESSORIA}
-                    texto={TEXTO_ASSESSORIA}
-                    botao={BOTAO_ASSESSORIA}
-                    className="flex lg:hidden"
-                  />
-                ) : null
+                <CartaoCurso id="curso-inicio-celular" className="flex lg:hidden" />
               }
             />
           </section>
-          {/* A assessoria rola com a página; o valor e "Onde mais compram" continuam presos (os três juntos passam da altura da tela). */}
+          {/* O curso rola com a página; o valor e "Onde mais compram" continuam presos (os três juntos passam da altura da tela). */}
           <aside className="hidden flex-col gap-5 lg:flex lg:self-stretch">
-            {assessoria ? (
-              <CartaoAssessoria
-                href={assessoria}
-                id="assessoria-inicio"
-                titulo={TITULO_ASSESSORIA}
-                texto={TEXTO_ASSESSORIA}
-                botao={BOTAO_ASSESSORIA}
-                className="flex"
-              />
-            ) : null}
+            <CartaoCurso id="curso-inicio" />
             <div className="flex flex-col gap-5 lg:sticky lg:top-4">
               <ValorEmJogo valor={valorTotal} total={painel.total} carregando={!pontosProntos} />
               <OndeMaisCompram municipios={painel.topMunicipios} carregando={!pontosProntos} termo={filtros.q} aoEscolher={escolherCidade} />
