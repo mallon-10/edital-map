@@ -7,6 +7,7 @@ import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
 import { BotaoCompartilhar } from '@/components/edital/BotaoCompartilhar';
 import { BotaoAssessoria, CartaoAssessoria } from '@/components/edital/CartaoAssessoria';
+import { CartaoCurso } from '@/components/CartaoCurso';
 import { CartaoMonitorar } from '@/components/edital/CartaoMonitorar';
 import { BotaoDescartar } from '@/components/oportunidades/BotaoDescartar';
 import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
@@ -209,9 +210,10 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
           <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" />
         </div>
 
-        {/* As duas ofertas logo abaixo do cartão principal: ajuda com este edital e acompanhar os próximos. */}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-5">
+        {/* As ofertas logo abaixo do cartão principal: ajuda com este edital (quando há), o curso e acompanhar os próximos. */}
+        <div className={`grid grid-cols-1 gap-3 lg:gap-5 ${assessoria ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
           {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria" /> : null}
+          <CartaoCurso id="curso" />
           <CartaoMonitorar {...monitorar} />
         </div>
 
