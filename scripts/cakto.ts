@@ -351,8 +351,8 @@ async function visualCurso(access: string) {
   console.log(`área: ${r.name} · topo: ${r.hero_title} · botão: ${r.hero_cta_label} (${r.cta_color})`);
   for (const campo of ['title_font_family', 'cta_font_family', 'logo_font_family']) {
     try {
-      await chamar(access, 'PATCH', `/members/areas/${area.id}/`, { [campo]: 'Instrument Sans' });
-      console.log(`${campo}: Instrument Sans`);
+      await chamar(access, 'PATCH', `/members/areas/${area.id}/`, { [campo]: 'Public Sans' });
+      console.log(`${campo}: Public Sans`);
     } catch (e) {
       console.log(`${campo}: não aceitou (${String(e).slice(0, 160)})`);
     }
@@ -369,6 +369,77 @@ async function publicarAula(access: string, aulaId: string, video: string) {
   const corpo = /^https?:\/\//.test(video) ? { external_video_url: video } : { video_id: video };
   const r = (await chamar(access, 'PATCH', `/members/lessons/${aulaId}/`, { ...corpo, status: 'published' })) as Item;
   console.log(`aula ${r.id} · ${r.title} · ${r.status}`);
+}
+
+/**
+ * Liga cada vídeo da biblioteca à aula de mesmo número ("Aula N — …" no nome do arquivo e no título da aula) e publica a
+ * aula. Aula sem vídeo correspondente fica como está. Sem argumento só mostra o plano; com "aplicar" grava.
+ */
+async function ligarVideos(access: string, aplicar: boolean) {
+  const num = (s: string | undefined) => Number(/Aula\s+0*(\d+)/i.exec(s ?? '')?.[1] ?? NaN);
+  const vids = new Map<number, Item>();
+  for (const v of itens(await chamar(access, 'GET', '/members/videos/?limit=100'))) {
+    const n = num(v.title ?? v.name);
+    if (n) vids.set(n, v);
+  }
+  const area = (await chamar(access, 'POST', '/members/areas/', { product: CURSO_PRODUTO })) as Item;
+  const secao = itens(await chamar(access, 'GET', `/members/areas/${area.id}/sections/?limit=50`)).find(
+    (s) => s.title === 'Curso' || s.title === 'Aulas do curso',
+  );
+  if (!secao) throw new Error('seção do curso não encontrada');
+  for (const mod of itens(await chamar(access, 'GET', `/members/sections/${secao.id}/modules/?limit=50`))) {
+    for (const aula of itens(await chamar(access, 'GET', `/members/modules/${mod.id}/lessons/?limit=50`))) {
+      const v = vids.get(num(aula.title));
+      if (!v) { console.log(`sem vídeo · ${aula.title} · ${aula.status}`); continue; }
+      if (aplicar) await chamar(access, 'PATCH', `/members/lessons/${aula.id}/`, { video_id: v.id, status: 'published' });
+      console.log(`${aplicar ? 'publicada' : 'plano'} · ${aula.title} ← ${v.title ?? v.name} (${v.status ?? ''})`);
+    }
+  }
+}
+
+/**
+ * Markdown simples (o que o João escreve) → HTML que a área da Cakto mostra bem. A Cakto zera margens de <p> e números
+ * de <ol>, e ignora quebras de linha soltas: cada linha vira um <p>, linha em branco vira <p><br></p>, listas levam o
+ * marcador digitado (•, ☐ ou o número), títulos "## " viram negrito e endereços viram links que abrem em outra aba.
+ */
+export function descricaoHtml(md: string): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inline = (s: string) =>
+    esc(s)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/https?:\/\/[^\s<]+?(?=[.,;:)]?(\s|$))/g, (u) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+  const saida: string[] = [];
+  for (const bruta of md.replace(/\r/g, '').trim().split('\n')) {
+    const l = bruta.trim();
+    if (!l) { if (saida[saida.length - 1] !== '<p><br></p>') saida.push('<p><br></p>'); continue; }
+    let m: RegExpMatchArray | null;
+    if ((m = l.match(/^#{1,6}\s+(.*)$/))) saida.push(`<p><strong>${inline(m[1].replace(/\*\*/g, ''))}</strong></p>`);
+    else if ((m = l.match(/^[-*]\s+\[[ xX]?\]\s+(.*)$/))) saida.push(`<p>☐ ${inline(m[1])}</p>`);
+    else if ((m = l.match(/^[-*]\s+(.*)$/))) saida.push(`<p>• ${inline(m[1])}</p>`);
+    else saida.push(`<p>${inline(l)}</p>`);
+  }
+  return saida.join('');
+}
+
+/** Grava a descrição de cada aula a partir de <pasta>/aula-NN.md (número da aula no título). Sem "aplicar" só mostra. */
+async function descricoesAulas(access: string, pasta: string, aplicar: boolean) {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const area = (await chamar(access, 'POST', '/members/areas/', { product: CURSO_PRODUTO })) as Item;
+  const secao = itens(await chamar(access, 'GET', `/members/areas/${area.id}/sections/?limit=50`)).find(
+    (s) => s.title === 'Curso' || s.title === 'Aulas do curso',
+  );
+  if (!secao) throw new Error('seção do curso não encontrada');
+  for (const mod of itens(await chamar(access, 'GET', `/members/sections/${secao.id}/modules/?limit=50`))) {
+    for (const aula of itens(await chamar(access, 'GET', `/members/modules/${mod.id}/lessons/?limit=50`))) {
+      const n = Number(/Aula\s+0*(\d+)/i.exec(aula.title ?? '')?.[1]);
+      const arq = join(pasta, `aula-${String(n).padStart(2, '0')}.md`);
+      if (!existsSync(arq)) { console.log(`sem arquivo · ${aula.title}`); continue; }
+      const html = descricaoHtml(readFileSync(arq, 'utf8'));
+      if (aplicar) await chamar(access, 'PATCH', `/members/lessons/${aula.id}/`, { description: html });
+      console.log(`${aplicar ? 'gravada' : 'plano'} · ${aula.title} · ${html.length} caracteres`);
+    }
+  }
 }
 
 type Checkout = { id: number | string; name: string; config?: unknown; default?: boolean };
@@ -427,6 +498,8 @@ else if (comando === 'videos') await videos(access);
 else if (comando === 'descrever-curso') await descreverCurso(access);
 else if (comando === 'visual-curso') await visualCurso(access);
 else if (comando === 'checkout-curso') await checkoutCurso(access);
+else if (comando === 'descricoes-aulas') await descricoesAulas(access, process.argv[3], process.argv[4] === 'aplicar');
+else if (comando === 'ligar-videos')await ligarVideos(access, process.argv[3] === 'aplicar');
 else if (comando === 'visual-checkout') await visualCheckout(access);
 else if (comando === 'publicar-aula') await publicarAula(access, process.argv[3], process.argv[4]);
 else if (comando === 'criar-produto') await criarProduto(access, process.argv[3], Number(process.argv[4]));

@@ -19,8 +19,10 @@ import { sdkCakto } from '@/lib/cliente/caktoSdk';
 import { dadosGa4, medir } from '@/lib/cliente/medir';
 import { rastrear } from '@/lib/cliente/rastrear';
 import { validarComprador } from '@/lib/pagamento/comprador';
+import { centavosComCupom, type Cupom } from '@/lib/pagamento/cupons';
 import { PLANOS, type Periodo } from '@/lib/planos';
 import { Campo } from './Campo';
+import { CampoCupom } from './CampoCupom';
 import { CamposCartao, type EstadoCep } from './CamposCartao';
 import { BOTAO_PAGAR, CARTAO_CHECKOUT, LINK_VOLTAR, PASSO_AZUL } from './estilos';
 import { FormaPagamento, PassosPix } from './FormaPagamento';
@@ -43,7 +45,7 @@ function focarErro() {
  * Checkout próprio do Pro (spec do pagamento, revisão 2, §4; visual na spec 2026-10-22-checkout-design.md): Pix Automático
  * (padrão) ou cartão com 3D Secure. Resumo do pedido ao lado (em cima no celular); depois do QR, a tela do Pix.
  */
-export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; periodoInicial: Periodo }) {
+export function CheckoutPro({ clienteId, periodoInicial, cupomInicial = null }: { clienteId: string; periodoInicial: Periodo; cupomInicial?: Cupom | null }) {
   const router = useRouter();
   const [periodo, setPeriodo] = useState<Periodo>(periodoInicial);
   const [metodo, setMetodo] = useState<Metodo>('pix');
@@ -56,9 +58,12 @@ export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; 
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [pix, setPix] = useState<Pix | null>(null);
+  const [cupom, setCupom] = useState<Cupom | null>(cupomInicial);
+  // Só vai à Cakto o cupom que vale para o período escolhido (o servidor confere de novo).
+  const cupomValendo = cupom && cupom.periodos.includes(periodo) ? cupom : null;
   const idDados = useId();
   const idPagamento = useId();
-  const textos = textosCheckout(periodo, metodo);
+  const textos = textosCheckout(periodo, metodo, cupomValendo);
 
   const cep = so(endereco.cep);
   const estadoCep: EstadoCep = cep.length !== 8 ? 'vazio' : busca?.cep !== cep ? 'buscando' : busca.achou ? 'achou' : 'falhou';
@@ -143,7 +148,7 @@ export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; 
     const r = await fetch('/api/assinar', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ periodo, metodo, comprador: dados, ga: await dadosGa4(), ...corpo }),
+      body: JSON.stringify({ periodo, metodo, comprador: dados, ga: await dadosGa4(), cupom: cupomValendo?.codigo, ...corpo }),
     });
     const j = (await r.json().catch(() => ({}))) as {
       codigo?: string; estado?: string; qrCode?: string; expiraEm?: string | null; erro?: string; erros?: Partial<Record<CampoComprador, string>>;
@@ -187,7 +192,7 @@ export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; 
       const auth = await sdk.authenticate3DS({
         card: c.cartao,
         customer: {
-          amount: periodo === 'anual' ? PRO.centavosAno : PRO.centavosMes, currency: 'BRL', email: v.comprador.email, name: v.comprador.nome,
+          amount: periodo === 'anual' ? PRO.centavosAno : cupomValendo ? centavosComCupom(PRO.centavosMes, cupomValendo) : PRO.centavosMes, currency: 'BRL', email: v.comprador.email, name: v.comprador.nome,
           phone: v.comprador.celular, paymentMethod: 'credit', address: c.endereco,
         },
       });
@@ -334,6 +339,8 @@ export function CheckoutPro({ clienteId, periodoInicial }: { clienteId: string; 
                 />
               )}
             </section>
+
+            <CampoCupom periodo={periodo} cupom={cupom} aoAplicar={(c) => { setCupom(c); setErro(null); }} />
 
             <div className="flex flex-col gap-2.5 lg:gap-3">
               {erro ? (

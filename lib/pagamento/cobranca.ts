@@ -18,17 +18,21 @@ function cliente(c: Comprador, fingerprint: string) {
 
 const item = (oferta: string) => [{ offerId: oferta, quantity: 1, offerType: 'main' }];
 
-export function corpoPix(oferta: string, c: Comprador, codigo: string, fingerprint: string) {
+/** Cupom já conferido (lib/pagamento/cupons): só entra no corpo quando existe. */
+const comCupom = (cupom?: string | null) => (cupom ? { coupon: cupom } : {});
+
+export function corpoPix(oferta: string, c: Comprador, codigo: string, fingerprint: string, cupom?: string | null) {
   return {
     paymentMethod: 'pix_auto',
     customer: cliente(c, fingerprint),
     items: item(oferta),
     pixExpiresIn: EXPIRACAO_PIX_S,
+    ...comCupom(cupom),
     metadata: { sck: codigo },
   };
 }
 
-export function corpoCartao(oferta: string, c: Comprador, codigo: string, fingerprint: string, cartao: DadosCartao) {
+export function corpoCartao(oferta: string, c: Comprador, codigo: string, fingerprint: string, cartao: DadosCartao, cupom?: string | null) {
   return {
     paymentMethod: 'threeDs',
     customer: cliente(c, fingerprint),
@@ -37,6 +41,7 @@ export function corpoCartao(oferta: string, c: Comprador, codigo: string, finger
     threeDSecure: cartao.threeDSecure,
     antifraud_profiling_attempt_reference: cartao.antifraude,
     installments: 1,
+    ...comCupom(cupom),
     metadata: { sck: codigo },
   };
 }

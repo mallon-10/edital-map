@@ -70,6 +70,16 @@ describe('POST /api/assinar', () => {
     expect((await r.json()).erros).toEqual({ documento: 'Informe um CPF ou CNPJ válido.' });
     expect(m.criarCheckout).not.toHaveBeenCalled();
   });
+  it('cupom: ALUNO50 no mensal vai à Cakto; no anual ou desconhecido, 400 antes de cobrar', async () => {
+    m.criarCobranca.mockResolvedValue({ id: 'p1', status: 'waiting_payment', pix: { qrCode: '0002', expirationDate: '2026-10-18 15:10:00+00:00' } });
+    expect((await POST(pedido({ metodo: 'pix', comprador: COMPRADOR, cupom: 'aluno50' }))).status).toBe(200);
+    expect(m.criarCobranca.mock.calls[0][1]).toMatchObject({ coupon: 'ALUNO50', items: [{ offerId: 'irpv92e' }] });
+    const anual = await POST(pedido({ periodo: 'anual', metodo: 'pix', comprador: COMPRADOR, cupom: 'ALUNO50' }));
+    expect(anual.status).toBe(400);
+    expect((await anual.json()).erro).toBe('Este cupom vale só no plano mensal.');
+    expect((await POST(pedido({ metodo: 'pix', comprador: COMPRADOR, cupom: 'XPTO' }))).status).toBe(400);
+    expect(m.criarCobranca).toHaveBeenCalledTimes(1);
+  });
   it('cartão sem token: 400', async () => {
     expect((await POST(pedido({ metodo: 'cartao', comprador: COMPRADOR, cartao: { numero: '4111' } }))).status).toBe(400);
   });

@@ -3,6 +3,7 @@ import { lerDadosGa4 } from '@/lib/pagamento/ga4';
 import { corpoCartao, corpoPix, lerCobranca, lerDadosCartao } from '@/lib/pagamento/cobranca';
 import { validarComprador } from '@/lib/pagamento/comprador';
 import { configPagamento, ofertaPara } from '@/lib/pagamento/config';
+import { conferirCupom } from '@/lib/pagamento/cupons';
 import { ErroCakto, criarCobranca } from '@/lib/servidor/caktoApi';
 import { recusaForaDoSite } from '@/lib/servidor/mesmaOrigem';
 import { criarCheckout } from '@/lib/servidor/pagamento';
@@ -27,6 +28,10 @@ export async function POST(request: Request) {
   if (!validado.ok) return responder({ erro: 'Confira os dados destacados.', erros: validado.erros }, 400);
   const cartao = metodo === 'cartao' ? lerDadosCartao(corpo.cartao) : null;
   if (metodo === 'cartao' && !cartao) return responder({ erro: 'Não deu para validar o cartão. Tente de novo.' }, 400);
+  // Cupom informado e inválido para o período: recusa antes de cobrar (a Cakto cobraria o cheio sem avisar).
+  const cupom = corpo.cupom ? conferirCupom(corpo.cupom, periodo) : null;
+  if (cupom && !cupom.ok) return responder({ erro: cupom.erro }, 400);
+  const codigoCupom = cupom?.ok ? cupom.cupom.codigo : null;
   try {
     const ctx = await contexto();
     if (!(await recursoDentroDoLimite(ctx.ipHash, 'tentou_assinar', LIMITES.assinaturasPorHora))) {
@@ -38,8 +43,8 @@ export async function POST(request: Request) {
     const oferta = ofertaPara(cfg, periodo);
     // O visitante (cookie de 1 ano) é o identificador estável do aparelho que a Cakto pede.
     const pedido = cartao
-      ? corpoCartao(oferta, validado.comprador, codigo, ctx.visitante, cartao)
-      : corpoPix(oferta, validado.comprador, codigo, ctx.visitante);
+      ? corpoCartao(oferta, validado.comprador, codigo, ctx.visitante, cartao, codigoCupom)
+      : corpoPix(oferta, validado.comprador, codigo, ctx.visitante, codigoCupom);
     const cobranca = lerCobranca(await criarCobranca(cfg, pedido, `${codigo}-${metodo}`));
     if (cobranca.estado === 'recusado') {
       return responder({ codigo, estado: 'recusado', erro: 'O banco recusou o pagamento. Confira os dados do cartão ou pague com Pix.' });

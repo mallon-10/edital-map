@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { rastrear } from '@/lib/cliente/rastrear';
 import { registrar } from '@/lib/cliente/registrar';
 import type { OrigemAssinar } from '@/lib/eventos';
@@ -15,6 +16,12 @@ import { usePeriodo } from './Periodo';
  */
 export function BotaoAssinar({ origem, pagamento, atual, extra = '', rotulo = 'Assinar o Pro' }: EstadoPlanos & { origem: OrigemAssinar; extra?: string; rotulo?: string }) {
   const { periodo } = usePeriodo();
+  // /planos?cupom=ALUNO50 (link da aula do curso): o cupom segue para o checkout, que confere e aplica.
+  const [cupom, setCupom] = useState('');
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get('cupom')?.trim().slice(0, 40);
+    if (c) setCupom(c);
+  }, []);
   const classe = `${PILULA_PIN} ${extra}`;
   if (jaEPro(atual)) {
     return (
@@ -26,7 +33,7 @@ export function BotaoAssinar({ origem, pagamento, atual, extra = '', rotulo = 'A
   if (!pagamento) return <BotaoQueroPlano plano="pro" periodo={periodo} classe={classe} />;
   return (
     <Link
-      href={hrefAssinar(periodo)}
+      href={cupom ? `${hrefAssinar(periodo)}${hrefAssinar(periodo).includes('?') ? '&' : '?'}cupom=${encodeURIComponent(cupom)}` : hrefAssinar(periodo)}
       prefetch={false}
       onClick={() => {
         registrar('usou_recurso', { recurso: 'clicou_assinar', periodo, origem });

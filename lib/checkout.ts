@@ -1,4 +1,5 @@
 import type { CartaoDigitado, Endereco } from './cliente/caktoSdk';
+import { centavosComCupom, type Cupom } from './pagamento/cupons';
 import { formatarReais, PLANOS, type Periodo } from './planos';
 
 /**
@@ -89,10 +90,24 @@ export function validarCartao(c: CartaoForm, e: EnderecoForm, agora: Date): Resu
 export type TextosCheckout = { valor: string; sufixo: string; depois: string; botao: string; letraMiuda: string };
 
 /** O que muda com o período e a forma de pagamento: o preço do resumo, o botão e a linha embaixo dele. */
-export function textosCheckout(periodo: Periodo, metodo: Metodo): TextosCheckout {
+export function textosCheckout(periodo: Periodo, metodo: Metodo, cupom: Cupom | null = null): TextosCheckout {
   const anual = periodo === 'anual';
-  const valor = formatarReais(anual ? PRO.centavosAno : PRO.centavosMes);
+  const cheio = anual ? PRO.centavosAno : PRO.centavosMes;
+  const valor = formatarReais(cheio);
   const unidade = anual ? 'ano' : 'mês';
+  if (cupom && cupom.periodos.includes(periodo)) {
+    const primeiro = formatarReais(centavosComCupom(cheio, cupom));
+    return {
+      valor: primeiro,
+      sufixo: ` no 1º ${unidade}`,
+      depois: `Depois, ${valor} por ${unidade}, até você cancelar.`,
+      botao: `Assinar com ${metodo === 'pix' ? 'Pix' : 'cartão'} · ${primeiro}`,
+      letraMiuda:
+        metodo === 'pix'
+          ? `Na próxima tela aparece o QR Code. O 1º ${unidade} sai por ${primeiro}; as renovações, por ${valor}.`
+          : `Cobrado agora ${primeiro}; a cada ${unidade} depois, ${valor}. Você cancela quando quiser.`,
+    };
+  }
   return {
     valor,
     sufixo: `/${unidade}`,

@@ -31,6 +31,12 @@ describe('corpos das cobranças', () => {
     });
     expect(corpo).not.toHaveProperty('pixExpiresIn');
   });
+  it('cupom conferido vai no campo coupon; sem cupom, o campo nem aparece', () => {
+    expect(corpoPix('irpv92e', COMPRADOR, CODIGO, FP, 'ALUNO50')).toMatchObject({ coupon: 'ALUNO50' });
+    const cartao = { token: 't', threeDSecure: {}, antifraude: 'a' };
+    expect(corpoCartao('irpv92e', COMPRADOR, CODIGO, FP, cartao, 'ALUNO50')).toMatchObject({ coupon: 'ALUNO50' });
+    expect(corpoPix('irpv92e', COMPRADOR, CODIGO, FP, null)).not.toHaveProperty('coupon');
+  });
 });
 
 describe('lerDadosCartao (o que o navegador manda)', () => {
