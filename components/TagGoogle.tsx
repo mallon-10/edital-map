@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Script from 'next/script';
 import { useEffect, useState } from 'react';
 import { escolherConsentimento } from '@/lib/cliente/medir';
+import { CAMINHO_CURSO, ehPaginaVsl } from '@/lib/cursoLicitacao';
 import { CHAVE_CONSENTIMENTO, ID_GA4, ID_GOOGLE_ADS, ID_META_PIXEL, lerConsentimento } from '@/lib/medicao';
 
 /**
@@ -15,16 +16,22 @@ import { CHAVE_CONSENTIMENTO, ID_GA4, ID_GOOGLE_ADS, ID_META_PIXEL, lerConsentim
  */
 export const tagNaPagina = (caminho: string | null) => !caminho?.startsWith('/alertas/sair');
 
+/**
+ * Página de vendas em vídeo (/cursolicitacao): sem o aviso, e a medição liga sem pedir o aceite (decisão do João em
+ * 16/11/2026, para os anúncios da Meta continuarem medindo a VSL). Quem recusou em outra página continua recusado.
+ */
+const NA_VSL = `var vsl=false;try{var pth=location.pathname||'';vsl=pth==='${CAMINHO_CURSO}'||pth.indexOf('${CAMINHO_CURSO}/')===0;}catch(e){}`;
+
 export const PADRAO = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;
 gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});
-try{var c=localStorage.getItem('${CHAVE_CONSENTIMENTO}');if(c==='aceito'){gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});}}catch(e){}
+${NA_VSL}var c=null;try{c=localStorage.getItem('${CHAVE_CONSENTIMENTO}');}catch(e){}if(c==='aceito'||(vsl&&c!=='recusado')){gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'});}
 var p=null;try{var u=new URL(location.href);if(u.searchParams.has('t')){u.searchParams.delete('t');p={page_location:u.href};}}catch(e){}
 function cfg(id){if(p){gtag('config',id,p);}else{gtag('config',id);}}
 gtag('js',new Date());cfg('${ID_GOOGLE_ADS}');${ID_GA4 ? `cfg('${ID_GA4}');` : ''}`;
 
 /** Pixel da Meta: consentimento revogado até o "Aceitar" (os eventos esperam), depois init e PageView. */
-export const COMANDOS_META = `var c=null;try{c=localStorage.getItem('${CHAVE_CONSENTIMENTO}');}catch(e){}
-fbq('consent',c==='aceito'?'grant':'revoke');fbq('init','${ID_META_PIXEL}');fbq('track','PageView');`;
+export const COMANDOS_META = `${NA_VSL}var c=null;try{c=localStorage.getItem('${CHAVE_CONSENTIMENTO}');}catch(e){}
+fbq('consent',c==='aceito'||(vsl&&c!=='recusado')?'grant':'revoke');fbq('init','${ID_META_PIXEL}');fbq('track','PageView');`;
 
 const CARREGAR_META = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
 if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;
@@ -32,7 +39,9 @@ s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'
 
 export function TagGoogle() {
   const [mostrar, setMostrar] = useState(false);
-  const comTag = tagNaPagina(usePathname());
+  const caminho = usePathname();
+  const comTag = tagNaPagina(caminho);
+  const naVsl = ehPaginaVsl(caminho);
   useEffect(() => {
     try {
       setMostrar(lerConsentimento(window.localStorage) === null);
@@ -57,7 +66,7 @@ export function TagGoogle() {
           </Script>
         </>
       ) : null}
-      {mostrar ? (
+      {mostrar && !naVsl ? (
         <div
           role="dialog"
           aria-label="Cookies"

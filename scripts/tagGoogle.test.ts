@@ -5,11 +5,11 @@ const { COMANDOS_META, PADRAO, tagNaPagina } = await import('../components/TagGo
 const { default: config } = await import('../next.config');
 
 /** Roda o script inline da tag com window/location falsos e devolve o que foi para o dataLayer. */
-function rodar(href: string): unknown[][] {
+function rodar(href: string, escolha: string | null = null): unknown[][] {
   const camada: unknown[] = [];
   const janela: Record<string, unknown> = { dataLayer: camada };
-  const armazenamento = { getItem: () => null };
-  new Function('window', 'location', 'localStorage', 'dataLayer', PADRAO)(janela, { href }, armazenamento, camada);
+  const armazenamento = { getItem: () => escolha };
+  new Function('window', 'location', 'localStorage', 'dataLayer', PADRAO)(janela, { href, pathname: new URL(href).pathname }, armazenamento, camada);
   return camada.map((a) => Array.from(a as ArrayLike<unknown>));
 }
 
@@ -44,10 +44,10 @@ describe('tag do Google fora do link de descadastro', () => {
 });
 
 /** Roda os comandos do Pixel da Meta com um fbq falso e devolve as chamadas. */
-function rodarMeta(escolha: string | null): unknown[][] {
+function rodarMeta(escolha: string | null, pathname = '/'): unknown[][] {
   const chamadas: unknown[][] = [];
   const fbq = (...a: unknown[]) => void chamadas.push(a);
-  new Function('fbq', 'localStorage', COMANDOS_META)(fbq, { getItem: () => escolha });
+  new Function('fbq', 'localStorage', 'location', COMANDOS_META)(fbq, { getItem: () => escolha }, { pathname });
   return chamadas;
 }
 
@@ -77,5 +77,20 @@ describe('cabeçalhos de /alertas/sair', () => {
         { key: 'X-Robots-Tag', value: 'noindex' },
       ]),
     );
+  });
+});
+
+describe('VSL do curso (/cursolicitacao): mede sem o aviso, mas respeita quem recusou', () => {
+  it('Google: sem escolha, o consentimento é liberado logo depois do padrão negado', () => {
+    const c = rodar('https://www.editalmap.com.br/cursolicitacao?utm_source=meta');
+    expect(c[0]).toMatchObject(['consent', 'default', { ad_storage: 'denied' }]);
+    expect(c[1]).toMatchObject(['consent', 'update', { ad_storage: 'granted', analytics_storage: 'granted' }]);
+    expect(rodar('https://www.editalmap.com.br/cursolicitacao', 'recusado').some((x) => x[1] === 'update')).toBe(false);
+    expect(rodar('https://www.editalmap.com.br/').some((x) => x[1] === 'update')).toBe(false);
+  });
+  it('Meta: sem escolha na VSL, grant; recusado ou fora da VSL, revoke', () => {
+    expect(rodarMeta(null, '/cursolicitacao')[0]).toEqual(['consent', 'grant']);
+    expect(rodarMeta('recusado', '/cursolicitacao')[0]).toEqual(['consent', 'revoke']);
+    expect(rodarMeta(null, '/cursolicitacaox')[0]).toEqual(['consent', 'revoke']);
   });
 });

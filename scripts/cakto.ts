@@ -455,8 +455,8 @@ async function checkoutCurso(access: string) {
  * (computador e celular), depois o formulário; fundo Atlas, botão de pagar Marcador com texto Carta. As imagens moram em
  * public/curso/checkout/ (a API só aceita endereço) e saem de Área de Trabalho\Edital Map\curso-cakto\gerar.mjs.
  */
-async function visualCheckout(access: string) {
-  const SITE = 'https://www.editalmap.com.br/curso/checkout/';
+async function visualCheckout(access: string, produto = CURSO_PRODUTO, pasta = 'curso/checkout') {
+  const SITE = `https://www.editalmap.com.br/${pasta}/`;
   const settings = {
     background: { color: '#0C2340' },
     payButton: { color: '#FF5A1F', text: { color: '#FFFFFF' } },
@@ -477,9 +477,9 @@ async function visualCheckout(access: string) {
       ] },
     ],
   });
-  const checkouts = itens(await chamar(access, 'GET', `/products/${CURSO_PRODUTO}/checkouts/?limit=20`)) as unknown as Checkout[];
+  const checkouts = itens(await chamar(access, 'GET', `/products/${produto}/checkouts/?limit=20`)) as unknown as Checkout[];
   for (const c of checkouts) {
-    await chamar(access, 'PATCH', `/products/${CURSO_PRODUTO}/checkouts/${c.id}/`, {
+    await chamar(access, 'PATCH', `/products/${produto}/checkouts/${c.id}/`, {
       name: c.name,
       config: { desktop: lado('desktop', 'banner-computador.jpg'), mobile: lado('mobile', 'banner-celular.jpg') },
     });
@@ -501,6 +501,8 @@ else if (comando === 'checkout-curso') await checkoutCurso(access);
 else if (comando === 'descricoes-aulas') await descricoesAulas(access, process.argv[3], process.argv[4] === 'aplicar');
 else if (comando === 'ligar-videos')await ligarVideos(access, process.argv[3] === 'aplicar');
 else if (comando === 'visual-checkout') await visualCheckout(access);
+// Edital Map Pro: mesmos banners e cores, artes em public/pro/checkout/ (gerar-checkout.mjs pro).
+else if (comando === 'visual-checkout-pro') await visualCheckout(access, 'ad9240ce-3de9-4595-84c4-6c29036d9345', 'pro/checkout');
 else if (comando === 'publicar-aula') await publicarAula(access, process.argv[3], process.argv[4]);
 else if (comando === 'criar-produto') await criarProduto(access, process.argv[3], Number(process.argv[4]));
 else if (comando === 'ajustar') await ajustar(access, process.argv[3], Number(process.argv[4]), Number(process.argv[5]));
