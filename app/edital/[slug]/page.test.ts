@@ -67,18 +67,18 @@ describe('página do edital no grátis (sem limite e sem cadeado)', async () => 
     expect(html).toContain('Monitorar oportunidades semelhantes');
     expect(html).toMatch(/href="\/alertas\/novo\?q=luva[^"]*uf=SC"/i);
   });
-  it('as duas ofertas logo abaixo do cartão principal, uma vez cada, a assessoria primeiro', () => {
+  it('as duas ofertas logo abaixo do cartão principal, uma vez cada, o curso primeiro', () => {
     expect(html.match(/Monitorar oportunidades semelhantes/g)).toHaveLength(1);
-    expect(html.match(/Quer participar desta licitação\?/g)).toHaveLength(1);
+    expect(html.match(/Aprenda a participar de qualquer licitação/g)).toHaveLength(1);
     const resumo = html.indexOf('Resumo da oportunidade');
-    expect(html.indexOf('Quer participar desta licitação?')).toBeLessThan(html.indexOf('Quer encontrar outras licitações como esta?'));
+    expect(html.indexOf('Aprenda a participar de qualquer licitação')).toBeLessThan(html.indexOf('Quer encontrar outras licitações como esta?'));
     expect(html.indexOf('Monitorar oportunidades semelhantes')).toBeLessThan(resumo);
   });
-  it('assessoria com preço inicial, levando à triagem com o edital ligado (nunca direto ao WhatsApp)', () => {
-    expect(html).toContain('Quer participar desta licitação?');
-    expect(html).toContain('Assessoria a partir de R$ 197.');
-    expect(html).toContain('Quero orientação para este edital');
-    expect(html).toContain(`href="/assessoria?edital=${SLUG}"`);
+  it('curso sem preço, levando à VSL; nada leva ao formulário da assessoria', () => {
+    expect(html).toContain('href="/cursolicitacao"');
+    expect(html).toContain('Aprenda a participar de licitações');
+    expect(html).not.toContain('href="/assessoria');
+    expect(html).not.toContain('R$ 197');
     expect(html).not.toContain('wa.me');
   });
 });

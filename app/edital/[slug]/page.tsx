@@ -6,8 +6,7 @@ import { connection } from 'next/server';
 import { BotaoEditalOficial } from '@/components/BotaoEditalOficial';
 import { Cabecalho } from '@/components/Cabecalho';
 import { BotaoCompartilhar } from '@/components/edital/BotaoCompartilhar';
-import { BotaoAssessoria, CartaoAssessoria } from '@/components/edital/CartaoAssessoria';
-import { CartaoCurso } from '@/components/CartaoCurso';
+import { BotaoCurso, CartaoCurso } from '@/components/CartaoCurso';
 import { CartaoMonitorar } from '@/components/edital/CartaoMonitorar';
 import { BotaoDescartar } from '@/components/oportunidades/BotaoDescartar';
 import { BotaoSalvar } from '@/components/oportunidades/BotaoSalvar';
@@ -22,7 +21,7 @@ import { TAG_PRAZO, TEXTO_PRAZO } from '@/components/estilosPrazo';
 import { RegistrarAbertura } from '@/components/RegistrarAbertura';
 import { VitrineEmBreve } from '@/components/VitrineEmBreve';
 import { hrefMonitorarEdital, segmentoDoEdital } from '@/lib/alertaDaBusca';
-import { hrefAssessoria, mostrarAssessoria, numeroWhatsapp } from '@/lib/assessoria';
+import { mostrarAssessoria } from '@/lib/assessoria';
 import { NOMES_UF } from '@/lib/estados';
 import { SLUG_EDITAL } from '@/lib/eventos';
 import { linksDoEdital } from '@/lib/seo/linksEdital';
@@ -113,8 +112,8 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
   const rotuloSit = rotuloSituacao(e.situacao_id);
   const encerradaPorSituacao = rotuloSit === 'Revogada' || rotuloSit === 'Anulada';
   const valorEstimado = moeda(e.valor_estimado);
-  // Edital aberto e número configurado (WHATSAPP_ASSESSORIA na Vercel).
-  const assessoria = numeroWhatsapp(process.env.WHATSAPP_ASSESSORIA) && mostrarAssessoria(e, agora) ? hrefAssessoria(e.slug) : null;
+  // Botão verde do curso no topo (celular) só em edital aberto (não revogado, anulado nem vencido).
+  const aberta = mostrarAssessoria(e, agora);
   // Monitorar parecidos: para quem é Pro, vai direto ao formulário preenchido, sem falar em preço.
   const monitorar = {
     href: hrefMonitorarEdital(e.objeto, e.uf),
@@ -198,7 +197,7 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
               Descartar também (a rota decide o plano). */}
           <div className="flex flex-wrap gap-2.5 lg:gap-3">
             <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} />
-            {assessoria ? <BotaoAssessoria href={assessoria} /> : null}
+            {aberta ? <BotaoCurso /> : null}
             <BotaoCompartilhar titulo={titulo.titulo} slug={e.slug} />
             <BotaoSalvar id={e.id} variante="botao" />
             <BotaoDescartar id={e.id} />
@@ -210,9 +209,8 @@ export default async function PaginaEdital({ params, searchParams }: Props) {
           <BotaoEditalOficial href={linkOficial(e)} slug={e.slug} variante="barra" />
         </div>
 
-        {/* As ofertas logo abaixo do cartão principal: ajuda com este edital (quando há), o curso e acompanhar os próximos. */}
-        <div className={`grid grid-cols-1 gap-3 lg:gap-5 ${assessoria ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
-          {assessoria ? <CartaoAssessoria href={assessoria} edital={e.slug} id="assessoria" /> : null}
+        {/* As duas ofertas logo abaixo do cartão principal: o curso (aprender a participar) e acompanhar os próximos. */}
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-5">
           <CartaoCurso id="curso" />
           <CartaoMonitorar {...monitorar} />
         </div>

@@ -13,7 +13,7 @@ import { TopoPlanos } from './TopoPlanos';
 
 /**
  * Página de planos (spec 2026-10-21-planos-conversao-design.md), no visual da inicial nova: topo, como funciona, preços,
- * benefícios, comparação, confiança, perguntas, a assessoria (serviço à parte) e chamada final. O período do alternador vale para todos os "Assinar o Pro".
+ * benefícios, comparação, confiança, perguntas, o curso (aprender a participar) e chamada final. O período do alternador vale para todos os "Assinar o Pro".
  */
 export function ConteudoPlanos({ pagamento, atual, periodoInicial = 'mensal' }: EstadoPlanos & { periodoInicial?: Periodo }) {
   return (

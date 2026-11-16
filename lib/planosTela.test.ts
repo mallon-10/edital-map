@@ -35,10 +35,10 @@ describe('página de planos: grátis com o pagamento ligado', () => {
     expect(contar(html, '>Começar a receber oportunidades<')).toBe(1);
     expect(contar(html, '>Assinar o Pro<')).toBe(2);
   });
-  it('confiança e a assessoria como serviço à parte', () => {
+  it('confiança e o curso para quem quer aprender a participar (sem o formulário da assessoria)', () => {
     expect(html).toContain('Fonte oficial: PNCP');
-    expect(html).toContain('href="/assessoria"');
-    expect(html).toContain('a partir de R$ 197');
+    expect(html).toContain('href="/cursolicitacao"');
+    expect(html).not.toContain('href="/assessoria"');
   });
   it('Grátis discreto com "Continuar grátis"; Pro recomendado com a âncora #pro; seção #precos', () => {
     expect(html).toContain('Continuar grátis');
