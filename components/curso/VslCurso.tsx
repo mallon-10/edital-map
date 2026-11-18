@@ -13,6 +13,7 @@ import {
   variacaoDoTitulo,
 } from '@/lib/cursoLicitacao';
 import { ID_GA4 } from '@/lib/medicao';
+import { ConteudoCurso } from './ConteudoCurso';
 
 const CHAVE_CAMPANHA = 'em_curso_campanha';
 const CHAVE_OFERTA = 'em_curso_oferta';
@@ -253,6 +254,7 @@ export function VslCurso() {
         body{background:var(--color-ink)}
         [role="dialog"][aria-label="Cookies"]{bottom:calc(var(--altura-barra,0px) + 10px)!important}
         @keyframes vsl-subir{from{transform:translateY(110%)}to{transform:none}}
+        @keyframes vsl-aparecer{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
         .vsl-titulo em{font-style:normal;color:#ff936b;white-space:nowrap}
       `}</style>
 
@@ -358,6 +360,7 @@ export function VslCurso() {
             </p>
           </div>
         </section>
+        {ofertaVisivel ? <ConteudoCurso /> : null}
       </main>
 
       {ofertaVisivel ? (

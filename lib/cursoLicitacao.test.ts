@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { campanhaDoEndereco, ehPaginaVsl, linkDoCheckout, marcosNovos, momentoDaOferta, precoDoCurso, variacaoDoTitulo } from './cursoLicitacao';
+import { aulasNumeradas, campanhaDoEndereco, ehPaginaVsl, MODULOS_CURSO, linkDoCheckout, marcosNovos, momentoDaOferta, precoDoCurso, variacaoDoTitulo } from './cursoLicitacao';
 
 describe('curso de licitação (VSL)', () => {
   it('variação do título aceita só A, B e C', () => {
@@ -45,5 +45,12 @@ describe('curso de licitação (VSL)', () => {
   it('preço em reais ou nada', () => {
     expect(precoDoCurso(4790)).toBe('R$ 47,90');
     expect(precoDoCurso(null)).toBeNull();
+  });
+
+  it('conteúdo: 6 módulos e 16 aulas, numeradas em sequência como na área de membros', () => {
+    expect(MODULOS_CURSO).toHaveLength(6);
+    const n = aulasNumeradas();
+    expect(n.map((m) => m.inicio)).toEqual([1, 4, 7, 10, 12, 15]);
+    expect(n.reduce((t, m) => t + m.aulas.length, 0)).toBe(16);
   });
 });

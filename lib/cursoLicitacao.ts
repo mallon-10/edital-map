@@ -81,3 +81,58 @@ export function marcosNovos(atualSeg: number, duracaoSeg: number, jaContados: Re
 
 export const precoDoCurso = (centavos: number | null): string | null =>
   centavos === null ? null : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(centavos / 100);
+
+/**
+ * O que a pessoa recebe: módulos e aulas como estão na área de membros da Cakto (scripts/cakto.ts, CURSO_MODULOS).
+ * Aparece embaixo do vídeo junto com o botão de compra. Mudou uma aula na Cakto? Muda aqui também.
+ */
+export type ModuloCurso = { numero: string; titulo: string; resumo: string; aulas: readonly string[] };
+
+export const MODULOS_CURSO: readonly ModuloCurso[] = [
+  {
+    numero: '01',
+    titulo: 'Conhecendo o mercado público',
+    resumo: 'Por que o governo compra de empresas pequenas e como esse mercado funciona.',
+    aulas: ['O governo pode ser seu cliente', 'Como funciona uma licitação', 'Quais oportunidades existem?'],
+  },
+  {
+    numero: '02',
+    titulo: 'Preparando sua empresa',
+    resumo: 'Quem pode participar, os documentos que a empresa precisa ter e os cadastros nas plataformas.',
+    aulas: ['Quem pode vender para o governo?', 'Documentação necessária', 'Cadastro nas plataformas'],
+  },
+  {
+    numero: '03',
+    titulo: 'Encontrando oportunidades',
+    resumo: 'Onde os editais são publicados, como ler um e como escolher os que fazem sentido para você.',
+    aulas: ['Onde encontrar licitações', 'Como ler um edital', 'Como escolher boas oportunidades'],
+  },
+  {
+    numero: '04',
+    titulo: 'Fornecedores e precificação',
+    resumo: 'Como achar quem fornece o que você vai vender e montar um preço que cubra custos e impostos.',
+    aulas: ['Como encontrar fornecedores', 'Como calcular seu preço'],
+  },
+  {
+    numero: '05',
+    titulo: 'Participando de uma licitação',
+    resumo: 'Do cadastro da proposta à disputa de lances, incluindo a dispensa eletrônica.',
+    aulas: ['Como cadastrar sua proposta', 'Como funciona a disputa', 'Como participar de uma dispensa eletrônica'],
+  },
+  {
+    numero: '06',
+    titulo: 'Ganhei. E agora?',
+    resumo: 'O que acontece depois da disputa: habilitação, contrato, entrega e pagamento.',
+    aulas: ['O que acontece depois da disputa', 'Como entregar e receber'],
+  },
+];
+
+/** Aulas numeradas em sequência (1 a 16) ao longo dos módulos, como na área de membros. */
+export function aulasNumeradas(modulos: readonly ModuloCurso[] = MODULOS_CURSO): Array<ModuloCurso & { inicio: number }> {
+  let n = 1;
+  return modulos.map((m) => {
+    const inicio = n;
+    n += m.aulas.length;
+    return { ...m, inicio };
+  });
+}
